@@ -1,0 +1,17 @@
+{
+  "name": "p5.embroider",
+  "version": "0.1.0",
+  "description": "P5.js extension for embroidery pattern generation",
+  "main": "lib/p5.embroider.js",
+  "scripts": {
+    "docs": "jsdoc -c jsdoc.config.json",
+    "docs:dev": "jekyll serve docs"
+  },
+  "dependencies": {
+    "p5": "^1.9.0"
+  },
+  "devDependencies": {
+    "jsdoc": "^4.0.2",
+    "clean-jsdoc-theme": "^4.2.17"
+  }
+} 

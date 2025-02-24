@@ -1,0 +1,26 @@
+{
+  "source": {
+    "include": ["lib"],
+    "includePattern": ".js$"
+  },
+  "opts": {
+    "destination": "docs",
+    "template": "node_modules/clean-jsdoc-theme",
+    "theme_opts": {
+      "default_theme": "dark",
+      "title": "P5.Embroider Documentation",
+      "menu": [
+        {
+          "title": "Github",
+          "link": "https://github.com/nkymut/p5.embroider",
+          "target": "_blank"
+        }
+      ]
+    }
+  },
+  "plugins": [],
+  "templates": {
+    "cleverLinks": true,
+    "monospaceLinks": true
+  }
+} 
