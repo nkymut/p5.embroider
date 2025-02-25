@@ -28,8 +28,17 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     units: 'mm'
   };
 
-  // Thread class
+  /**
+   * Thread class for storing color and stitch data.
+   * @private
+   */
   class Thread {
+    /**
+     * Creates a new Thread instance.
+     * @param {number} r - Red component (0-255)
+     * @param {number} g - Green component (0-255)
+     * @param {number} b - Blue component (0-255)
+     */
     constructor(r, g, b) {
       this.red = r;
       this.green = g;
@@ -38,7 +47,10 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     }
   }
 
-  // Begin recording embroidery data
+  /**
+   * Begins recording embroidery data.
+   * @param {object} p5Instance - The p5.js sketch instance
+   */
   p5embroidery.beginRecord = function (p5Instance) {
     if (!p5Instance) {
       throw new Error("Invalid p5 instance provided to beginRecord().");
@@ -51,14 +63,19 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     overrideP5Functions();
   };
 
-  // End recording and export embroidery file
+  /**
+   * Ends recording and prepares for export.
+   */
   p5embroidery.endRecord = function () {
     _recording = false;
     restoreP5Functions();
     //exportEmbroidery(format);
   };
 
-  // Example override for line()
+  /**
+   * Overrides p5.js line() function to record embroidery stitches.
+   * @private
+   */
   let _originalLineFunc;
   function overrideLineFunction() {
     _originalLineFunc = window.line;
@@ -106,7 +123,10 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     };
   }
 
-  // Example override for ellipse()
+  /**
+   * Overrides p5.js ellipse() function to record embroidery stitches.
+   * @private
+   */
   let _originalEllipseFunc;
   function overrideEllipseFunction() {
     _originalEllipseFunc = window.ellipse;
@@ -180,26 +200,47 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     };
   }
 
-  // Override p5.js functions
+  /**
+   * Overrides necessary p5.js functions for embroidery recording.
+   * @private
+   */
   function overrideP5Functions() {
     overrideLineFunction();
     overrideEllipseFunction();
     // Add more overrides as needed
   }
 
+  /**
+   * Restores original p5.js functions.
+   * @private
+   */
   function restoreP5Functions() {
     window.line = _originalLineFunc;
     window.ellipse = _originalEllipseFunc;
     // Restore other functions as needed
   }
 
-  // Add setStitch function
+  /**
+   * Sets the stitch parameters for embroidery.
+   * @param {number} minLength - Minimum stitch length in millimeters
+   * @param {number} desiredLength - Desired stitch length in millimeters
+   * @param {number} noise - Amount of random variation in stitch length (0-1)
+   */
   p5embroidery.setStitch = function (minLength, desiredLength, noise) {
     _embrSettings.minStitchLength = Math.max(0, minLength);
     _embrSettings.stitchLength = Math.max(0.1, desiredLength);
     _embrSettings.resampleNoise = Math.min(1, Math.max(0, noise));
   };
 
+  /**
+   * Converts a line segment into a series of stitches.
+   * @private
+   * @param {number} x1 - Starting x-coordinate
+   * @param {number} y1 - Starting y-coordinate
+   * @param {number} x2 - Ending x-coordinate
+   * @param {number} y2 - Ending y-coordinate
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
+   */
   function convertLineToStitches(x1, y1, x2, y2) {
     let stitches = [];
     let dx = x2 - x1;
@@ -281,6 +322,10 @@ import { GCodeWriter } from './p5-gcode-writer.js';
   }
 
 
+  /**
+   * Exports the recorded embroidery data as a DST file.
+   * @param {string} [filename='embroideryPattern.dst'] - Output filename
+   */
   p5embroidery.exportDST = function (filename = 'embroideryPattern.dst') {
     const points = [];
     const dstWriter = new DSTWriter();
@@ -312,7 +357,9 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
   }
 
-  // Rename cutThread to trimThread
+  /**
+   * Inserts a thread trim command at the current position.
+   */
   p5embroidery.trimThread = function () {
     if (_recording) {
       // Add a special point to indicate thread trim
