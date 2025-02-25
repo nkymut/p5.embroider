@@ -1,4 +1,8 @@
+
+# Embroidery files
 *.dst
+*.gcode
+
 # macOS
 .DS_Store
 .AppleDouble

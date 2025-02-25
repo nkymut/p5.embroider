@@ -26,5 +26,12 @@ function setup() {
 }
 
 function keyPressed() {
-  exportEmbroidery('boxtest.dst');
+  switch (key) {
+    case 'd':
+      exportEmbroidery('boxtest.dst');
+      break;
+    case 'g':
+      exportGcode('boxtest.gcode');
+      break;
+  }
 }

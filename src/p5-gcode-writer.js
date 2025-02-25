@@ -1,5 +1,5 @@
 // p5.js G-code Writer
-class GCodeWriter {
+export class GCodeWriter {
   constructor() {
     this.data = [];
     this.currentX = 0;
@@ -68,49 +68,17 @@ class GCodeWriter {
     
     return this.data.join('\n');
   }
-}
 
-let writer;
-let points = [];
-
-function setup() {
-  createCanvas(400, 400);
-  writer = new GCodeWriter();
-  
-  // Create a simple line of points (a circle in this case)
-  for (let i = 0; i <= 360; i += 5) {
-    let angle = radians(i);
-    let x = cos(angle) * 100;
-    let y = sin(angle) * 100;
-    points.push(createVector(x, y));
-  }
-}
-
-function draw() {
-  background(220);
-  
-  // Draw the points
-  stroke(0);
-  noFill();
-  beginShape();
-  for (let point of points) {
-    vertex(point.x + width/2, point.y + height/2);
-  }
-  endShape(CLOSE);
-  
-  // Draw point markers
-  fill(255, 0, 0);
-  noStroke();
-  for (let point of points) {
-    ellipse(point.x + width/2, point.y + height/2, 5, 5);
-  }
-}
-
-function keyPressed() {
-  if (key === 's') {
-    // Generate and save the G-code
-    let gcode = writer.generateGCode(points);
-    saveStrings(gcode.split('\n'), 'myPattern.gcode');
-    console.log('G-code file saved!');
+  saveGcode(filename) {
+    const gcode = this.generateGCode();
+    const blob = new Blob([gcode], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+    }, 100);
   }
 }

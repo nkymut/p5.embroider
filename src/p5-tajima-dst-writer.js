@@ -1,5 +1,5 @@
-// Corrected p5.js DST Writer
-class DSTWriter {
+// Tajima DST Writer
+export class DSTWriter {
   constructor() {
     this.data = [];
     this.currentX = 0;
