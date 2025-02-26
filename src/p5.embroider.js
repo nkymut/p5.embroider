@@ -242,22 +242,44 @@ import { GCodeWriter } from './p5-gcode-writer.js';
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
   function convertLineToStitches(x1, y1, x2, y2) {
+    console.log('Converting line to stitches (before offset):', {
+      from: { x: x1, y: y1 },
+      to: { x: x2, y: y2 }
+    });
+
+    console.log('Converting line to stitches', {
+      from: { x: x1, y: y1 },
+      to: { x: x2, y: y2 }
+    });
+    
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
-    // If distance is less than minimum stitch length, skip
+    console.log('Line properties:', {
+      dx, dy,
+      distance,
+      minStitchLength: _embrSettings.minStitchLength,
+      stitchLength: _embrSettings.stitchLength
+    });
+
+    // Add first stitch at starting point
+    stitches.push({
+      x: x1 * 10,
+      y: y1 * 10
+    });
+
+    // If distance is less than minimum stitch length, we're done
     if (distance < _embrSettings.minStitchLength) {
       return stitches;
     }
 
     let baseStitchLength = _embrSettings.stitchLength;
     let numStitches = Math.floor(distance / baseStitchLength);
-    let remainingDistance = distance % baseStitchLength;
+    let currentDistance = 0;
 
     // Handle full-length stitches
-    let currentDistance = 0;
     for (let i = 0; i < numStitches; i++) {
       // Add noise to stitch length if specified
       let stitchLength = baseStitchLength;
@@ -266,23 +288,26 @@ import { GCodeWriter } from './p5-gcode-writer.js';
         stitchLength *= (1 + noise);
       }
 
+      // update cumulative distance
       currentDistance += stitchLength;
-
       let t = Math.min(currentDistance / distance, 1);
-
+      
       stitches.push({
         x: (x1 + dx * t) * 10,
         y: (y1 + dy * t) * 10
       });
     }
 
-    // Add final stitch at the end point if there's enough remaining distance
+    // Add final stitch at end point if needed
+    let remainingDistance = distance - currentDistance;
     if (remainingDistance > _embrSettings.minStitchLength || numStitches === 0) {
       stitches.push({
         x: x2 * 10,
         y: y2 * 10
       });
     }
+
+    console.log('Generated stitches:', stitches);
     return stitches;
   }
 
@@ -318,7 +343,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     for (const point of points) {
       gcodeWriter.move(point.x, point.y);
     }
-    gcodeWriter.saveGcode(filename);
+    gcodeWriter.saveGcode(points, "EmbroideryPattern", filename);
   }
 
 
@@ -330,10 +355,14 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     const points = [];
     const dstWriter = new DSTWriter();
 
+    console.log('=== Starting DST Export ===');
+    console.log('Canvas size:', _stitchData.width, _stitchData.height);
+
     for (const thread of _stitchData.threads) {
       for (const run of thread.runs) {
         // Check if this is a thread trim command
         if (run.length === 1 && run[0].command === 'trim') {
+          console.log('Trim command at:', run[0].x, run[0].y);
           points.push({
             x: 0,
             y: 0,
@@ -344,7 +373,12 @@ import { GCodeWriter } from './p5-gcode-writer.js';
         }
 
         // Normal stitches
+        console.log('=== New Stitch Run ===');
         for (const stitch of run) {
+          console.log('Stitch point:', {
+            original: { x: stitch.x / 10, y: stitch.y / 10 },
+            dst: { x: stitch.x, y: stitch.y }
+          });
           points.push({
             x: stitch.x,
             y: stitch.y
@@ -353,6 +387,9 @@ import { GCodeWriter } from './p5-gcode-writer.js';
       }
     }
 
+    console.log('=== Final Points Array ===');
+    console.log('First point:', points[0]);
+    console.log('Last point:', points[points.length - 1]);
 
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
   }

@@ -36,7 +36,8 @@ export class GCodeWriter {
     this.data.push(command);
   }
 
-  generateGCode(points) {
+  generateGCode(points, title) {
+    this.addComment(`TITLE:${title}`);
     this.addComment(`STITCH_COUNT:${points.length}`);
     
     // Generate points
@@ -69,8 +70,8 @@ export class GCodeWriter {
     return this.data.join('\n');
   }
 
-  saveGcode(filename) {
-    const gcode = this.generateGCode();
+  saveGcode(points, title, filename) {
+    const gcode = this.generateGCode(points, title);
     const blob = new Blob([gcode], { type: 'text/plain' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);

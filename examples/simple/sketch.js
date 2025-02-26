@@ -5,17 +5,17 @@ function setup() {
   beginRecord(this);
   // Draw a 200px square
   setStitch(.5, 10, 0);
-  line(0, 0, 200, 0); // top
+  line(0, 0, 100, 0); // top
   trimThread();
-  line(200, 0, 200, 200); // right
+  line(100, 0, 100, 100); // right
   trimThread();
-  line(200, 200, 0, 200); // bottom
+  line(100, 100, 0, 100); // bottom
   trimThread();
-  line(0, 200, 0, 0); // left
+  line(0, 100, 0, 0); // left
   trimThread();
 
   // Draw a 200px circle
-  ellipse(100, 100, 200, 200);
+  ellipse(50, 50, 100, 100);
 
   trimThread();
 

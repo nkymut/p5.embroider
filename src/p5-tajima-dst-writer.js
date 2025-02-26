@@ -115,23 +115,65 @@ export class DSTWriter {
   }
 
   generateDST(points, title) {
+    console.log('=== DSTWriter generateDST ===');
+    console.log('Initial state:', {
+      currentX: this.currentX,
+      currentY: this.currentY
+    });
+
     // Reset data and counters
     this.data = [];
     this.currentX = 0;
     this.currentY = 0;
     this.stitchCount = 0;
 
-    // Calculate border size
+    // Calculate border size before transformation
     let border = this.calculateBorderSize(points);
+    console.log('Original border size:', border);
 
-    // Generate stitches
-    for (let i = 0; i < points.length; i++) {
-      this.move(points[i].x, points[i].y, i === 0 ? DSTWriter.JUMP : DSTWriter.STITCH);
+    // Transform points to center-origin coordinates
+    const centerX = border.width / 2;
+    const centerY = border.height / 2;
+    
+    const transformedPoints = points.map(point => ({
+      ...point,
+      x: point.x - (border.left + centerX),
+      y: point.y - (border.top + centerY)
+    }));
+
+    console.log('Coordinate transformation:', {
+      centerX,
+      centerY,
+      originalFirstPoint: points[0],
+      transformedFirstPoint: transformedPoints[0]
+    });
+
+    // Recalculate border size after transformation
+    border = this.calculateBorderSize(transformedPoints);
+    console.log('Transformed border size:', border);
+
+    // Generate stitches using transformed points
+    for (let i = 0; i < transformedPoints.length; i++) {
+      console.log('Processing point:', i, transformedPoints[i]);
+      this.move(
+        transformedPoints[i].x, 
+        transformedPoints[i].y, 
+        i === 0 ? DSTWriter.JUMP : DSTWriter.STITCH
+      );
+      console.log('After move:', {
+        currentX: this.currentX,
+        currentY: this.currentY
+      });
     }
 
     // Add end of pattern
-    this.move(points[0].x, points[0].y, DSTWriter.STITCH);  // Close the circle
     this.move(0, 0, DSTWriter.END);
+
+    console.log('Final state:', {
+      currentX: this.currentX,
+      currentY: this.currentY,
+      stitchCount: this.stitchCount
+    });
 
     // Prepare header
     let header = new Array(512).fill(0x20); // Fill with spaces
@@ -140,9 +182,9 @@ export class DSTWriter {
       `ST:${this.stitchCount.toString().padStart(7)}\r` +
       `CO:${(1).toString().padStart(3)}\r` +
       `+X:${border.right.toString().padStart(5)}\r` +
-      `-X:${border.left.toString().padStart(5)}\r` +
+      `-X:${Math.abs(border.left).toString().padStart(5)}\r` +
       `+Y:${border.bottom.toString().padStart(5)}\r` +
-      `-Y:${border.top.toString().padStart(5)}\r` +
+      `-Y:${Math.abs(border.top).toString().padStart(5)}\r` +
       `AX:+${Math.abs(this.currentX).toString().padStart(5)}\r` +
       `AY:+${Math.abs(this.currentY).toString().padStart(5)}\r` +
       `MX:+${(0).toString().padStart(5)}\r` +
@@ -164,11 +206,22 @@ export class DSTWriter {
     let link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
+    
+    // Prevent page refresh by handling the click event
+    link.onclick = function(e) {
+      // Let download happen, just prevent page refresh
+      setTimeout(() => e.preventDefault(), 10);
+      //restore download function 
+      
+      // Clean up after download starts
+      setTimeout(() => {
+        URL.revokeObjectURL(link.href);
+        document.body.removeChild(link);
+      }, 100);
+    };
+
+    document.body.appendChild(link);
     link.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(link.href);
-      document.body.removeChild(link);
-    }, 100);
   }
 
   saveDST(points, title, filename) {
