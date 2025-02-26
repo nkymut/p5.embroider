@@ -1,21 +1,25 @@
 function setup() {
-  createCanvas(400, 400);
+  createCanvas(800, 800);
 
   background(220);
+
+  setDrawMode('realistic');
   beginRecord(this);
-  // Draw a 200px square
-  setStitch(.5, 10, 0);
-  line(0, 0, 100, 0); // top
+  // Draw a 90mm square
+  setStitch(.5, 6, 0);
+
+  line(10, 10, 100, 10); // top
   trimThread();
-  line(100, 0, 100, 100); // right
+  line(100, 10, 100, 100); // right
   trimThread();
-  line(100, 100, 0, 100); // bottom
+  line(100, 100, 10, 100); // bottom
   trimThread();
-  line(0, 100, 0, 0); // left
+  line(10, 100, 10, 10); // left
   trimThread();
 
   // Draw a 200px circle
-  ellipse(50, 50, 100, 100);
+
+  ellipse(55, 55, 80, 80);
 
   trimThread();
 
