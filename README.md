@@ -6,8 +6,6 @@
 
 Version 0.0.1, February 25, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
-
-
 ## references
 
 pyembroidery

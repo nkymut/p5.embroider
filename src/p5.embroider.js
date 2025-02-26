@@ -1,5 +1,5 @@
-import { DSTWriter } from './p5-tajima-dst-writer.js';
-import { GCodeWriter } from './p5-gcode-writer.js';
+import { DSTWriter } from "./p5-tajima-dst-writer.js";
+import { GCodeWriter } from "./p5-gcode-writer.js";
 
 (function (global) {
   const p5embroidery = {};
@@ -7,16 +7,15 @@ import { GCodeWriter } from './p5-gcode-writer.js';
   // Internal properties
   let _p5Instance;
   let _recording = false;
-  let _drawMode = 'stitch'; // 'stitch', 'p5', 'realistic'
+  let _drawMode = "stitch"; // 'stitch', 'p5', 'realistic'
   let _stitchData = {
     width: 0,
     height: 0,
     threads: [],
     pixelsPerUnit: 1,
-    stitchCount: 0
+    stitchCount: 0,
   };
   let _currentThreadIndex = 0;
-
 
   // Embroidery settings
   const _embrSettings = {
@@ -26,7 +25,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     minimumPathLength: 0,
     maximumJoinDistance: 0,
     maximumStitchesPerSquareMm: 0,
-    units: 'mm'
+    units: "mm",
   };
 
   /**
@@ -88,14 +87,20 @@ import { GCodeWriter } from './p5-gcode-writer.js';
         let prevX = mmToPixel(x1);
         let prevY = mmToPixel(y1);
 
-        if (_drawMode === 'stitch') {
+        if (_drawMode === "stitch") {
           // Draw stitch lines
           _p5Instance.push();
 
           for (let stitch of stitches) {
             let currentX = mmToPixel(stitch.x / 10);
             let currentY = mmToPixel(stitch.y / 10);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Draw small dots at stitch points
             _p5Instance.stroke(255, 0, 0); // Red for stitch points
@@ -106,7 +111,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
             prevY = currentY;
           }
           _p5Instance.pop();
-        }else if (_drawMode === 'realistic') {
+        } else if (_drawMode === "realistic") {
           _p5Instance.push();
           _p5Instance.strokeCap(ROUND);
 
@@ -124,28 +129,47 @@ import { GCodeWriter } from './p5-gcode-writer.js';
             _p5Instance.stroke(0); // Black
             _p5Instance.strokeWeight(2.5);
 
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Middle layer
             _p5Instance.stroke(80); // Dark gray
             _p5Instance.strokeWeight(1.8);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Top highlight layer
             _p5Instance.stroke(160); // Light gray
             _p5Instance.strokeWeight(1);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
             prevX = currentX;
             prevY = currentY;
           }
 
           _p5Instance.pop();
-        } else if (_drawMode === 'p5') {
-          _originalLineFunc.call(this,
+        } else if (_drawMode === "p5") {
+          _originalLineFunc.call(
+            this,
             mmToPixel(x1),
             mmToPixel(y1),
             mmToPixel(x2),
-            mmToPixel(y2)
+            mmToPixel(y2),
           );
         }
       } else {
@@ -164,13 +188,13 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     window.ellipse = function (x, y, w, h) {
       if (_recording) {
         // Handle different ellipse modes
-        if (_p5Instance._renderer._ellipseMode === 'corner') {
+        if (_p5Instance._renderer._ellipseMode === "corner") {
           x += w / 2;
           y += h / 2;
-        } else if (_p5Instance._renderer._ellipseMode === 'radius') {
+        } else if (_p5Instance._renderer._ellipseMode === "radius") {
           w *= 2;
           h *= 2;
-        } else if (_p5Instance._renderer._ellipseMode === 'corners') {
+        } else if (_p5Instance._renderer._ellipseMode === "corners") {
           let px = Math.min(x, w);
           let qx = Math.max(x, w);
           let py = Math.min(y, h);
@@ -185,7 +209,10 @@ import { GCodeWriter } from './p5-gcode-writer.js';
 
         // Calculate circumference to determine number of points
         const circumference = Math.PI * Math.sqrt((w * w + h * h) / 2);
-        const numPoints = Math.max(8, Math.ceil(circumference / _embrSettings.stitchLength));
+        const numPoints = Math.max(
+          8,
+          Math.ceil(circumference / _embrSettings.stitchLength),
+        );
 
         let points = [];
         for (let i = 0; i <= numPoints; i++) {
@@ -199,7 +226,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
         _stitchData.threads[_currentThreadIndex].runs.push(points);
 
         // Draw stitches visually
-        if (_drawMode === 'stitch') {
+        if (_drawMode === "stitch") {
           let prevX = mmToPixel(points[0].x);
           let prevY = mmToPixel(points[0].y);
 
@@ -214,7 +241,13 @@ import { GCodeWriter } from './p5-gcode-writer.js';
             // Draw actual stitch line
             _p5Instance.stroke(0); // Black for stitch line
             _p5Instance.strokeWeight(1);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Draw small dots at stitch points
             _p5Instance.stroke(255, 0, 0); // Red for stitch points
@@ -246,30 +279,47 @@ import { GCodeWriter } from './p5-gcode-writer.js';
             _p5Instance.stroke(0); // Black
             _p5Instance.strokeWeight(2.5);
 
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Middle layer
             _p5Instance.stroke(80); // Dark gray
             _p5Instance.strokeWeight(1.8);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
 
             // Top highlight layer
             _p5Instance.stroke(160); // Light gray
             _p5Instance.strokeWeight(1);
-            _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+            _originalLineFunc.call(
+              _p5Instance,
+              prevX,
+              prevY,
+              currentX,
+              currentY,
+            );
             prevX = currentX;
             prevY = currentY;
           }
 
           _p5Instance.pop();
-
-        }
-        else if (_drawMode === "p5") {
-          _originalEllipseFunc.call(this,
+        } else if (_drawMode === "p5") {
+          _originalEllipseFunc.call(
+            this,
             mmToPixel(x),
             mmToPixel(y),
             mmToPixel(w),
-            mmToPixel(h)
+            mmToPixel(h),
           );
         }
       } else {
@@ -328,14 +378,14 @@ import { GCodeWriter } from './p5-gcode-writer.js';
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
   function convertLineToStitches(x1, y1, x2, y2) {
-    console.log('Converting line to stitches (before offset):', {
+    console.log("Converting line to stitches (before offset):", {
       from: { x: x1, y: y1 },
-      to: { x: x2, y: y2 }
+      to: { x: x2, y: y2 },
     });
 
-    console.log('Converting line to stitches', {
+    console.log("Converting line to stitches", {
       from: { x: x1, y: y1 },
-      to: { x: x2, y: y2 }
+      to: { x: x2, y: y2 },
     });
 
     let stitches = [];
@@ -343,17 +393,18 @@ import { GCodeWriter } from './p5-gcode-writer.js';
     let dy = y2 - y1;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
-    console.log('Line properties:', {
-      dx, dy,
+    console.log("Line properties:", {
+      dx,
+      dy,
       distance,
       minStitchLength: _embrSettings.minStitchLength,
-      stitchLength: _embrSettings.stitchLength
+      stitchLength: _embrSettings.stitchLength,
     });
 
     // Add first stitch at starting point
     stitches.push({
       x: x1 * 10,
-      y: y1 * 10
+      y: y1 * 10,
     });
 
     // If distance is less than minimum stitch length, we're done
@@ -371,7 +422,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
       let stitchLength = baseStitchLength;
       if (_embrSettings.resampleNoise > 0) {
         let noise = (Math.random() * 2 - 1) * _embrSettings.resampleNoise;
-        stitchLength *= (1 + noise);
+        stitchLength *= 1 + noise;
       }
 
       // update cumulative distance
@@ -380,35 +431,38 @@ import { GCodeWriter } from './p5-gcode-writer.js';
 
       stitches.push({
         x: (x1 + dx * t) * 10,
-        y: (y1 + dy * t) * 10
+        y: (y1 + dy * t) * 10,
       });
     }
 
     // Add final stitch at end point if needed
     let remainingDistance = distance - currentDistance;
-    if (remainingDistance > _embrSettings.minStitchLength || numStitches === 0) {
+    if (
+      remainingDistance > _embrSettings.minStitchLength ||
+      numStitches === 0
+    ) {
       stitches.push({
         x: x2 * 10,
-        y: y2 * 10
+        y: y2 * 10,
       });
     }
 
-    console.log('Generated stitches:', stitches);
+    console.log("Generated stitches:", stitches);
     return stitches;
   }
 
   p5embroidery.exportEmbroidery = function (filename) {
-    const extension = filename.split('.').pop().toLowerCase();
+    const extension = filename.split(".").pop().toLowerCase();
 
     switch (extension) {
-      case 'dst':
+      case "dst":
         p5embroidery.exportDST(filename);
         break;
       default:
         console.error(`Unsupported embroidery format: ${extension}`);
         break;
     }
-  }
+  };
 
   p5embroidery.exportGcode = function (filename) {
     const points = [];
@@ -417,7 +471,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
         for (const stitch of run) {
           points.push({
             x: stitch.x,
-            y: stitch.y
+            y: stitch.y,
           });
         }
       }
@@ -430,55 +484,54 @@ import { GCodeWriter } from './p5-gcode-writer.js';
       gcodeWriter.move(point.x, point.y);
     }
     gcodeWriter.saveGcode(points, "EmbroideryPattern", filename);
-  }
-
+  };
 
   /**
    * Exports the recorded embroidery data as a DST file.
    * @param {string} [filename='embroideryPattern.dst'] - Output filename
    */
-  p5embroidery.exportDST = function (filename = 'embroideryPattern.dst') {
+  p5embroidery.exportDST = function (filename = "embroideryPattern.dst") {
     const points = [];
     const dstWriter = new DSTWriter();
 
-    console.log('=== Starting DST Export ===');
-    console.log('Canvas size:', _stitchData.width, _stitchData.height);
+    console.log("=== Starting DST Export ===");
+    console.log("Canvas size:", _stitchData.width, _stitchData.height);
 
     for (const thread of _stitchData.threads) {
       for (const run of thread.runs) {
         // Check if this is a thread trim command
-        if (run.length === 1 && run[0].command === 'trim') {
-          console.log('Trim command at:', run[0].x, run[0].y);
+        if (run.length === 1 && run[0].command === "trim") {
+          console.log("Trim command at:", run[0].x, run[0].y);
           points.push({
             x: 0,
             y: 0,
             jump: true,
-            trim: true
+            trim: true,
           });
           continue;
         }
 
         // Normal stitches
-        console.log('=== New Stitch Run ===');
+        console.log("=== New Stitch Run ===");
         for (const stitch of run) {
-          console.log('Stitch point:', {
+          console.log("Stitch point:", {
             original: { x: stitch.x / 10, y: stitch.y / 10 },
-            dst: { x: stitch.x, y: stitch.y }
+            dst: { x: stitch.x, y: stitch.y },
           });
           points.push({
             x: stitch.x,
-            y: stitch.y
+            y: stitch.y,
           });
         }
       }
     }
 
-    console.log('=== Final Points Array ===');
-    console.log('First point:', points[0]);
-    console.log('Last point:', points[points.length - 1]);
+    console.log("=== Final Points Array ===");
+    console.log("First point:", points[0]);
+    console.log("Last point:", points[points.length - 1]);
 
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
-  }
+  };
 
   /**
    * Inserts a thread trim command at the current position.
@@ -486,11 +539,13 @@ import { GCodeWriter } from './p5-gcode-writer.js';
   p5embroidery.trimThread = function () {
     if (_recording) {
       // Add a special point to indicate thread trim
-      _stitchData.threads[_currentThreadIndex].runs.push([{
-        x: 0,
-        y: 0,
-        command: 'trim'  // Renamed from 'cut' to 'trim'
-      }]);
+      _stitchData.threads[_currentThreadIndex].runs.push([
+        {
+          x: 0,
+          y: 0,
+          command: "trim", // Renamed from 'cut' to 'trim'
+        },
+      ]);
     }
   };
 
@@ -501,12 +556,10 @@ import { GCodeWriter } from './p5-gcode-writer.js';
   global.exportEmbroidery = p5embroidery.exportEmbroidery;
   global.exportDST = p5embroidery.exportDST;
   global.exportGcode = p5embroidery.exportGcode;
-  global.trimThread = p5embroidery.trimThread;  // Renamed from cutThread
+  global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
   global.setStitch = p5embroidery.setStitch;
   global.setDrawMode = p5embroidery.setDrawMode;
-
-}) (typeof globalThis !== 'undefined' ? globalThis : window);
-
+})(typeof globalThis !== "undefined" ? globalThis : window);
 
 /**
  * Converts millimeters to pixels.
@@ -515,8 +568,7 @@ import { GCodeWriter } from './p5-gcode-writer.js';
  * @returns {number} Pixels
  */
 function mmToPixel(mm, dpi = 96) {
-
-  return ((mm / 25.4) * dpi);
+  return (mm / 25.4) * dpi;
 }
 
 /**
@@ -526,5 +578,5 @@ function mmToPixel(mm, dpi = 96) {
  * @returns {number} Millimeters
  */
 function pixelToMm(pixels, dpi = 96) {
-  return ((pixels * 25.4) / dpi);
+  return (pixels * 25.4) / dpi;
 }

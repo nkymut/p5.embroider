@@ -3,10 +3,10 @@ function setup() {
 
   background(220);
 
-  setDrawMode('realistic');
+  setDrawMode("realistic");
   beginRecord(this);
   // Draw a 90mm square
-  setStitch(.5, 6, 0);
+  setStitch(0.5, 6, 0);
 
   line(10, 10, 100, 10); // top
   trimThread();
@@ -30,11 +30,11 @@ function setup() {
 
 function keyPressed() {
   switch (key) {
-    case 'd':
-      exportEmbroidery('boxtest.dst');
+    case "d":
+      exportEmbroidery("boxtest.dst");
       break;
-    case 'g':
-      exportGcode('boxtest.gcode');
+    case "g":
+      exportGcode("boxtest.gcode");
       break;
   }
 }

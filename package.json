@@ -7,7 +7,8 @@
     "build": "rollup -c",
     "watch": "rollup -c -w",
     "docs": "jsdoc -c jsdoc.config.json",
-    "docs:dev": "jekyll serve docs"
+    "docs:dev": "jekyll serve docs",
+    "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
   },
   "dependencies": {
     "p5": "^1.9.0"
@@ -18,6 +19,7 @@
     "clean-jsdoc-theme": "^4.2.17",
     "glob": "^10.4.5",
     "jsdoc": "^4.0.2",
+    "prettier": "^3.2.5",
     "rollup": "^4.12.0"
   },
   "type": "module"
