@@ -295,7 +295,7 @@ export class DSTWriter {
 
   /**
    * Saves embroidery data as a DST file.
-   * @method saveDST
+   * @memberof DSTWriter
    * @param {Array} points - Array of stitch points
    * @param {String} title - Title for the DST file header
    * @param {String} filename - Output filename
