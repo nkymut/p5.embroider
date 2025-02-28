@@ -295,3 +295,10 @@ export class DSTWriter {
     console.log("DST file saved!");
   }
 }
+
+// Add this check to support both direct browser usage and ES modules
+if (typeof exports !== "undefined") {
+  exports.DSTWriter = DSTWriter;
+} else if (typeof window !== "undefined") {
+  window.DSTWriter = DSTWriter;
+}
