@@ -6,8 +6,8 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "docs": "jsdoc -c jsdoc.config.json",
-    "docs:dev": "jekyll serve docs",
+    "jsdoc": "jsdoc -c jsdoc.config.json",
+    "serve-docs": "npx http-server ./docs -o",
     "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
   },
   "dependencies": {

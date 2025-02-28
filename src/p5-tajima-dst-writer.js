@@ -1,5 +1,9 @@
-// Tajima DST Writer
+/**
+ * Class for writing Tajima DST embroidery files.
+ * @class DSTWriter
+ */
 export class DSTWriter {
+
   constructor() {
     this.data = [];
     this.currentX = 0;
@@ -289,6 +293,13 @@ export class DSTWriter {
     link.click();
   }
 
+  /**
+   * Saves embroidery data as a DST file.
+   * @method saveDST
+   * @param {Array} points - Array of stitch points
+   * @param {String} title - Title for the DST file header
+   * @param {String} filename - Output filename
+   */
   saveDST(points, title, filename) {
     let dstData = this.generateDST(points, title);
     this.saveBytes(dstData, filename);

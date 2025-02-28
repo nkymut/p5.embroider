@@ -1,26 +1,71 @@
 {
   "source": {
-    "include": ["lib"],
-    "includePattern": ".js$"
+    "include": [
+      "src"
+    ],
+    "includePattern": ".+\\.js(doc|x)?$",
+    "excludePattern": "(^|\\/|\\\\)_"
   },
   "opts": {
-    "destination": "docs",
-    "template": "node_modules/clean-jsdoc-theme",
-    "theme_opts": {
-      "default_theme": "dark",
-      "title": "P5.Embroider Documentation",
-      "menu": [
-        {
-          "title": "Github",
-          "link": "https://github.com/nkymut/p5.embroider",
-          "target": "_blank"
-        }
-      ]
-    }
+    "destination": "./docs/",
+    "recurse": true,
+    "readme": "README.md",
+    "template": "node_modules/clean-jsdoc-theme"
   },
-  "plugins": [],
+  "plugins": [
+    "plugins/markdown"
+  ],
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": [
+      "jsdoc",
+      "closure"
+    ]
+  },
   "templates": {
     "cleverLinks": true,
-    "monospaceLinks": true
+    "monospaceLinks": false,
+    "default": {
+      "outputSourceFiles": true,
+      "includeDate": false
+    }
+  },
+  "theme_opts": {
+    "name": "p5.embroider",
+    "title": "p5.embroider Documentation",
+    "homepageTitle": "p5.embroider Documentation",
+    "includeFilesListInHomepage": true,
+    "default_theme": "light",
+    "displayModuleHeader": true,
+    "search": true,
+    "meta": [
+      {
+        "name": "author",
+        "content": "p5.embroider contributors"
+      },
+      {
+        "name": "description",
+        "content": "P5.js extension for embroidery pattern generation"
+      }
+    ],
+    "menu": [
+      {
+        "title": "GitHub",
+        "link": "https://github.com/nkymut/p5.embroider",
+        "target": "_blank"
+      }
+    ],
+    "codepen": {
+      "enable": false
+    },
+    "resizeable": {
+      "navbar": {
+        "min": "300",
+        "max": "600"
+      }
+    },
+    "overlay-scrollbar": {
+      "enable": true
+    }
   }
-} 
+}
