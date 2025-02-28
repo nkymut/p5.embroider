@@ -8,6 +8,9 @@ Version 0.0.1, February 25, 2025 • by Yuta Nakayama ([nkymut](https://github.c
 
 ## references
 
+p5.plotSvg
+https://github.com/golanlevin/p5.plotSvg
+
 pyembroidery
 https://github.com/EmbroidePy/pyembroidery
 
@@ -16,6 +19,3 @@ https://github.com/CreativeInquiry/PEmbroider
 
 stitch.js
 https://github.com/stitchables/stitch.js
-
-p5.plotSvg
-https://github.com/golanlevin/p5.plotSvg
