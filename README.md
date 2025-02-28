@@ -2,7 +2,7 @@
 
 ## A p5.js Library for Digital Embroidery pattern creation
 
-[**p5.embroider.js**](https://github.com/golanlevin/p5.embroider) is a p5.js library for exporting embroidery machine files.<br />
+[**p5.embroider.js**](https://github.com/nkymut/p5.embroider) is a p5.js library for exporting embroidery machine files.<br />
 
 Version 0.0.1, February 25, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
