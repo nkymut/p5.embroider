@@ -1,0 +1,11 @@
+*.md
+*.json
+*.yml
+*.
+**/out
+**/dist
+**/docs
+paper
+pnpm-lock.yaml
+pnpm-workspace.yaml
+**/dev-dist
