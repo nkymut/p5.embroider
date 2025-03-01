@@ -33,25 +33,27 @@ function setup() {
 }
 
 function draw() {
-  background(220);
+  background("#FFF5DC"); 
   translate(50, 50);
   setDrawMode(drawMode);
   beginRecord(this);
   // Draw a 100mm square
-  setStitch(0.5, 6, 0);
+  setStitch(0.1, 0.2, 0);
+  
+  strokeWeight(5);
 
-  line(0, 0, 100, 0); // top
+  line(-2.5, 0, 80+2.5, 0); // top
   trimThread();
-  line(100, 0, 100, 100); // right
+  line(80, 0, 80, 80); // right
   trimThread();
-  line(100, 100, 0, 100); // bottom
+  line(80+2.5, 80, -2.5, 80); // bottom
   trimThread();
-  line(0, 100, 0, 0); // left
+  line(0, 80, 0, 0); // left
   trimThread();
 
   // Draw a 200px circle
-
-  ellipse(50, 50, 80, 80);
+  strokeWeight(5);
+  ellipse(40, 40, 60, 60);
 
   trimThread();
 
