@@ -8,6 +8,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -17,12 +20,13 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
+          cache-dependency-path: './package-lock.json'
 
       - name: Install dependencies
         run: npm ci || npm install
 
       - name: Generate JSDoc
-        run: npm run docs
+        run: npm run jsdoc
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
