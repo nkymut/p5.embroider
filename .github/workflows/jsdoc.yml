@@ -38,11 +38,9 @@ jobs:
           node-version: '16'
 
       - name: Install dependencies
-        working-directory: p5.embroider
         run: npm install
 
       - name: Generate jsdocs
-        working-directory: p5.embroider
         run: npm run jsdoc
 
       - name: Setup Pages
@@ -52,7 +50,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload both the docs directory and the lib directory
-          path: 'p5.embroider'
+          path: '.'
 
       - name: Deploy to GitHub Pages
         id: deployment
