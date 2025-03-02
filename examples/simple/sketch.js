@@ -1,7 +1,7 @@
 let drawMode = "stitch";
 
 function setup() {
-  createCanvas(500, 500);
+  createCanvas(mmToPixel(100), mmToPixel(100));
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -34,29 +34,31 @@ function setup() {
 
 function draw() {
   background("#FFF5DC");
-  translate(50, 50);
+  translate(mmToPixel(10), mmToPixel(10));
+
   setDrawMode(drawMode);
+  noFill();
   beginRecord(this);
   // Draw a 100mm square
   setStitch(0.1, 0.2, 0);
-  stroke(0, 155, 0);
+  stroke(0, 0, 200);
   strokeWeight(5);
 
-  line(-2.5, 0, 80 + 2.5, 0); // top
-  trimThread();
-  stroke(0, 155, 155);
   line(80, 0, 80, 80); // right
   trimThread();
-  stroke(0, 55, 155);
-  line(80 + 2.5, 80, -2.5, 80); // bottom
-  trimThread();
-  stroke(155, 0, 155);
+
   line(0, 80, 0, 0); // left
+  trimThread();
+
+  line(-2.8, 0, 80 + 2.8, 0); // top
+  trimThread();
+
+  line(80 + 2.8, 80, -2.8, 80); // bottom
   trimThread();
 
   // Draw a 200px circle
   strokeWeight(5);
-  stroke(155, 155, 155);
+
   ellipse(40, 40, 60, 60);
 
   trimThread();
