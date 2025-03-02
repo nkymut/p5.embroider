@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: .
+        working-directory: 0.p5.embroider
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
-          cache-dependency-path: './package-lock.json'
+          cache-dependency-path: '0.p5.embroider/package-lock.json'
 
       - name: Install dependencies
         run: npm ci || npm install
