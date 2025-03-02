@@ -40,8 +40,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Generate docs
-        run: npm run docs
+      - name: Generate jsdocs
+        run: npm run jsdoc
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
