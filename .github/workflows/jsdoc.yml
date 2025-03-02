@@ -19,11 +19,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-          cache: 'npm'
-          cache-dependency-path: '0.p5.embroider/package-lock.json'
 
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Generate JSDoc
         run: npm run jsdoc
