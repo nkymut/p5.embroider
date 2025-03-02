@@ -29,7 +29,7 @@ let _DEBUG = false;
     maximumJoinDistance: 0,
     maximumStitchesPerSquareMm: 0,
     jumpThreshold: 10, // mm
-    units: "mm"
+    units: "mm",
   };
 
   /**
@@ -81,16 +81,16 @@ let _DEBUG = false;
    * @method endRecord
    * @for p5
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
    *   // Draw embroidery patterns
    *   endRecord();
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.endRecord = function () {
     _recording = false;
@@ -110,19 +110,10 @@ let _DEBUG = false;
         let stitches = convertLineToStitches(x1, y1, x2, y2);
         _stitchData.threads[_currentThreadIndex].runs.push(stitches);
 
-        if (
-          _drawMode === "stitch" ||
-          _drawMode === "realistic" 
-        ) {
+        if (_drawMode === "stitch" || _drawMode === "realistic") {
           drawStitches(stitches);
         } else {
-          _originalLineFunc.call(
-            this,
-            mmToPixel(x1),
-            mmToPixel(y1),
-            mmToPixel(x2),
-            mmToPixel(y2),
-          );
+          _originalLineFunc.call(this, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2));
         }
       } else {
         _originalLineFunc.apply(this, arguments);
@@ -130,23 +121,87 @@ let _DEBUG = false;
     };
   }
 
-/**
+  /**
+   * Overrides p5.js stroke() function to select thread color.
+   * @private
+   */
+  let _originalStrokeFunc;
+  function overrideStrokeFunction() {
+    _originalStrokeFunc = window.stroke;
+    window.stroke = function () {
+      if (_recording) {
+        // Get color values from arguments
+        let r, g, b;
+
+        if (arguments.length === 1) {
+          // Single value or string color
+          if (typeof arguments[0] === "string") {
+            // Parse color string (e.g., '#FF0000' or 'red')
+            const colorObj = _p5Instance.color(arguments[0]);
+            r = _p5Instance.red(colorObj);
+            g = _p5Instance.green(colorObj);
+            b = _p5Instance.blue(colorObj);
+          } else {
+            // Grayscale value
+            r = g = b = arguments[0];
+          }
+        } else if (arguments.length === 3) {
+          // RGB values
+          r = arguments[0];
+          g = arguments[1];
+          b = arguments[2];
+        } else {
+          // Default to black if invalid arguments
+          r = g = b = 0;
+        }
+
+        // Check if we already have a thread with this color
+        let threadIndex = -1;
+        for (let i = 0; i < _stitchData.threads.length; i++) {
+          const thread = _stitchData.threads[i];
+          if (thread.red === r && thread.green === g && thread.blue === b) {
+            threadIndex = i;
+            break;
+          }
+        }
+
+        if (threadIndex === -1) {
+          // Create a new thread with this color
+          _stitchData.threads.push(new Thread(r, g, b));
+          threadIndex = _stitchData.threads.length - 1;
+        }
+
+        // If we're changing to a different thread and have existing stitches,
+        // add a thread trim command at the current position
+        if (_currentThreadIndex !== threadIndex && _stitchData.threads[_currentThreadIndex] !== undefined) {
+          trimThread();
+        }
+
+        // Set the current thread index
+        _currentThreadIndex = threadIndex;
+        _originalStrokeFunc.apply(this, arguments);
+      } else {
+        _originalStrokeFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
    * Overrides p5.js line() function to record embroidery stitches.
    * @private
    */
-let _originalStrokeWeightFunc;
-function overrideStrokeWeightFunction() {
-  _originalStrokeWeightFunc = window.strokeWeight;
-  window.strokeWeight = function (weight) {
-    if (_recording) {
-      _embrSettings.stitchWidth = weight;
-      _originalStrokeWeightFunc.call(this, mmToPixel(weight));
-    } else {
-      _originalStrokeWeightFunc.apply(this, arguments);
-    }
-  };
-}
-
+  let _originalStrokeWeightFunc;
+  function overrideStrokeWeightFunction() {
+    _originalStrokeWeightFunc = window.strokeWeight;
+    window.strokeWeight = function (weight) {
+      if (_recording) {
+        _embrSettings.stitchWidth = weight;
+        _originalStrokeWeightFunc.call(this, mmToPixel(weight));
+      } else {
+        _originalStrokeWeightFunc.apply(this, arguments);
+      }
+    };
+  }
 
   /**
    * Overrides p5.js ellipse() function to record embroidery stitches.
@@ -157,25 +212,24 @@ function overrideStrokeWeightFunction() {
     _originalEllipseFunc = window.ellipse;
     window.ellipse = function (x, y, w, h) {
       if (_recording) {
-
         // Calculate radius values
         let radiusX = w / 2;
         let radiusY = h / 2;
 
         // Generate stitch points for the ellipse
         let stitches = [];
-        let numSteps = Math.max(Math.ceil(Math.PI * (radiusX + radiusY) / _embrSettings.stitchLength), 12);
-        
+        let numSteps = Math.max(Math.ceil((Math.PI * (radiusX + radiusY)) / _embrSettings.stitchLength), 12);
+
         // Generate points along the ellipse
         for (let i = 0; i <= numSteps; i++) {
           let angle = (i / numSteps) * Math.PI * 2;
           let stitchX = x + Math.cos(angle) * radiusX;
           let stitchY = y + Math.sin(angle) * radiusY;
-          
+
           // Store in tenths of mm (internal format)
           stitches.push({
             x: stitchX * 10,
-            y: stitchY * 10
+            y: stitchY * 10,
           });
         }
 
@@ -183,42 +237,48 @@ function overrideStrokeWeightFunction() {
         if (_recording) {
           // Get the current position (in tenths of mm)
           let currentX, currentY;
-          if (_stitchData.threads[_currentThreadIndex].runs.length === 0 ||
-              _stitchData.threads[_currentThreadIndex].runs[_stitchData.threads[_currentThreadIndex].runs.length - 1].length === 0) {
+          if (
+            _stitchData.threads[_currentThreadIndex].runs.length === 0 ||
+            _stitchData.threads[_currentThreadIndex].runs[_stitchData.threads[_currentThreadIndex].runs.length - 1]
+              .length === 0
+          ) {
             // If there are no runs or the last run is empty, use the center of the ellipse as the starting point
             currentX = x * 10; // Convert to tenths of mm
             currentY = y * 10; // Convert to tenths of mm
           } else {
             // Otherwise, use the last stitch position (already in tenths of mm)
-            let lastRun = _stitchData.threads[_currentThreadIndex].runs[_stitchData.threads[_currentThreadIndex].runs.length - 1];
+            let lastRun =
+              _stitchData.threads[_currentThreadIndex].runs[_stitchData.threads[_currentThreadIndex].runs.length - 1];
             let lastStitch = lastRun[lastRun.length - 1];
             currentX = lastStitch.x;
             currentY = lastStitch.y;
           }
 
           // Add a jump stitch to the first point of the ellipse if needed
-          if (Math.sqrt(Math.pow(stitches[0].x - currentX, 2) + Math.pow(stitches[0].y - currentY, 2)) > _embrSettings.jumpThreshold) {
+          if (
+            Math.sqrt(Math.pow(stitches[0].x - currentX, 2) + Math.pow(stitches[0].y - currentY, 2)) >
+            _embrSettings.jumpThreshold
+          ) {
             _stitchData.threads[_currentThreadIndex].runs.push([
               {
                 x: currentX,
                 y: currentY,
-                command: "jump"
+                command: "jump",
               },
               {
                 x: stitches[0].x,
-                y: stitches[0].y
-              }
+                y: stitches[0].y,
+              },
             ]);
           }
 
-          if(_embrSettings.stitchWidth > 0) {
+          if (_embrSettings.stitchWidth > 0) {
             stitches = zigzagStitches(stitches, _embrSettings.stitchWidth);
           }
 
           // Add the ellipse stitches
           _stitchData.threads[_currentThreadIndex].runs.push(stitches);
         }
-
 
         // Call drawStitches with the correct format
         drawStitches(stitches); // Convert back to mm for drawStitches
@@ -243,15 +303,17 @@ function overrideStrokeWeightFunction() {
     window.point = function (x, y) {
       if (_recording) {
         // For point, we just add a single stitch
-        let stitches = [{
-          x: x * 10,
-          y: y * 10
-        }];
+        let stitches = [
+          {
+            x: x * 10,
+            y: y * 10,
+          },
+        ];
         _stitchData.threads[_currentThreadIndex].runs.push(stitches);
-        
+
         if (_drawMode === "stitch" || _drawMode === "realistic" || _drawMode === "p5") {
           _p5Instance.push();
-          _p5Instance.stroke(255, 0, 0); // Red for stitch points
+          _originalStrokeFunc.stroke(255, 0, 0); // Red for stitch points
           _originalStrokeWeightFunc.call(_p5Instance, 3);
           _originalPointFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y));
           _p5Instance.pop();
@@ -271,6 +333,7 @@ function overrideStrokeWeightFunction() {
     overrideEllipseFunction();
     overrideStrokeWeightFunction();
     overridePointFunction();
+    overrideStrokeFunction();
     // Add more overrides as needed
   }
 
@@ -283,6 +346,7 @@ function overrideStrokeWeightFunction() {
     window.ellipse = _originalEllipseFunc;
     window.strokeWeight = _originalStrokeWeightFunc;
     window.point = _originalPointFunc;
+    window.stroke = _originalStrokeFunc;
     // Restore other functions as needed
   }
 
@@ -294,16 +358,16 @@ function overrideStrokeWeightFunction() {
    * @param {Number} desiredLength - Desired stitch length in millimeters
    * @param {Number} noise - Amount of random variation in stitch length (0-1)
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
    *   setStitch(1, 3, 0.2); // min 1mm, desired 3mm, 20% noise
    *   // Draw embroidery patterns
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.setStitch = function (minLength, desiredLength, noise) {
     _embrSettings.minStitchLength = Math.max(0, minLength);
@@ -317,16 +381,16 @@ function overrideStrokeWeightFunction() {
    * @for p5
    * @param {String} mode - The draw mode to set ('stitch', 'p5', 'realistic')
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
    *   setDrawMode('stitch'); // Show stitch points and lines
    *   // Draw embroidery patterns
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.setDrawMode = function (mode) {
     _drawMode = mode;
@@ -342,30 +406,33 @@ function overrideStrokeWeightFunction() {
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
   function convertLineToStitches(x1, y1, x2, y2) {
-    if(_DEBUG) console.log("Converting line to stitches (before offset):", {
-      from: { x: x1, y: y1 },
-      to: { x: x2, y: y2 },
-    });
+    if (_DEBUG)
+      console.log("Converting line to stitches (before offset):", {
+        from: { x: x1, y: y1 },
+        to: { x: x2, y: y2 },
+      });
 
-    if(_DEBUG) console.log("Converting line to stitches", {
-      from: { x: x1, y: y1 },
-      to: { x: x2, y: y2 },
-    });
+    if (_DEBUG)
+      console.log("Converting line to stitches", {
+        from: { x: x1, y: y1 },
+        to: { x: x2, y: y2 },
+      });
 
     let dx = x2 - x1;
     let dy = y2 - y1;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
-    if(_DEBUG) console.log("Line properties:", {
-      dx,
-      dy,
-      distance,
-      minStitchLength: _embrSettings.minStitchLength,
-      stitchLength: _embrSettings.stitchLength,
-      stitchWidth: _embrSettings.stitchWidth,
-    });
+    if (_DEBUG)
+      console.log("Line properties:", {
+        dx,
+        dy,
+        distance,
+        minStitchLength: _embrSettings.minStitchLength,
+        stitchLength: _embrSettings.stitchLength,
+        stitchWidth: _embrSettings.stitchWidth,
+      });
 
-    if(_embrSettings.stitchWidth > 0) {
+    if (_embrSettings.stitchWidth > 0) {
       return lineZigzagStitching(x1, y1, x2, y2, distance);
     } else {
       return straightLineStitching(x1, y1, x2, y2, distance);
@@ -373,7 +440,7 @@ function overrideStrokeWeightFunction() {
   }
 
   /**
-   * Creates zigzag stitches 
+   * Creates zigzag stitches
    * @private
    * @param {number} x1 - Starting x-coordinate
    * @param {number} y1 - Starting y-coordinate
@@ -386,51 +453,52 @@ function overrideStrokeWeightFunction() {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
-    
+
     // Calculate perpendicular vector for zigzag
     let perpX = -dy / distance;
     let perpY = dx / distance;
-    
+
     // Determine the width to use (either stitch width or default)
     let width = _embrSettings.stitchWidth > 0 ? _embrSettings.stitchWidth : 2;
-    
+
     // Calculate number of zigzag segments
     let zigzagDistance = _embrSettings.stitchLength;
     let numZigzags = Math.max(2, Math.floor(distance / zigzagDistance));
-    
+
     // Create zigzag pattern
     let halfWidth = width / 2;
     let side = 1; // Start with one side
-    
+
     // Add first point
     stitches.push({
       x: (x1 + perpX * halfWidth * side) * 10,
       y: (y1 + perpY * halfWidth * side) * 10,
     });
-    
+
     // Add zigzag points
     for (let i = 1; i <= numZigzags; i++) {
       let t = i / numZigzags;
       side = -side; // Alternate sides
-      
+
       let pointX = x1 + dx * t + perpX * halfWidth * side;
       let pointY = y1 + dy * t + perpY * halfWidth * side;
-      
+
       stitches.push({
         x: pointX * 10,
         y: pointY * 10,
       });
     }
-    
+
     // Make sure we end at the endpoint
-    if (side !== -1) { // If we didn't end on the opposite side
+    if (side !== -1) {
+      // If we didn't end on the opposite side
       stitches.push({
         x: (x2 + perpX * halfWidth * -1) * 10, // End on opposite side
         y: (y2 + perpY * halfWidth * -1) * 10,
       });
     }
-    
-    if(_DEBUG) console.log("Generated zigzag stitches:", stitches);
+
+    if (_DEBUG) console.log("Generated zigzag stitches:", stitches);
     return stitches;
   }
 
@@ -448,7 +516,7 @@ function overrideStrokeWeightFunction() {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
-    
+
     // Add first stitch at starting point
     stitches.push({
       x: x1 * 10,
@@ -485,17 +553,14 @@ function overrideStrokeWeightFunction() {
 
     // Add final stitch at end point if needed
     let remainingDistance = distance - currentDistance;
-    if (
-      remainingDistance > _embrSettings.minStitchLength ||
-      numStitches === 0
-    ) {
+    if (remainingDistance > _embrSettings.minStitchLength || numStitches === 0) {
       stitches.push({
         x: x2 * 10,
         y: y2 * 10,
       });
     }
 
-    if(_DEBUG) console.log("Generated straight line stitches:", stitches);
+    if (_DEBUG) console.log("Generated straight line stitches:", stitches);
     return stitches;
   }
 
@@ -507,8 +572,8 @@ function overrideStrokeWeightFunction() {
    * @param {Number} width - Width of the zigzag in mm
    * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in 0.1mm units
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
@@ -519,8 +584,8 @@ function overrideStrokeWeightFunction() {
    *   // Add to embroidery
    *   _stitchData.threads[_currentThreadIndex].runs.push(zigzagStitches);
    * }
-   * 
-   * 
+   *
+   *
    */
   function zigzagStitches(stitches, width) {
     if (!stitches || stitches.length < 2) {
@@ -529,71 +594,71 @@ function overrideStrokeWeightFunction() {
     }
 
     // Convert from 0.1mm units to mm for calculations
-    const mmStitches = stitches.map(stitch => ({
+    const mmStitches = stitches.map((stitch) => ({
       x: stitch.x / 10,
-      y: stitch.y / 10
+      y: stitch.y / 10,
     }));
-    
+
     const zigzagResult = [];
     const halfWidth = width / 2;
     let side = 1; // Start with one side
-    
+
     // Process each segment between consecutive points
     for (let i = 0; i < mmStitches.length - 1; i++) {
       const p1 = mmStitches[i];
       const p2 = mmStitches[i + 1];
-      
+
       // Calculate segment direction vector
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // Skip if points are too close
       if (distance < 0.1) continue;
-      
+
       // Calculate perpendicular vector
       const perpX = -dy / distance;
       const perpY = dx / distance;
-      
+
       // If this is the first point, add it with offset
       if (i === 0) {
         zigzagResult.push({
           x: (p1.x + perpX * halfWidth * side) * 10,
-          y: (p1.y + perpY * halfWidth * side) * 10
+          y: (p1.y + perpY * halfWidth * side) * 10,
         });
       }
-      
+
       // Add the second point with opposite offset
       side = -side;
       zigzagResult.push({
         x: (p2.x + perpX * halfWidth * side) * 10,
-        y: (p2.y + perpY * halfWidth * side) * 10
+        y: (p2.y + perpY * halfWidth * side) * 10,
       });
     }
-    
+
     // If we have an odd number of points, add the last point with opposite offset
     if (mmStitches.length % 2 === 0) {
       const lastPoint = mmStitches[mmStitches.length - 1];
       const secondLastPoint = mmStitches[mmStitches.length - 2];
-      
+
       // Calculate direction for the last segment
       const dx = lastPoint.x - secondLastPoint.x;
       const dy = lastPoint.y - secondLastPoint.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // Calculate perpendicular vector
       const perpX = -dy / distance;
       const perpY = dx / distance;
-      
+
       // Add the last point with opposite offset
       side = -side;
       zigzagResult.push({
         x: (lastPoint.x + perpX * halfWidth * side) * 10,
-        y: (lastPoint.y + perpY * halfWidth * side) * 10
+        y: (lastPoint.y + perpY * halfWidth * side) * 10,
       });
     }
-    
-    if(_DEBUG) console.log("Generated zigzag from existing stitches:", zigzagResult);
+
+    if (_DEBUG) console.log("Generated zigzag from existing stitches:", zigzagResult);
     return zigzagResult;
   }
 
@@ -611,53 +676,51 @@ function overrideStrokeWeightFunction() {
       console.warn("Cannot create zigzag from insufficient path points");
       return [];
     }
-    
+
     const zigzagResult = [];
     const halfWidth = width / 2;
     let side = 1; // Start with one side
-    
+
     // Process each segment between consecutive points
     for (let i = 0; i < pathPoints.length - 1; i++) {
       const p1 = pathPoints[i];
       const p2 = pathPoints[i + 1];
-      
+
       // Calculate segment direction vector
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
       // Skip if points are too close
       if (distance < 0.1) continue;
-      
+
       // Calculate perpendicular vector
       const perpX = -dy / distance;
       const perpY = dx / distance;
-      
+
       // Calculate number of zigzag points for this segment
       const numPoints = Math.max(2, Math.ceil(distance / density));
-      
+
       // Add zigzag points along the segment
       for (let j = 0; j <= numPoints; j++) {
         const t = j / numPoints;
-        
+
         // Alternate sides for zigzag effect
         if (j > 0) side = -side;
-        
+
         const pointX = p1.x + dx * t + perpX * halfWidth * side;
         const pointY = p1.y + dy * t + perpY * halfWidth * side;
-        
+
         zigzagResult.push({
           x: pointX * 10,
-          y: pointY * 10
+          y: pointY * 10,
         });
       }
     }
-    
-    if(_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
+
+    if (_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
     return zigzagResult;
   }
-
-  
 
   /**
    * Exports the recorded embroidery data as a file.
@@ -665,8 +728,8 @@ function overrideStrokeWeightFunction() {
    * @for p5
    * @param {String} filename - Output filename with extension
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
@@ -674,8 +737,8 @@ function overrideStrokeWeightFunction() {
    *   endRecord();
    *   exportEmbroidery('pattern.dst');
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.exportEmbroidery = function (filename) {
     const extension = filename.split(".").pop().toLowerCase();
@@ -696,8 +759,8 @@ function overrideStrokeWeightFunction() {
    * @for p5
    * @param {String} filename - Output filename
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
@@ -705,8 +768,8 @@ function overrideStrokeWeightFunction() {
    *   endRecord();
    *   exportGcode('pattern.gcode');
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.exportGcode = function (filename) {
     const points = [];
@@ -736,8 +799,8 @@ function overrideStrokeWeightFunction() {
    * @for p5
    * @param {String} [filename='embroideryPattern.dst'] - Output filename
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
@@ -745,22 +808,42 @@ function overrideStrokeWeightFunction() {
    *   endRecord();
    *   exportDST('pattern.dst');
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.exportDST = function (filename = "embroideryPattern.dst") {
     const points = [];
     const dstWriter = new DSTWriter();
 
-    if(_DEBUG) console.log("=== Starting DST Export ===");
-    if(_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
+    if (_DEBUG) console.log("=== Starting DST Export ===");
+    if (_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
 
-    for (const thread of _stitchData.threads) {
+    let currentThreadIndex = -1;
+
+    for (let threadIndex = 0; threadIndex < _stitchData.threads.length; threadIndex++) {
+      const thread = _stitchData.threads[threadIndex];
+
+      // If we're changing threads and have previous stitches, add a color change command
+      if (currentThreadIndex !== -1 && threadIndex !== currentThreadIndex && points.length > 0) {
+        // Get the last stitch position
+        const lastPoint = points[points.length - 1];
+
+        // Add a color change command at the same position
+        points.push({
+          x: lastPoint.x,
+          y: lastPoint.y,
+          colorChange: true,
+        });
+
+        if (_DEBUG) console.log("Color change at:", lastPoint.x, lastPoint.y);
+      }
+
+      currentThreadIndex = threadIndex;
+
       for (const run of thread.runs) {
         // Check if this is a thread trim command
         if (run.length === 1 && run[0].command === "trim") {
-          if(_DEBUG) console.log("Trim command at:", run[0].x, run[0].y);
-
+          if (_DEBUG) console.log("Trim command at:", run[0].x, run[0].y);
 
           points.push({
             x: run[0].x + 10,
@@ -772,12 +855,13 @@ function overrideStrokeWeightFunction() {
         }
 
         // Normal stitches
-        if(_DEBUG) console.log("=== New Stitch Run ===");
+        if (_DEBUG) console.log("=== New Stitch Run ===");
         for (const stitch of run) {
-          if(_DEBUG) console.log("Stitch point:", {
-            original: { x: stitch.x / 10, y: stitch.y / 10 },
-            dst: { x: stitch.x, y: stitch.y },
-          });
+          if (_DEBUG)
+            console.log("Stitch point:", {
+              original: { x: stitch.x / 10, y: stitch.y / 10 },
+              dst: { x: stitch.x, y: stitch.y },
+            });
           points.push({
             x: stitch.x,
             y: stitch.y,
@@ -786,9 +870,9 @@ function overrideStrokeWeightFunction() {
       }
     }
 
-    if(_DEBUG) console.log("=== Final Points Array ===");
-    if(_DEBUG) console.log("First point:", points[0]);
-    if(_DEBUG) console.log("Last point:", points[points.length - 1]);
+    if (_DEBUG) console.log("=== Final Points Array ===");
+    if (_DEBUG) console.log("First point:", points[0]);
+    if (_DEBUG) console.log("Last point:", points[points.length - 1]);
 
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
   };
@@ -798,8 +882,8 @@ function overrideStrokeWeightFunction() {
    * @method trimThread
    * @for p5
    * @example
-   * 
-   * 
+   *
+   *
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
@@ -807,33 +891,34 @@ function overrideStrokeWeightFunction() {
    *   trimThread(); // Cut thread at current position
    *   line(60, 60, 100, 100);
    * }
-   * 
-   * 
+   *
+   *
    */
   p5embroidery.trimThread = function () {
     if (_recording) {
       // Get the current thread
       const currentThread = _stitchData.threads[_currentThreadIndex];
-      
+
       // Get the last run in the current thread
       const lastRun = currentThread.runs[currentThread.runs.length - 1];
-      
+
       // Get the last stitch position from the last run
       // Currently gets the FIRST stitch [0] of the last run, should be the LAST stitch
-      let currentX = lastRun[0].x;
-      let currentY = lastRun[0].y;
-      
+      let currentX = lastRun ? lastRun[0].x : 0;
+      let currentY = lastRun ? lastRun[0].y : 0;
+
       // This should be changed to get the LAST stitch of the last run:
-      let lastStitchIndex = lastRun.length - 1;
-      currentX = lastRun[lastStitchIndex].x;
-      currentY = lastRun[lastStitchIndex].y;
-      
+      if (lastRun) {
+        let lastStitchIndex = lastRun.length - 1;
+        currentX = lastRun[lastStitchIndex].x;
+        currentY = lastRun[lastStitchIndex].y;
+      }
       // Add a special point to indicate thread trim
       _stitchData.threads[_currentThreadIndex].runs.push([
         {
           x: currentX,
           y: currentY,
-          command: "trim", 
+          command: "trim",
         },
       ]);
 
@@ -843,12 +928,12 @@ function overrideStrokeWeightFunction() {
         _p5Instance.fill(0);
         // Draw 45 degree line
         let lineLength = 10; // Length of diagonal line in pixels
-        let endX = mmToPixel(currentX/10) + lineLength;
-        let endY = mmToPixel(currentY/10) - lineLength;
-        _p5Instance.stroke(255,0,0); // red for line
+        let endX = mmToPixel(currentX / 10) + lineLength;
+        let endY = mmToPixel(currentY / 10) - lineLength;
+        _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // red for line
         _originalStrokeWeightFunc.call(_p5Instance, 0.5);
 
-        _originalLineFunc.call(_p5Instance, mmToPixel(currentX/10), mmToPixel(currentY/10), endX, endY);
+        _originalLineFunc.call(_p5Instance, mmToPixel(currentX / 10), mmToPixel(currentY / 10), endX, endY);
         // Place scissors at end of line
         _p5Instance.text("✂️", endX, endY);
         _p5Instance.pop();
@@ -874,17 +959,23 @@ function overrideStrokeWeightFunction() {
 
         if (i === 0) {
           // Draw small dots at stitch points
-          _p5Instance.stroke(255, 0, 0); // Red for stitch points
+          _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // Red for stitch points
           _originalStrokeWeightFunc.call(_p5Instance, 3);
           _originalPointFunc.call(_p5Instance, prevX, prevY);
         }
 
-        _p5Instance.stroke(0); // Black for stitch lines
+        // Use the current thread color if defined, otherwise black
+        _originalStrokeFunc.call(
+          _p5Instance,
+          _stitchData.threads[_currentThreadIndex].red,
+          _stitchData.threads[_currentThreadIndex].green,
+          _stitchData.threads[_currentThreadIndex].blue,
+        );
         _originalStrokeWeightFunc.call(_p5Instance, 1);
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
 
         // Draw small dots at stitch points
-        _p5Instance.stroke(255, 0, 0); // Red for stitch points
+        _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // Red for stitch points
         _originalStrokeWeightFunc.call(_p5Instance, 3);
         _originalPointFunc.call(_p5Instance, currentX, currentY);
 
@@ -907,18 +998,18 @@ function overrideStrokeWeightFunction() {
 
         // Draw three layers of lines with different weights and colors
         // Dark bottom layer
-        _p5Instance.stroke(0); // Black
+        _originalStrokeFunc.call(_p5Instance, 0); // Black
         _originalStrokeWeightFunc.call(_p5Instance, 2.5);
 
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
 
         // Middle layer
-        _p5Instance.stroke(80); // Dark gray
+        _originalStrokeFunc.call(_p5Instance, 80); // Dark gray
         _originalStrokeWeightFunc.call(_p5Instance, 1.8);
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
 
         // Top highlight layer
-        _p5Instance.stroke(160); // Light gray
+        _originalStrokeFunc.call(_p5Instance, 160); // Light gray
         _originalStrokeWeightFunc.call(_p5Instance, 1);
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
         prevX = currentX;
@@ -935,15 +1026,9 @@ function overrideStrokeWeightFunction() {
           // Convert stitch coordinates from tenths of mm to pixels
           const currentX = mmToPixel(stitches[i].x / 10);
           const currentY = mmToPixel(stitches[i].y / 10);
-          
-          _originalLineFunc.call(
-            _p5Instance,
-            prevX,
-            prevY,
-            currentX,
-            currentY
-          );
-          
+
+          _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+
           // Update the previous point
           prevX = currentX;
           prevY = currentY;
@@ -983,14 +1068,14 @@ function overrideStrokeWeightFunction() {
  * @param {Number} [dpi=96] - Dots per inch
  * @return {Number} Pixels
  * @example
- * 
- * 
+ *
+ *
  * function setup() {
  *   let pixels = mmToPixel(10); // Convert 10mm to pixels
  *   if(_DEBUG) console.log(pixels);
  * }
- * 
- * 
+ *
+ *
  */
 function mmToPixel(mm, dpi = 96) {
   return (mm / 25.4) * dpi;
@@ -1004,14 +1089,14 @@ function mmToPixel(mm, dpi = 96) {
  * @param {Number} [dpi=96] - Dots per inch
  * @return {Number} Millimeters
  * @example
- * 
- * 
+ *
+ *
  * function setup() {
  *   let mm = pixelToMm(100); // Convert 100 pixels to mm
  *   if(_DEBUG) console.log(mm);
  * }
- * 
- * 
+ *
+ *
  */
 function pixelToMm(pixels, dpi = 96) {
   return (pixels * 25.4) / dpi;

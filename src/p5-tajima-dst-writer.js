@@ -3,7 +3,6 @@
  * @class DSTWriter
  */
 export class DSTWriter {
-
   constructor() {
     this.data = [];
     this.currentX = 0;
@@ -195,6 +194,7 @@ export class DSTWriter {
     this.currentX = 0;
     this.currentY = 0;
     this.stitchCount = 0;
+    this.colorChangeCount = 0;
 
     // Calculate border size before transformation
     let border = this.calculateBorderSize(points);
@@ -223,12 +223,23 @@ export class DSTWriter {
 
     // Generate stitches using transformed points
     for (let i = 0; i < transformedPoints.length; i++) {
-      console.log("Processing point:", i, transformedPoints[i]);
-      this.move(
-        transformedPoints[i].x,
-        transformedPoints[i].y,
-        i === 0 ? DSTWriter.JUMP : DSTWriter.STITCH,
-      );
+      const point = transformedPoints[i];
+      console.log("Processing point:", i, point);
+
+      // Handle color change
+      if (point.colorChange) {
+        console.log("Color change at point:", i);
+        // Add a color change command at the current position
+        // In DST, we don't move but just insert a color change command
+        this.data.push(...this.encodeRecord(0, 0, DSTWriter.COLOR_CHANGE));
+        this.colorChangeCount++;
+        continue;
+      }
+
+      // Handle jump or stitch
+      const flag = i === 0 || point.jump ? DSTWriter.JUMP : DSTWriter.STITCH;
+      this.move(point.x, point.y, flag);
+
       console.log("After move:", {
         currentX: this.currentX,
         currentY: this.currentY,
@@ -242,6 +253,7 @@ export class DSTWriter {
       currentX: this.currentX,
       currentY: this.currentY,
       stitchCount: this.stitchCount,
+      colorChangeCount: this.colorChangeCount,
     });
 
     // Prepare header
@@ -249,7 +261,7 @@ export class DSTWriter {
     let headerString =
       `LA:${title.padEnd(16)}\r` +
       `ST:${this.stitchCount.toString().padStart(7)}\r` +
-      `CO:${(1).toString().padStart(3)}\r` +
+      `CO:${this.colorChangeCount.toString().padStart(3)}\r` +
       `+X:${border.right.toString().padStart(5)}\r` +
       `-X:${Math.abs(border.left).toString().padStart(5)}\r` +
       `+Y:${border.bottom.toString().padStart(5)}\r` +
