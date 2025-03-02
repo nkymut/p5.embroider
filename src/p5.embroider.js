@@ -196,6 +196,7 @@ let _DEBUG = false;
     window.strokeWeight = function (weight) {
       if (_recording) {
         _embrSettings.stitchWidth = weight;
+
         _originalStrokeWeightFunc.call(this, mmToPixel(weight));
       } else {
         _originalStrokeWeightFunc.apply(this, arguments);
@@ -220,7 +221,7 @@ let _DEBUG = false;
         let stitches = [];
         let numSteps = Math.max(Math.ceil((Math.PI * (radiusX + radiusY)) / _embrSettings.stitchLength), 12);
 
-        // Generate points along the ellipse
+        // Generate points along the ellipse, starting at 0 degrees (right side of ellipse)
         for (let i = 0; i <= numSteps; i++) {
           let angle = (i / numSteps) * Math.PI * 2;
           let stitchX = x + Math.cos(angle) * radiusX;
@@ -242,8 +243,9 @@ let _DEBUG = false;
             _stitchData.threads[_currentThreadIndex].runs[_stitchData.threads[_currentThreadIndex].runs.length - 1]
               .length === 0
           ) {
-            // If there are no runs or the last run is empty, use the center of the ellipse as the starting point
-            currentX = x * 10; // Convert to tenths of mm
+            // If there are no runs or the last run is empty, use the first point on the ellipse
+            // (at 0 degrees) as the starting point, not the center
+            currentX = (x + radiusX) * 10; // Point at 0 degrees (right side of ellipse)
             currentY = y * 10; // Convert to tenths of mm
           } else {
             // Otherwise, use the last stitch position (already in tenths of mm)
@@ -280,12 +282,11 @@ let _DEBUG = false;
           _stitchData.threads[_currentThreadIndex].runs.push(stitches);
         }
 
-        // Call drawStitches with the correct format
-        drawStitches(stitches); // Convert back to mm for drawStitches
-
         // Call the original ellipse function if in p5 mode
         if (_drawMode === "p5") {
           _originalEllipseFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
+        } else {
+          drawStitches(stitches);
         }
       } else {
         _originalEllipseFunc.apply(this, arguments);
@@ -823,6 +824,11 @@ let _DEBUG = false;
     for (let threadIndex = 0; threadIndex < _stitchData.threads.length; threadIndex++) {
       const thread = _stitchData.threads[threadIndex];
 
+      // Skip threads with no stitches
+      if (thread.runs.length === 0 || !thread.runs.some((run) => run.length > 0)) {
+        continue;
+      }
+
       // If we're changing threads and have previous stitches, add a color change command
       if (currentThreadIndex !== -1 && threadIndex !== currentThreadIndex && points.length > 0) {
         // Get the last stitch position
@@ -846,8 +852,8 @@ let _DEBUG = false;
           if (_DEBUG) console.log("Trim command at:", run[0].x, run[0].y);
 
           points.push({
-            x: run[0].x + 10,
-            y: run[0].y + 10,
+            x: run[0].x,
+            y: run[0].y,
             jump: true,
             trim: true,
           });
@@ -868,6 +874,12 @@ let _DEBUG = false;
           });
         }
       }
+    }
+
+    // Skip export if no points
+    if (points.length === 0) {
+      console.warn("No embroidery points to export");
+      return;
     }
 
     if (_DEBUG) console.log("=== Final Points Array ===");
@@ -899,20 +911,24 @@ let _DEBUG = false;
       // Get the current thread
       const currentThread = _stitchData.threads[_currentThreadIndex];
 
+      // Check if there are any runs in the current thread
+      if (!currentThread || currentThread.runs.length === 0) {
+        return; // Nothing to trim
+      }
+
       // Get the last run in the current thread
       const lastRun = currentThread.runs[currentThread.runs.length - 1];
 
-      // Get the last stitch position from the last run
-      // Currently gets the FIRST stitch [0] of the last run, should be the LAST stitch
-      let currentX = lastRun ? lastRun[0].x : 0;
-      let currentY = lastRun ? lastRun[0].y : 0;
-
-      // This should be changed to get the LAST stitch of the last run:
-      if (lastRun) {
-        let lastStitchIndex = lastRun.length - 1;
-        currentX = lastRun[lastStitchIndex].x;
-        currentY = lastRun[lastStitchIndex].y;
+      // Check if the last run has any stitches
+      if (!lastRun || lastRun.length === 0) {
+        return; // No stitches to trim
       }
+
+      // Get the last stitch position from the last run
+      let lastStitchIndex = lastRun.length - 1;
+      let currentX = lastRun[lastStitchIndex].x;
+      let currentY = lastRun[lastStitchIndex].y;
+
       // Add a special point to indicate thread trim
       _stitchData.threads[_currentThreadIndex].runs.push([
         {
@@ -997,19 +1013,33 @@ let _DEBUG = false;
         _originalEllipseFunc.call(_p5Instance, currentX, currentY, 3); // Small white dots at stitch points
 
         // Draw three layers of lines with different weights and colors
-        // Dark bottom layer
-        _originalStrokeFunc.call(_p5Instance, 0); // Black
+        // Dark bottom layer - darkened thread color
+        _originalStrokeFunc.call(
+          _p5Instance,
+          _stitchData.threads[_currentThreadIndex].red * 0.4,
+          _stitchData.threads[_currentThreadIndex].green * 0.4,
+          _stitchData.threads[_currentThreadIndex].blue * 0.4,
+        );
         _originalStrokeWeightFunc.call(_p5Instance, 2.5);
-
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
 
-        // Middle layer
-        _originalStrokeFunc.call(_p5Instance, 80); // Dark gray
+        // Middle layer - thread color
+        _originalStrokeFunc.call(
+          _p5Instance,
+          _stitchData.threads[_currentThreadIndex].red,
+          _stitchData.threads[_currentThreadIndex].green,
+          _stitchData.threads[_currentThreadIndex].blue,
+        );
         _originalStrokeWeightFunc.call(_p5Instance, 1.8);
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
 
-        // Top highlight layer
-        _originalStrokeFunc.call(_p5Instance, 160); // Light gray
+        // Top highlight layer - lightened thread color
+        _originalStrokeFunc.call(
+          _p5Instance,
+          _stitchData.threads[_currentThreadIndex].red * 1.8,
+          _stitchData.threads[_currentThreadIndex].green * 1.8,
+          _stitchData.threads[_currentThreadIndex].blue * 1.8,
+        );
         _originalStrokeWeightFunc.call(_p5Instance, 1);
         _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
         prevX = currentX;
@@ -1017,24 +1047,25 @@ let _DEBUG = false;
       }
 
       _p5Instance.pop();
-    } else if (_drawMode === "p5") {
-      // For p5 mode, we need to draw a line from the starting point to each stitch
-      if (stitches.length > 0) {
-        // prevX and prevY are already in mm, but we need to convert them to pixels
-        // For each stitch, draw a line from the previous point
-        for (let i = 1; i < stitches.length; i++) {
-          // Convert stitch coordinates from tenths of mm to pixels
-          const currentX = mmToPixel(stitches[i].x / 10);
-          const currentY = mmToPixel(stitches[i].y / 10);
-
-          _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
-
-          // Update the previous point
-          prevX = currentX;
-          prevY = currentY;
-        }
-      }
     }
+    // else if (_drawMode === "p5") {
+    //   // For p5 mode, we need to draw a line from the starting point to each stitch
+    //   if (stitches.length > 0) {
+    //     // prevX and prevY are already in mm, but we need to convert them to pixels
+    //     // For each stitch, draw a line from the previous point
+    //     for (let i = 1; i < stitches.length; i++) {
+    //       // Convert stitch coordinates from tenths of mm to pixels
+    //       const currentX = mmToPixel(stitches[i].x / 10);
+    //       const currentY = mmToPixel(stitches[i].y / 10);
+
+    //       _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+
+    //       // Update the previous point
+    //       prevX = currentX;
+    //       prevY = currentY;
+    //     }
+    //   }
+    // }
 
     // Return the last stitch position for chaining
     return stitches.length > 0

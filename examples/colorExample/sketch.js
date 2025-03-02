@@ -38,22 +38,19 @@ function setup() {
 
 function draw() {
   background("#FFF5DC");
-
+  let stitchWidth = 5;
   // Set the drawing mode to show stitches
   stroke(255, 0, 0);
   noFill();
   setDrawMode(_drawMode);
-  translate(0, 0);
+  //translate(0, 0);
   beginRecord(this);
   strokeWeight(stitchWidth);
   setStitch(0.01, 0.2, 0);
 
-  let stitchWidth = 5;
-
   for (let i = 0; i < roygbiv.length; i++) {
     stroke(roygbiv[roygbiv.length - 1 - i]);
-    if (i % 2 == 0) ellipse(50, 50, stitchWidth * 2 + stitchWidth * 2 * i, stitchWidth * 2 + stitchWidth * 2 * i);
-    else ellipse(50, 50, stitchWidth * 2 + stitchWidth * 2 * i, stitchWidth * 2 + stitchWidth * 2 * i);
+    ellipse(50, 50, stitchWidth * 2 + stitchWidth * 2 * i, stitchWidth * 2 + stitchWidth * 2 * i);
   }
 
   // End recording
