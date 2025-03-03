@@ -1,0 +1,93 @@
+plugins:
+    - jekyll-remote-theme
+
+#remote_theme: xdanger/jekyll-theme-notion
+remote_theme: nkymut/just-the-docs
+#remote_theme: sighingnow/jekyll-gitbook
+
+# Site settings
+title: p5.embroider
+description: 
+baseurl: "/p5.embroider"
+
+# Build settings
+markdown: kramdown
+kramdown:
+  #parse_block_html: true
+  syntax_highlighter: rouge
+
+# Turn on incremental building to reduce overall build time (still in beta)
+# See: https://jekyllrb.com/docs/configuration/incremental-regeneration/
+incremental: true
+
+# Enable custom SCSS
+# sass:
+#   sass_dir: _sass
+#   style: compressed
+#   color_scheme: custom
+
+# Make all pages expanded by default
+nav_expand_all: true
+
+# Logo
+#logo: /assets/images/id2116_logo.png
+
+# Include all directories and their markdown files
+include:
+  - ".
+  - "docs/*"
+  - "examples/*"
+  - "lib/*"
+
+ # - "aa_demo/*.md"
+
+# Exclude unnecessary files and directories
+exclude:
+  - "node_modules"
+  - "vendor"
+  - ".git"
+  - ".gitignore"
+  - ".prettierignoe"
+  - ".prettierrc"
+
+# Collections
+collections:
+  weeks:
+    output: true
+    permalink: /:collection/:path/
+    sort_by: nav_order
+
+mermaid:
+  version: "9.1.3"
+
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+      nav_order: 100
+  - scope:
+      path: ""
+      type: "weeks"
+    values:
+      layout: "week"
+      nav_order: 1
+
+nav_enabled: false
+
+callouts_level: quiet # or loud
+
+callouts:
+  attention:
+    color: red
+  highlight:
+    color: orange
+  important:
+    color: blue
+  new:
+    color: green
+  note:
+    color: orange
+  warning:
+    color: red
