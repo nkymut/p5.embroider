@@ -32,6 +32,37 @@ let _DEBUG = false;
     units: "mm",
   };
 
+  // stroke mode constants
+  const STROKE_MODE = {
+    ZIGZAG: "zigzag",
+    LINES: "lines",
+    SASHIKO: "sashiko",
+  };
+
+  let _currentStrokeMode = STROKE_MODE.ZIGZAG;
+
+  /**
+   * Sets the stroke mode for embroidery stitches.
+   * @method setStrokeMode
+   * @for p5
+   * @param {string} mode - The stroke mode to use ('zigzag', 'lines', or 'sashiko')
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   setStrokeMode('zigzag');
+   *   line(10, 10, 50, 50); // Will use zigzag stitch pattern
+   * }
+   */
+
+  p5embroidery.setStrokeMode = function (mode) {
+    if (Object.values(STROKE_MODE).includes(mode)) {
+      _currentStrokeMode = mode;
+    } else {
+      console.warn(`Invalid stroke mode: ${mode}. Using default: ${_currentStrokeMode}`);
+    }
+  };
+
   /**
    * Thread class for storing color and stitch data.
    * @private
@@ -42,12 +73,14 @@ let _DEBUG = false;
      * @param {number} r - Red component (0-255)
      * @param {number} g - Green component (0-255)
      * @param {number} b - Blue component (0-255)
+     * @param {number} weight - Weight of the thread in mm
      */
-    constructor(r, g, b) {
+    constructor(r, g, b, weight = 0.2) {
       this.red = r;
       this.green = g;
       this.blue = b;
       this.runs = [];
+      this.weight = weight;
     }
   }
 
@@ -71,7 +104,7 @@ let _DEBUG = false;
     _p5Instance = p5Instance;
     _stitchData.width = p5Instance.width;
     _stitchData.height = p5Instance.height;
-    _stitchData.threads = [new Thread(0, 0, 0)]; // Start with a default black thread
+    _stitchData.threads = [new Thread(0, 0, 0, 0.2)]; // Start with a default black thread
     _recording = true;
     overrideP5Functions();
   };
@@ -434,7 +467,18 @@ let _DEBUG = false;
       });
 
     if (_embrSettings.stitchWidth > 0) {
-      return lineZigzagStitching(x1, y1, x2, y2, distance);
+      //return lineZigzagStitching(x1, y1, x2, y2, distance);
+
+      switch (_currentStrokeMode) {
+        case STROKE_MODE.ZIGZAG:
+          return lineZigzagStitching(x1, y1, x2, y2, distance);
+        case STROKE_MODE.LINES:
+          return multiLineStitching(x1, y1, x2, y2, _embrSettings.stitchWidth, _embrSettings.stitchLength);
+        case STROKE_MODE.SASHIKO:
+          return sashikoStitching(x1, y1, x2, y2, _embrSettings.stitchWidth, _embrSettings.stitchLength);
+        default:
+          return straightLineStitching(x1, y1, x2, y2, distance);
+      }
     } else {
       return straightLineStitching(x1, y1, x2, y2, distance);
     }
@@ -510,14 +554,13 @@ let _DEBUG = false;
    * @param {number} y1 - Starting y-coordinate
    * @param {number} x2 - Ending x-coordinate
    * @param {number} y2 - Ending y-coordinate
-   * @param {number} distance - Distance between points
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
-  function straightLineStitching(x1, y1, x2, y2, distance) {
+  function straightLineStitching(x1, y1, x2, y2) {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
-
+    const distance = _p5Instance.dist(x1, y1, x2, y2);
     // Add first stitch at starting point
     stitches.push({
       x: x1 * 10,
@@ -533,6 +576,7 @@ let _DEBUG = false;
     let numStitches = Math.floor(distance / baseStitchLength);
     let currentDistance = 0;
 
+     //console.log("numStitches",numStitches)
     // Handle full-length stitches
     for (let i = 0; i < numStitches; i++) {
       // Add noise to stitch length if specified
@@ -545,7 +589,7 @@ let _DEBUG = false;
       // update cumulative distance
       currentDistance += stitchLength;
       let t = Math.min(currentDistance / distance, 1);
-
+      //console.log("t",t)
       stitches.push({
         x: (x1 + dx * t) * 10,
         y: (y1 + dy * t) * 10,
@@ -722,6 +766,122 @@ let _DEBUG = false;
     if (_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
     return zigzagResult;
   }
+
+  // Implement the new stitching methods
+  function multiLineStitching(x1, y1, x2, y2, width, stitchLength) {
+    // Calculate the number of lines based on stroke weight
+    //console.log("width", width);
+    //console.log("stitchLength", stitchLength);
+    const threadWeight = _stitchData.threads[_currentThreadIndex]?.weight || 0.2;
+    const numLines = Math.max(2, Math.floor(width / (threadWeight * 2)));
+    const stitches = [];
+    const distance = _p5Instance.dist(x1, y1, x2, y2);
+
+    // Calculate the direction vector and perpendicular vector
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    // Normalize direction vector
+    const dirX = dx / len;
+    const dirY = dy / len;
+
+    // Calculate perpendicular vector
+    const perpX = -dirY;
+    const perpY = dirX;
+
+    // Calculate the spacing between lines
+    const spacing = width / (numLines - 1);
+
+    // Generate multiple parallel lines
+    for (let i = 0; i < numLines; i++) {
+      // Calculate offset from center
+      const offset = i * spacing - width / 2;
+
+      // Calculate start and end points for this line
+      const startX = x1 + perpX * offset;
+      const startY = y1 + perpY * offset;
+      const endX = x2 + perpX * offset;
+      const endY = y2 + perpY * offset;
+
+      // For even lines, go from start to end
+      // For odd lines, go from end to start (back and forth pattern)
+
+      if (i % 2 === 0) {
+        const lineStitches = straightLineStitching(startX, startY, endX, endY);
+        stitches.push(...lineStitches);
+      } else {
+        const lineStitches = straightLineStitching(endX, endY, startX, startY);
+        stitches.push(...lineStitches);
+      }
+    }
+
+    return stitches;
+  }
+
+  function sashikoStitching(x1, y1, x2, y2, stitchWidth, stitchLength) {
+    // Sashiko is a traditional Japanese embroidery technique with evenly spaced running stitches
+    // This implementation creates a pattern of dashed lines
+    const stitches = [];
+    const threadWeight = _stitchData.threads[_currentThreadIndex]?.weight || 0.2;
+    const numLines = Math.max(2, Math.floor(stitchWidth / threadWeight*2));
+  
+    // Calculate direction and perpendicular vectors
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+  
+    // Normalize direction vector
+    const dirX = dx / distance;
+    const dirY = dy / distance;
+    const perpX = -dirY;
+    const perpY = dirX;
+  
+    // Calculate spacing between lines
+    const spacing = stitchWidth / (numLines - 1);
+  
+    // Sashiko stitch length (longer than regular stitches)
+    const sashikoStitchLength = stitchLength * 2;
+    const multilineLength = sashikoStitchLength * 0.5;
+    const straightLength = sashikoStitchLength * 0.5;
+  
+    let currentDist = 0;
+    let isMultiline = true;
+  
+    while (currentDist < distance) {
+      const segmentLength = isMultiline ? multilineLength : straightLength;
+      const endDist = Math.min(currentDist + segmentLength, distance);
+    
+      // Calculate segment start and end points
+      const segStartX = x1 + dirX * currentDist;
+      const segStartY = y1 + dirY * currentDist;
+      const segEndX = x1 + dirX * endDist;
+      const segEndY = y1 + dirY * endDist;
+    
+      if (isMultiline) {
+      
+        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchWidth, stitchLength);
+        stitches.push(...lineStitches);
+          
+        
+      } else {
+        // Create single straight line for this segment
+        const lineStitches = straightLineStitching(segStartX, segStartY, segEndX, segEndY);
+        stitches.push(...lineStitches);
+      }
+    
+      // Move to next segment
+      currentDist = endDist;
+      isMultiline = !isMultiline; // Toggle between multiline and straight line
+    }
+    
+    console.log("sashikoStitching", stitches)
+    // Convert coordinates to internal format (tenths of mm)
+    return stitches.map(stitch => ({
+      x: stitch.x,
+      y: stitch.y 
+    }));
+  } 
 
   /**
    * Exports the recorded embroidery data as a file.
@@ -1004,12 +1164,13 @@ let _DEBUG = false;
       _p5Instance.strokeCap(ROUND);
 
       // Draw background dots for thread ends
-      _p5Instance.noStroke();
-      _p5Instance.fill(255); // White background dots
 
       for (let i = 1; i < stitches.length; i++) {
         let currentX = mmToPixel(stitches[i].x / 10);
         let currentY = mmToPixel(stitches[i].y / 10);
+        _p5Instance.noStroke();
+        _p5Instance.fill(15); // White background dots
+  
         _originalEllipseFunc.call(_p5Instance, currentX, currentY, 3); // Small white dots at stitch points
 
         // Draw three layers of lines with different weights and colors
@@ -1089,6 +1250,9 @@ let _DEBUG = false;
   global.drawStitches = p5embroidery.drawStitches;
   global.mmToPixel = mmToPixel;
   global.pixelToMm = pixelToMm;
+  global.setStrokeMode = p5embroidery.setStrokeMode;
+  global.STROKE_MODE = STROKE_MODE;
+
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
 /**
