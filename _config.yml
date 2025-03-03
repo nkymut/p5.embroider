@@ -34,7 +34,7 @@ nav_expand_all: true
 
 # Include all directories and their markdown files
 include:
-  - ".
+  - "./README.md"
   - "docs/*"
   - "examples/*"
   - "lib/*"
