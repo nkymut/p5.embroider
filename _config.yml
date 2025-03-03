@@ -60,7 +60,15 @@ collections:
 mermaid:
   version: "9.1.3"
 
+  
+
 defaults:
+  - scope:
+      path: "README.md"
+    values:
+      layout: "default"
+      permalink: "/"
+      nav_order: 1
   - scope:
       path: ""
       type: "pages"
