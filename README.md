@@ -1,3 +1,8 @@
+---
+permalink: /index.html
+---
+
+
 # p5.embroider
 
 ## A p5.js Library for Digital Embroidery pattern creation
