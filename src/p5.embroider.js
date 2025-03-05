@@ -18,6 +18,7 @@ let _DEBUG = false;
     stitchCount: 0,
   };
   let _currentThreadIndex = 0;
+  
 
   // Embroidery settings
   const _embrSettings = {
@@ -39,7 +40,26 @@ let _DEBUG = false;
     SASHIKO: "sashiko",
   };
 
+  // Add fill mode constants
+  const FILL_MODE = {
+    TATAMI: "tatami",
+    SATIN: "satin",
+    SPIRAL: "spiral",
+  };
+
+  let _doStroke = false;  // Track if stroke is enabled
   let _currentStrokeMode = STROKE_MODE.ZIGZAG;
+
+  let _doFill = false;  // Track if fill is enabled
+  let _currentFill = null;  // Store current fill color and properties
+  let _currentFillMode = FILL_MODE.TATAMI;
+  let _fillSettings = {
+    angle: 0, // Angle in radians
+    spacing: 3, // Space between rows in mm
+    tieDistance: 15, // Distance between tie-down stitches in mm
+    alternateAngle: false, // Whether to alternate angles between shapes
+    color: {r: 0, g: 0, b: 0}
+  };
 
   /**
    * Sets the stroke mode for embroidery stitches.
@@ -60,6 +80,45 @@ let _DEBUG = false;
       _currentStrokeMode = mode;
     } else {
       console.warn(`Invalid stroke mode: ${mode}. Using default: ${_currentStrokeMode}`);
+    }
+  };
+
+  /**
+   * Sets the fill mode for embroidery fills.
+   * @method setFillMode
+   * @for p5
+   * @param {string} mode - The fill mode to use ('tatami', 'satin', or 'spiral')
+   */
+  p5embroidery.setFillMode = function (mode) {
+    if (Object.values(FILL_MODE).includes(mode)) {
+      _currentFillMode = mode;
+    } else {
+      console.warn(`Invalid fill mode: ${mode}. Using default: ${_currentFillMode}`);
+    }
+  };
+
+  /**
+   * Sets the fill settings for embroidery.
+   * @method setFillSettings
+   * @for p5
+   * @param {Object} settings - Fill settings object
+   * @param {number} [settings.angle] - Fill angle in degrees
+   * @param {number} [settings.spacing] - Space between rows in mm
+   * @param {number} [settings.tieDistance] - Distance between tie-down stitches in mm
+   * @param {boolean} [settings.alternateAngle] - Whether to alternate angles between shapes
+   */
+  p5embroidery.setFillSettings = function (settings) {
+    if (settings.angle !== undefined) {
+      _fillSettings.angle = settings.angle * Math.PI / 180; // Convert to radians
+    }
+    if (settings.spacing !== undefined) {
+      _fillSettings.spacing = settings.spacing;
+    }
+    if (settings.tieDistance !== undefined) {
+      _fillSettings.tieDistance = settings.tieDistance;
+    }
+    if (settings.alternateAngle !== undefined) {
+      _fillSettings.alternateAngle = settings.alternateAngle;
     }
   };
 
@@ -212,12 +271,31 @@ let _DEBUG = false;
 
         // Set the current thread index
         _currentThreadIndex = threadIndex;
+        _doStroke = true;
+
+
         _originalStrokeFunc.apply(this, arguments);
       } else {
         _originalStrokeFunc.apply(this, arguments);
       }
     };
   }
+
+  /**
+   * Overrides p5.js noStroke() function to disable embroidery strokes.
+   * @private
+   */
+  let _originalNoStrokeFunc;
+  function overrideNoStrokeFunction() {
+    _originalNoStrokeFunc = window.noStroke;
+    window.noStroke = function () {
+      if (_recording) {
+        _doStroke = false;
+      }
+      _originalNoStrokeFunc.apply(this, arguments);
+    };
+  }
+
 
   /**
    * Overrides p5.js line() function to record embroidery stitches.
@@ -359,6 +437,144 @@ let _DEBUG = false;
   }
 
   /**
+   * Overrides p5.js fill() function to handle embroidery fills.
+   * @private
+   */
+  let _originalFillFunc;
+  function overrideFillFunction() {
+    _originalFillFunc = window.fill;
+    window.fill = function () {
+      if (_recording) {
+        // Get color values from arguments
+        let r, g, b;
+
+        if (arguments.length === 1) {
+          // Single value or string color
+          if (typeof arguments[0] === "string") {
+            // Parse color string (e.g., '#FF0000' or 'red')
+            const colorObj = _p5Instance.color(arguments[0]);
+            r = _p5Instance.red(colorObj);
+            g = _p5Instance.green(colorObj);
+            b = _p5Instance.blue(colorObj);
+          } else {
+            // Grayscale value
+            r = g = b = arguments[0];
+          }
+        } else if (arguments.length === 3) {
+          // RGB values
+          r = arguments[0];
+          g = arguments[1];
+          b = arguments[2];
+        } else {
+          // Default to black if invalid arguments
+          r = g = b = 0;
+        }
+
+        // Check if we already have a thread with this color
+        let threadIndex = -1;
+        for (let i = 0; i < _stitchData.threads.length; i++) {
+          const thread = _stitchData.threads[i];
+          if (thread.red === r && thread.green === g && thread.blue === b) {
+            threadIndex = i;
+            break;
+          }
+        }
+
+        if (threadIndex === -1) {
+          // Create a new thread with this color
+          _stitchData.threads.push(new Thread(r, g, b));
+          threadIndex = _stitchData.threads.length - 1;
+        }
+
+        // Set the current thread index
+        _currentThreadIndex = threadIndex;
+
+        // Store the fill state
+        _doFill = true;
+        _currentFill = { r, g, b };
+        _fillSettings.color.r = r;
+        _fillSettings.color.g = g;
+        _fillSettings.color.b = b;
+
+        _originalFillFunc.apply(this, arguments);
+      } else {
+        _originalFillFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
+   * Overrides p5.js noFill() function to disable embroidery fills.
+   * @private
+   */
+  let _originalNoFillFunc;
+  function overrideNoFillFunction() {
+    _originalNoFillFunc = window.noFill;
+    window.noFill = function () {
+      if (_recording) {
+        _doFill = false;
+        _currentFill = null;
+      }
+      _originalNoFillFunc.apply(this, arguments);
+    };
+  }
+
+  /**
+   * Overrides p5.js rect() function to handle embroidery fills.
+   * @private
+   */
+  let _originalRectFunc;
+  function overrideRectFunction() {
+    _originalRectFunc = window.rect;
+    window.rect = function (x, y, w, h) {
+      let stitches = [];
+      if (_recording) {
+  
+
+        if(_doFill) {
+        let fillStitches = [];
+        switch (_currentFillMode) {
+          case FILL_MODE.TATAMI:
+            fillStitches = createTatamiFill(x, y, w, h);
+            break;
+          // Add other fill modes here
+          default:
+            fillStitches = createTatamiFill(x, y, w, h);
+        }
+       
+        stitches.push(...fillStitches);
+             // Add the stitches to the current thread
+       _stitchData.threads[_currentThreadIndex].runs.push(fillStitches);
+        }
+
+      if(_doStroke) {
+        let strokeStitches = [];
+        //TODO: change to use convertPathToStitches
+        _p5Instance.stroke(_stitchData.threads[_currentThreadIndex].r, _stitchData.threads[_currentThreadIndex].g, _stitchData.threads[_currentThreadIndex].b);
+
+        strokeStitches.push(...convertLineToStitches(x, y, x + w, y));
+        strokeStitches.push(...convertLineToStitches(x + w, y, x + w, y + h));
+        strokeStitches.push(...convertLineToStitches(x + w, y + h, x, y + h));
+        strokeStitches.push(...convertLineToStitches(x, y + h, x, y));
+
+        stitches.push(...strokeStitches);
+        _stitchData.threads[_currentThreadIndex].runs.push(strokeStitches);
+      }
+
+  
+       // Draw the stitches
+        if (_drawMode === "stitch" || _drawMode === "realistic") {
+          drawStitches(stitches);
+        } else {
+          _originalRectFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
+        }
+      } else {
+        _originalRectFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
    * Overrides necessary p5.js functions for embroidery recording.
    * @private
    */
@@ -368,6 +584,10 @@ let _DEBUG = false;
     overrideStrokeWeightFunction();
     overridePointFunction();
     overrideStrokeFunction();
+    overrideNoStrokeFunction();
+    overrideFillFunction();
+    overrideNoFillFunction();
+    overrideRectFunction();
     // Add more overrides as needed
   }
 
@@ -381,6 +601,10 @@ let _DEBUG = false;
     window.strokeWeight = _originalStrokeWeightFunc;
     window.point = _originalPointFunc;
     window.stroke = _originalStrokeFunc;
+    window.noStroke = _originalNoStrokeFunc;
+    window.fill = _originalFillFunc;
+    window.noFill = _originalNoFillFunc;
+    window.rect = _originalRectFunc;
     // Restore other functions as needed
   }
 
@@ -773,7 +997,7 @@ let _DEBUG = false;
     //console.log("width", width);
     //console.log("stitchLength", stitchLength);
     const threadWeight = _stitchData.threads[_currentThreadIndex]?.weight || 0.2;
-    const numLines = Math.max(2, Math.floor(width / (threadWeight * 2)));
+    const numLines = Math.max(2, Math.floor(width / threadWeight));
     const stitches = [];
     const distance = _p5Instance.dist(x1, y1, x2, y2);
 
@@ -824,7 +1048,7 @@ let _DEBUG = false;
     // This implementation creates a pattern of dashed lines
     const stitches = [];
     const threadWeight = _stitchData.threads[_currentThreadIndex]?.weight || 0.2;
-    const numLines = Math.max(2, Math.floor(stitchWidth / threadWeight*2));
+    const numLines = Math.max(2, Math.floor(stitchWidth / threadWeight));
   
     // Calculate direction and perpendicular vectors
     const dx = x2 - x1;
@@ -875,7 +1099,7 @@ let _DEBUG = false;
       isMultiline = !isMultiline; // Toggle between multiline and straight line
     }
     
-    console.log("sashikoStitching", stitches)
+    if(_DEBUG) console.log("sashikoStitching", stitches)
     // Convert coordinates to internal format (tenths of mm)
     return stitches.map(stitch => ({
       x: stitch.x,
@@ -1101,9 +1325,8 @@ let _DEBUG = false;
       if (_drawMode === "stitch") {
         // draw a scissors emoji at the trim point
         _p5Instance.push();
-        _p5Instance.fill(0);
-        // Draw 45 degree line
-        let lineLength = 10; // Length of diagonal line in pixels
+        _originalFillFunc.call(_p5Instance, 0);
+        let lineLength = 10;
         let endX = mmToPixel(currentX / 10) + lineLength;
         let endY = mmToPixel(currentY / 10) - lineLength;
         _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // red for line
@@ -1169,7 +1392,7 @@ let _DEBUG = false;
         let currentX = mmToPixel(stitches[i].x / 10);
         let currentY = mmToPixel(stitches[i].y / 10);
         _p5Instance.noStroke();
-        _p5Instance.fill(15); // White background dots
+        _originalFillFunc.call(_p5Instance, 15); // White background dots
   
         _originalEllipseFunc.call(_p5Instance, currentX, currentY, 3); // Small white dots at stitch points
 
@@ -1237,6 +1460,69 @@ let _DEBUG = false;
       : { x: startX, y: startY };
   }
 
+  /**
+   * Creates a tatami fill pattern for a rectangular area.
+   * @private
+   * @param {number} x - X coordinate of the rectangle
+   * @param {number} y - Y coordinate of the rectangle
+   * @param {number} w - Width of the rectangle
+   * @param {number} h - Height of the rectangle
+   * @returns {Array<{x: number, y: number}>} Array of stitch points
+   */
+  function createTatamiFill(x, y, w, h) {
+    const stitches = [];
+    const angle = _fillSettings.angle;
+    const spacing = _fillSettings.spacing;
+    const tieDistance = _fillSettings.tieDistance;
+
+    // Convert rectangle to rotated coordinates
+    const cos_angle = Math.cos(angle);
+    const sin_angle = Math.sin(angle);
+    
+    // Calculate rotated bounds
+    const points = [
+      {x: x, y: y},
+      {x: x + w, y: y},
+      {x: x + w, y: y + h},
+      {x: x, y: y + h}
+    ];
+    
+    // Rotate points
+    const rotated = points.map(p => ({
+      x: (p.x - x) * cos_angle - (p.y - y) * sin_angle,
+      y: (p.x - x) * sin_angle + (p.y - y) * cos_angle
+    }));
+    
+    // Find bounds of rotated rectangle
+    const minX = Math.min(...rotated.map(p => p.x));
+    const maxX = Math.max(...rotated.map(p => p.x));
+    const minY = Math.min(...rotated.map(p => p.y));
+    const maxY = Math.max(...rotated.map(p => p.y));
+    
+    // Calculate number of rows needed
+    const numRows = Math.ceil((maxY - minY) / spacing);
+    
+    // Generate rows of stitches
+    let forward = true;
+    for (let i = 0; i <= numRows; i++) {
+      const rowY = minY + i * spacing;
+      
+      // Calculate row endpoints
+      const rowX1 = forward ? minX : maxX;
+      const rowX2 = forward ? maxX : minX;
+      
+      // Calculate number of stitches in this row
+      const rowLength = Math.abs(rowX2 - rowX1);
+
+      _p5Instance.stroke(_fillSettings.color.r, _fillSettings.color.g, _fillSettings.color.b);
+      stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY));
+      
+      forward = !forward; // Alternate direction for next row
+    }
+    
+    return stitches;
+  }
+
   // Expose public functions
   global.p5embroidery = p5embroidery;
   global.beginRecord = p5embroidery.beginRecord;
@@ -1252,6 +1538,9 @@ let _DEBUG = false;
   global.pixelToMm = pixelToMm;
   global.setStrokeMode = p5embroidery.setStrokeMode;
   global.STROKE_MODE = STROKE_MODE;
+  global.FILL_MODE = FILL_MODE;
+  global.setFillMode = p5embroidery.setFillMode;
+  global.setFillSettings = p5embroidery.setFillSettings;
 
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
