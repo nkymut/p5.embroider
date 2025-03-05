@@ -43,12 +43,14 @@ function draw() {
   strokeWeight(1);
   setFillMode("tatami");
   setFillSettings({
-    angle: 0,        // 45 degree angle
-    spacing: 0.5,       // 3mm between rows
-    tieDistance: 15,  // Tie-down every 15mm
-    alternateAngle: true
+    angle: 0, // 45 degree angle
+    spacing: 0.5, // 3mm between rows
+    tieDistance: 15, // Tie-down every 15mm
+    alternateAngle: true,
   });
   fill(0, 0, 200);
+  setStitch(0.1, 0.2, 0);
+  strokeWeight(3);
   stroke(0, 0, 0);
   rect(0, 0, 80, 80);
 

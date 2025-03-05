@@ -241,25 +241,25 @@ export class DSTWriter {
         console.log("Thread trim at point:", i);
         // In DST format, thread trimming is signaled by a specific pattern of jump stitches
         // Generate a zigzag pattern of 3 jumps that embroidery machines recognize as a trim command
-        
+
         // First jump: up and right
         this.data.push(...this.encodeRecord(3, 3, DSTWriter.JUMP));
         this.currentX += 3;
         this.currentY += 3;
         this.stitchCount++;
-        
+
         // Second jump: down and right
         this.data.push(...this.encodeRecord(3, -6, DSTWriter.JUMP));
         this.currentX += 3;
         this.currentY -= 6;
         this.stitchCount++;
-        
+
         // Third jump: back to original position
         this.data.push(...this.encodeRecord(-6, 3, DSTWriter.JUMP));
         this.currentX -= 6;
         this.currentY += 3;
         this.stitchCount++;
-        
+
         continue;
       }
 

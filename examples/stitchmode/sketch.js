@@ -35,21 +35,20 @@ function setup() {
 let zigzagSettings = {
   minStitchLength: 0.1,
   stitchLength: 0.2,
-  strokeWeight: 5
-}
+  strokeWeight: 5,
+};
 
 let linesSettings = {
   minStitchLength: 0.1,
   stitchLength: 3,
-  strokeWeight: 5
-}
+  strokeWeight: 5,
+};
 
 let sashikoSettings = {
   minStitchLength: 0.5,
   stitchLength: 3,
-  strokeWeight: 1.2
-}
-
+  strokeWeight: 1.2,
+};
 
 function draw() {
   background("navy");
@@ -59,7 +58,6 @@ function draw() {
   noFill();
   beginRecord(this);
 
-
   setStitch(zigzagSettings.minStitchLength, zigzagSettings.stitchLength, 0);
   stroke(200, 200, 200);
   strokeWeight(zigzagSettings.strokeWeight);
@@ -68,13 +66,11 @@ function draw() {
   line(0, 0, 80, 0); // top
   trimThread();
 
-
   setStitch(linesSettings.minStitchLength, linesSettings.stitchLength, 0);
   strokeWeight(linesSettings.strokeWeight);
   setStrokeMode("lines");
   line(0, 10, 80, 10); // right
   trimThread();
-
 
   setStitch(sashikoSettings.minStitchLength, sashikoSettings.stitchLength, 0);
   strokeWeight(sashikoSettings.strokeWeight);
@@ -104,8 +100,7 @@ function draw() {
   line(55, 30, 75, 50); // vertical
   trimThread();
 
-
-  // Vertical line with zigzag 
+  // Vertical line with zigzag
   setStitch(zigzagSettings.minStitchLength, zigzagSettings.stitchLength, 0);
   strokeWeight(zigzagSettings.strokeWeight);
   setStrokeMode("zigzag");
@@ -119,14 +114,12 @@ function draw() {
   line(40, 60, 40, 80); // vertical
   trimThread();
 
-  // Vertical line with sashiko 
+  // Vertical line with sashiko
   setStitch(sashikoSettings.minStitchLength, sashikoSettings.stitchLength, 0);
   strokeWeight(sashikoSettings.strokeWeight);
   setStrokeMode("sashiko");
   line(63, 60, 63, 80); // vertical
   trimThread();
-
-
 
   // Stop recording and export as DST
   endRecord();
