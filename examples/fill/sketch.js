@@ -5,16 +5,19 @@ function setup() {
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
+    redraw();
   });
 
   let drawModeLineButton = createButton("Draw Mode: Realistic");
   drawModeLineButton.mousePressed(() => {
     drawMode = "realistic";
+    redraw();
   });
 
   let drawModeP5Button = createButton("Draw Mode: p5");
   drawModeP5Button.mousePressed(() => {
     drawMode = "p5";
+    redraw();
   });
 
   let exportDstButton = createButton("Export DST");
@@ -29,7 +32,7 @@ function setup() {
   });
   exportGcodeButton.position(90, height + 30);
 
-  //noLoop(); // Stop the draw loop after exporting
+  noLoop(); // Stop the draw loop after exporting
 }
 
 function draw() {
@@ -43,8 +46,11 @@ function draw() {
   strokeWeight(1);
   setFillMode("tatami");
   setFillSettings({
+    stitchLength: 4,
+    stitchWidth: 0.5,
+    minStitchLength: 0.5,
+    resampleNoise: 0.2,
     angle: 0, // 45 degree angle
-    spacing: 0.5, // 3mm between rows
     tieDistance: 15, // Tie-down every 15mm
     alternateAngle: true,
   });
@@ -52,7 +58,7 @@ function draw() {
   setStitch(0.1, 0.2, 0);
   strokeWeight(3);
   stroke(0, 0, 0);
-  rect(0, 0, 80, 80);
+  rect(0, 0, 40, 40);
 
   trimThread();
 
@@ -63,10 +69,10 @@ function draw() {
 function keyPressed() {
   switch (key) {
     case "d":
-      exportEmbroidery("boxtest.dst");
+      exportEmbroidery("filltest.dst");
       break;
     case "g":
-      exportGcode("boxtest.gcode");
+      exportGcode("filltest.gcode");
       break;
   }
 }

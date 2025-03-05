@@ -17,6 +17,9 @@ let _DEBUG = false;
     pixelsPerUnit: 1,
     stitchCount: 0,
   };
+  let _stitchPath = [];
+  let _gcodeWriter;
+  let _dstWriter;
 
   let _currentThreadIndex = 0;
   let _strokeThreadIndex = 0;
@@ -56,6 +59,10 @@ let _DEBUG = false;
   let _currentFill = null; // Store current fill color and properties
   let _currentFillMode = FILL_MODE.TATAMI;
   let _fillSettings = {
+    stitchLength: 3, // mm
+    stitchWidth: 0.2,
+    minStitchLength: 0.5, // mm
+    resampleNoise: 0, // 0-1 range
     angle: 0, // Angle in radians
     spacing: 3, // Space between rows in mm
     tieDistance: 15, // Distance between tie-down stitches in mm
@@ -110,6 +117,19 @@ let _DEBUG = false;
    * @param {boolean} [settings.alternateAngle] - Whether to alternate angles between shapes
    */
   p5embroidery.setFillSettings = function (settings) {
+    if (settings.stitchLength !== undefined) {
+      _fillSettings.stitchLength = settings.stitchLength;
+    }
+    if (settings.stitchWidth !== undefined) {
+      _fillSettings.stitchWidth = settings.stitchWidth;
+    }
+    if (settings.minStitchLength !== undefined) {
+      _fillSettings.minStitchLength = settings.minStitchLength;
+    }
+    if (settings.resampleNoise !== undefined) {
+      _fillSettings.resampleNoise = settings.resampleNoise;
+    }
+    
     if (settings.angle !== undefined) {
       _fillSettings.angle = (settings.angle * Math.PI) / 180; // Convert to radians
     }
@@ -527,11 +547,11 @@ let _DEBUG = false;
         if (_doFill) {
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
-              fillStitches = createTatamiFill(x, y, w, h);
+              fillStitches = createTatamiFill(x, y, w, h, _fillSettings);
               break;
             // Add other fill modes here
             default:
-              fillStitches = createTatamiFill(x, y, w, h);
+              fillStitches = createTatamiFill(x, y, w, h, _fillSettings);
           }
 
           stitches.push(...fillStitches);
@@ -540,6 +560,8 @@ let _DEBUG = false;
         }
 
         if (_doStroke) {
+          const stitches = [];
+          
 
           strokeStitches.push(...convertLineToStitches(x, y, x + w, y));
           strokeStitches.push(...convertLineToStitches(x + w, y, x + w, y + h));
@@ -773,7 +795,7 @@ let _DEBUG = false;
    * @param {number} y2 - Ending y-coordinate
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
-  function straightLineStitching(x1, y1, x2, y2) {
+  function straightLineStitching(x1, y1, x2, y2, stitchSettings = _embrSettings) {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
@@ -785,11 +807,11 @@ let _DEBUG = false;
     });
 
     // If distance is less than minimum stitch length, we're done
-    if (distance < _embrSettings.minStitchLength) {
+    if (distance < stitchSettings.minStitchLength) {
       return stitches;
     }
 
-    let baseStitchLength = _embrSettings.stitchLength;
+    let baseStitchLength = stitchSettings.stitchLength;
     let numStitches = Math.floor(distance / baseStitchLength);
     let currentDistance = 0;
 
@@ -798,8 +820,8 @@ let _DEBUG = false;
     for (let i = 0; i < numStitches; i++) {
       // Add noise to stitch length if specified
       let stitchLength = baseStitchLength;
-      if (_embrSettings.resampleNoise > 0) {
-        let noise = (Math.random() * 2 - 1) * _embrSettings.resampleNoise;
+      if (stitchSettings.resampleNoise > 0) {
+        let noise = (Math.random() * 2 - 1) * stitchSettings.resampleNoise;
         stitchLength *= 1 + noise;
       }
 
@@ -815,7 +837,7 @@ let _DEBUG = false;
 
     // Add final stitch at end point if needed
     let remainingDistance = distance - currentDistance;
-    if (remainingDistance > _embrSettings.minStitchLength || numStitches === 0) {
+    if (remainingDistance > stitchSettings.minStitchLength || numStitches === 0) {
       stitches.push({
         x: x2 * 10,
         y: y2 * 10,
@@ -985,7 +1007,7 @@ let _DEBUG = false;
   }
 
   // Implement the new stitching methods
-  function multiLineStitching(x1, y1, x2, y2, width, stitchLength) {
+  function multiLineStitching(x1, y1, x2, y2, width, stitchSettings = _embrSettings) {
     // Calculate the number of lines based on stroke weight
     //console.log("width", width);
     //console.log("stitchLength", stitchLength);
@@ -1025,10 +1047,10 @@ let _DEBUG = false;
       // For odd lines, go from end to start (back and forth pattern)
 
       if (i % 2 === 0) {
-        const lineStitches = straightLineStitching(startX, startY, endX, endY);
+        const lineStitches = straightLineStitching(startX, startY, endX, endY, stitchSettings);
         stitches.push(...lineStitches);
       } else {
-        const lineStitches = straightLineStitching(endX, endY, startX, startY);
+        const lineStitches = straightLineStitching(endX, endY, startX, startY, stitchSettings);
         stitches.push(...lineStitches);
       }
     }
@@ -1036,7 +1058,7 @@ let _DEBUG = false;
     return stitches;
   }
 
-  function sashikoStitching(x1, y1, x2, y2, stitchWidth, stitchLength) {
+  function sashikoStitching(x1, y1, x2, y2, stitchWidth, stitchSettings = _embrSettings) {
     // Sashiko is a traditional Japanese embroidery technique with evenly spaced running stitches
     // This implementation creates a pattern of dashed lines
     const stitches = [];
@@ -1058,7 +1080,7 @@ let _DEBUG = false;
     const spacing = stitchWidth / (numLines - 1);
 
     // Sashiko stitch length (longer than regular stitches)
-    const sashikoStitchLength = stitchLength * 2;
+    const sashikoStitchLength = stitchSettings.stitchLength * 2;
     const multilineLength = sashikoStitchLength * 0.5;
     const straightLength = sashikoStitchLength * 0.5;
 
@@ -1076,15 +1098,15 @@ let _DEBUG = false;
       const segEndY = y1 + dirY * endDist;
 
       if (isMultiline) {
-        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchWidth, stitchLength);
+        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchWidth, stitchSettings);
         stitches.push(...lineStitches);
       } else {
         // Create single straight line for this segment
-        const lineStitches = straightLineStitching(segStartX, segStartY, segEndX, segEndY);
+        const lineStitches = straightLineStitching(segStartX, segStartY, segEndX, segEndY, stitchSettings);
         stitches.push(...lineStitches);
       }
 
-      // Move to next segment
+      // Move to next segment)
       currentDist = endDist;
       isMultiline = !isMultiline; // Toggle between multiline and straight line
     }
@@ -1459,11 +1481,14 @@ let _DEBUG = false;
    * @param {number} h - Height of the rectangle
    * @returns {Array<{x: number, y: number}>} Array of stitch points
    */
-  function createTatamiFill(x, y, w, h) {
+  function createTatamiFill(x, y, w, h, stitchSettings = _fillSettings) {
     const stitches = [];
-    const angle = _fillSettings.angle;
-    const spacing = _fillSettings.spacing;
-    const tieDistance = _fillSettings.tieDistance;
+    const angle = stitchSettings.angle;
+    const stitchLength = stitchSettings.stitchLength;
+    const stitchWidth = stitchSettings.stitchWidth;
+    const minStitchLength = stitchSettings.minStitchLength;
+    const resampleNoise = stitchSettings.resampleNoise;
+    const tieDistance = stitchSettings.tieDistance;
 
     // Convert rectangle to rotated coordinates
     const cos_angle = Math.cos(angle);
@@ -1490,12 +1515,12 @@ let _DEBUG = false;
     const maxY = Math.max(...rotated.map((p) => p.y));
 
     // Calculate number of rows needed
-    const numRows = Math.ceil((maxY - minY) / spacing);
+    const numRows = Math.ceil((maxY - minY) / stitchWidth);
 
     // Generate rows of stitches
     let forward = true;
     for (let i = 0; i <= numRows; i++) {
-      const rowY = minY + i * spacing;
+      const rowY = minY + i * stitchWidth;
 
       // Calculate row endpoints
       const rowX1 = forward ? minX : maxX;
@@ -1504,8 +1529,7 @@ let _DEBUG = false;
       // Calculate number of stitches in this row
       const rowLength = Math.abs(rowX2 - rowX1);
 
-      _p5Instance.stroke(_fillSettings.color.r, _fillSettings.color.g, _fillSettings.color.b);
-      stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY));
+      stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY, stitchSettings));
 
       forward = !forward; // Alternate direction for next row
     }
