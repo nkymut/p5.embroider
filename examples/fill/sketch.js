@@ -22,13 +22,13 @@ function setup() {
 
   let exportDstButton = createButton("Export DST");
   exportDstButton.mousePressed(() => {
-    exportEmbroidery("boxtest.dst");
+    exportEmbroidery("filltest.dst");
   });
   exportDstButton.position(0, height + 30);
 
   let exportGcodeButton = createButton("Export Gcode");
   exportGcodeButton.mousePressed(() => {
-    exportGcode("boxtest.gcode");
+    exportGcode("filltest.gcode");
   });
   exportGcodeButton.position(90, height + 30);
 

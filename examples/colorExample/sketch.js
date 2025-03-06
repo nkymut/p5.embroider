@@ -11,16 +11,19 @@ function setup() {
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     _drawMode = "stitch";
+    redraw();
   });
 
   let drawModeLineButton = createButton("Draw Mode: Realistic");
   drawModeLineButton.mousePressed(() => {
     _drawMode = "realistic";
+    redraw();
   });
 
   let drawModeP5Button = createButton("Draw Mode: p5");
   drawModeP5Button.mousePressed(() => {
     _drawMode = "p5";
+    redraw();
   });
 
   let exportDstButton = createButton("Export DST");
@@ -32,8 +35,11 @@ function setup() {
   let exportGcodeButton = createButton("Export Gcode");
   exportGcodeButton.mousePressed(() => {
     exportGcode("colorExample.gcode");
+
   });
   exportGcodeButton.position(90, height + 60);
+
+  noLoop();
 }
 
 function draw() {
