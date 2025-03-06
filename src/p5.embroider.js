@@ -26,7 +26,7 @@ let _DEBUG = false;
   let _fillThreadIndex = 0;
 
   // Embroidery settings
-  const _embrSettings = {
+  const _embroiderySettings = {
     stitchLength: 3, // mm
     stitchWidth: 0,
     minStitchLength: 1, // mm
@@ -68,6 +68,15 @@ let _DEBUG = false;
     tieDistance: 15, // Distance between tie-down stitches in mm
     alternateAngle: false, // Whether to alternate angles between shapes
     color: { r: 0, g: 0, b: 0 },
+  };
+
+  // Add a stroke settings object to match the other settings objects
+  let _strokeSettings = {
+    stitchLength: 3, // mm
+    stitchWidth: 0.2,
+    minStitchLength: 1, // mm
+    resampleNoise: 0, // 0-1 range
+    strokeWeight: 0, // Width of the embroidery line
   };
 
   /**
@@ -393,7 +402,7 @@ let _DEBUG = false;
   }
 
   /**
-   * Overrides p5.js line() function to record embroidery stitches.
+   * Overrides p5.js strokeWeight() function to record embroidery stitches.
    * @private
    */
   let _originalStrokeWeightFunc;
@@ -401,8 +410,10 @@ let _DEBUG = false;
     _originalStrokeWeightFunc = window.strokeWeight;
     window.strokeWeight = function (weight) {
       if (_recording) {
-        _embrSettings.stitchWidth = weight;
-        //_stitchData.threads[_currentThreadIndex].weight = weight;
+        // Set the stroke weight in the stroke settings
+        _strokeSettings.strokeWeight = weight;
+        _embroiderySettings.stitchWidth = weight;
+        
         _originalStrokeWeightFunc.call(this, mmToPixel(weight));
       } else {
         _originalStrokeWeightFunc.apply(this, arguments);
@@ -425,7 +436,7 @@ let _DEBUG = false;
 
         // Generate stitch points for the ellipse
         let stitches = [];
-        let numSteps = Math.max(Math.ceil((Math.PI * (radiusX + radiusY)) / _embrSettings.stitchLength), 12);
+        let numSteps = Math.max(Math.ceil((Math.PI * (radiusX + radiusY)) / _embroiderySettings.stitchLength), 12);
 
         // Generate points along the ellipse, starting at 0 degrees (right side of ellipse)
         for (let i = 0; i <= numSteps; i++) {
@@ -465,7 +476,7 @@ let _DEBUG = false;
           // Add a jump stitch to the first point of the ellipse if needed
           if (
             Math.sqrt(Math.pow(stitches[0].x - currentX, 2) + Math.pow(stitches[0].y - currentY, 2)) >
-            _embrSettings.jumpThreshold
+            _embroiderySettings.jumpThreshold
           ) {
             _stitchData.threads[_strokeThreadIndex].runs.push([
               {
@@ -480,8 +491,8 @@ let _DEBUG = false;
             ]);
           }
 
-          if (_embrSettings.stitchWidth > 0) {
-            stitches = zigzagStitches(stitches, _embrSettings.stitchWidth);
+          if (_embroiderySettings.stitchWidth > 0) {
+            stitches = zigzagStitches(stitches, _embroiderySettings.stitchWidth);
           }
 
           // Add the ellipse stitches
@@ -643,9 +654,9 @@ let _DEBUG = false;
    *
    */
   p5embroidery.setStitch = function (minLength, desiredLength, noise) {
-    _embrSettings.minStitchLength = Math.max(0, minLength);
-    _embrSettings.stitchLength = Math.max(0.1, desiredLength);
-    _embrSettings.resampleNoise = Math.min(1, Math.max(0, noise));
+    _embroiderySettings.minStitchLength = Math.max(0, minLength);
+    _embroiderySettings.stitchLength = Math.max(0.1, desiredLength);
+    _embroiderySettings.resampleNoise = Math.min(1, Math.max(0, noise));
   };
 
   /**
@@ -676,9 +687,10 @@ let _DEBUG = false;
    * @param {number} y1 - Starting y-coordinate
    * @param {number} x2 - Ending x-coordinate
    * @param {number} y2 - Ending y-coordinate
+   * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
-  function convertLineToStitches(x1, y1, x2, y2) {
+  function convertLineToStitches(x1, y1, x2, y2, stitchSettings = _embroiderySettings) {
     if (_DEBUG)
       console.log("Converting line to stitches (before offset):", {
         from: { x: x1, y: y1 },
@@ -700,26 +712,24 @@ let _DEBUG = false;
         dx,
         dy,
         distance,
-        minStitchLength: _embrSettings.minStitchLength,
-        stitchLength: _embrSettings.stitchLength,
-        stitchWidth: _embrSettings.stitchWidth,
+        minStitchLength: stitchSettings.minStitchLength,
+        stitchLength: stitchSettings.stitchLength,
+        strokeWeight: stitchSettings.strokeWeight,
       });
 
-    if (_embrSettings.stitchWidth > 0) {
-      //return lineZigzagStitching(x1, y1, x2, y2, distance);
-
+    if (stitchSettings.strokeWeight > 0) {
       switch (_currentStrokeMode) {
         case STROKE_MODE.ZIGZAG:
-          return lineZigzagStitching(x1, y1, x2, y2, distance);
+          return lineZigzagStitching(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.LINES:
-          return multiLineStitching(x1, y1, x2, y2, _embrSettings.stitchWidth, _embrSettings.stitchLength);
+          return multiLineStitching(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SASHIKO:
-          return sashikoStitching(x1, y1, x2, y2, _embrSettings.stitchWidth, _embrSettings.stitchLength);
+          return sashikoStitching(x1, y1, x2, y2, stitchSettings);
         default:
-          return straightLineStitching(x1, y1, x2, y2, distance);
+          return straightLineStitching(x1, y1, x2, y2, stitchSettings);
       }
     } else {
-      return straightLineStitching(x1, y1, x2, y2, distance);
+      return straightLineStitching(x1, y1, x2, y2, stitchSettings);
     }
   }
 
@@ -730,23 +740,24 @@ let _DEBUG = false;
    * @param {number} y1 - Starting y-coordinate
    * @param {number} x2 - Ending x-coordinate
    * @param {number} y2 - Ending y-coordinate
-   * @param {number} distance - Distance between points
+   * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
-  function lineZigzagStitching(x1, y1, x2, y2, distance) {
+  function lineZigzagStitching(x1, y1, x2, y2, stitchSettings) {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
+    let distance = Math.sqrt(dx * dx + dy * dy);
 
     // Calculate perpendicular vector for zigzag
     let perpX = -dy / distance;
     let perpY = dx / distance;
 
-    // Determine the width to use (either stitch width or default)
-    let width = _embrSettings.stitchWidth > 0 ? _embrSettings.stitchWidth : 2;
+    // Use strokeWeight for the width of the zigzag
+    let width = stitchSettings.strokeWeight > 0 ? stitchSettings.strokeWeight : 2;
 
     // Calculate number of zigzag segments
-    let zigzagDistance = _embrSettings.stitchLength;
+    let zigzagDistance = stitchSettings.stitchLength;
     let numZigzags = Math.max(2, Math.floor(distance / zigzagDistance));
 
     // Create zigzag pattern
@@ -795,7 +806,7 @@ let _DEBUG = false;
    * @param {number} y2 - Ending y-coordinate
    * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
    */
-  function straightLineStitching(x1, y1, x2, y2, stitchSettings = _embrSettings) {
+  function straightLineStitching(x1, y1, x2, y2, stitchSettings = _embroiderySettings) {
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
@@ -955,7 +966,7 @@ let _DEBUG = false;
    * @param {Number} [density=_embrSettings.stitchLength] - Distance between zigzag points in mm
    * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in 0.1mm units
    */
-  function createZigzagFromPath(pathPoints, width, density = _embrSettings.stitchLength) {
+  function createZigzagFromPath(pathPoints, width, density = _embroiderySettings.stitchLength) {
     if (!pathPoints || pathPoints.length < 2) {
       console.warn("Cannot create zigzag from insufficient path points");
       return [];
@@ -1007,11 +1018,10 @@ let _DEBUG = false;
   }
 
   // Implement the new stitching methods
-  function multiLineStitching(x1, y1, x2, y2, width, stitchSettings = _embrSettings) {
+  function multiLineStitching(x1, y1, x2, y2, stitchSettings) {
     // Calculate the number of lines based on stroke weight
-    //console.log("width", width);
-    //console.log("stitchLength", stitchLength);
-    const threadWeight = _stitchData.threads[_strokeThreadIndex]?.weight || 0.2;
+    const threadWeight = stitchSettings.stitchWidth || 0.2;
+    const width = stitchSettings.strokeWeight || 2;
     const numLines = Math.max(2, Math.floor(width / threadWeight));
     const stitches = [];
     const distance = _p5Instance.dist(x1, y1, x2, y2);
@@ -1058,12 +1068,13 @@ let _DEBUG = false;
     return stitches;
   }
 
-  function sashikoStitching(x1, y1, x2, y2, stitchWidth, stitchSettings = _embrSettings) {
+  function sashikoStitching(x1, y1, x2, y2, stitchSettings) {
     // Sashiko is a traditional Japanese embroidery technique with evenly spaced running stitches
     // This implementation creates a pattern of dashed lines
     const stitches = [];
-    const threadWeight = _stitchData.threads[_strokeThreadIndex]?.weight || 0.2;
-    const numLines = Math.max(2, Math.floor(stitchWidth / threadWeight));
+    const threadWeight = stitchSettings.stitchWidth || 0.2;
+    const width = stitchSettings.strokeWeight || 2;
+    const numLines = Math.max(2, Math.floor(width / threadWeight));
 
     // Calculate direction and perpendicular vectors
     const dx = x2 - x1;
@@ -1077,7 +1088,7 @@ let _DEBUG = false;
     const perpY = dirX;
 
     // Calculate spacing between lines
-    const spacing = stitchWidth / (numLines - 1);
+    const spacing = width / (numLines - 1);
 
     // Sashiko stitch length (longer than regular stitches)
     const sashikoStitchLength = stitchSettings.stitchLength * 2;
@@ -1098,7 +1109,7 @@ let _DEBUG = false;
       const segEndY = y1 + dirY * endDist;
 
       if (isMultiline) {
-        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchWidth, stitchSettings);
+        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchSettings);
         stitches.push(...lineStitches);
       } else {
         // Create single straight line for this segment
