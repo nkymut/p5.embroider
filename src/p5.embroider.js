@@ -17,11 +17,7 @@ let _DEBUG = false;
     pixelsPerUnit: 1,
     stitchCount: 0,
   };
-  let _stitchPath = [];
-  let _gcodeWriter;
-  let _dstWriter;
 
-  let _currentThreadIndex = 0;
   let _strokeThreadIndex = 0;
   let _fillThreadIndex = 0;
 
@@ -138,7 +134,7 @@ let _DEBUG = false;
     if (settings.resampleNoise !== undefined) {
       _fillSettings.resampleNoise = settings.resampleNoise;
     }
-    
+
     if (settings.angle !== undefined) {
       _fillSettings.angle = (settings.angle * Math.PI) / 180; // Convert to radians
     }
@@ -413,7 +409,7 @@ let _DEBUG = false;
         // Set the stroke weight in the stroke settings
         _strokeSettings.strokeWeight = weight;
         _embroiderySettings.stitchWidth = weight;
-        
+
         _originalStrokeWeightFunc.call(this, mmToPixel(weight));
       } else {
         _originalStrokeWeightFunc.apply(this, arguments);
@@ -444,16 +440,16 @@ let _DEBUG = false;
           let stitchX = x + Math.cos(angle) * radiusX;
           let stitchY = y + Math.sin(angle) * radiusY;
 
-          // Store in tenths of mm (internal format)
+          // Store in mm (internal format)
           stitches.push({
-            x: stitchX * 10,
-            y: stitchY * 10,
+            x: stitchX,
+            y: stitchY,
           });
         }
 
         // Record the stitches if we're recording
         if (_recording) {
-          // Get the current position (in tenths of mm)
+          // Get the current position (in mm)
           let currentX, currentY;
           if (
             _stitchData.threads[_strokeThreadIndex].runs.length === 0 ||
@@ -462,10 +458,10 @@ let _DEBUG = false;
           ) {
             // If there are no runs or the last run is empty, use the first point on the ellipse
             // (at 0 degrees) as the starting point, not the center
-            currentX = (x + radiusX) * 10; // Point at 0 degrees (right side of ellipse)
-            currentY = y * 10; // Convert to tenths of mm
+            currentX = x + radiusX; // Point at 0 degrees (right side of ellipse)
+            currentY = y; // Already in mm
           } else {
-            // Otherwise, use the last stitch position (already in tenths of mm)
+            // Otherwise, use the last stitch position (already in mm)
             let lastRun =
               _stitchData.threads[_strokeThreadIndex].runs[_stitchData.threads[_strokeThreadIndex].runs.length - 1];
             let lastStitch = lastRun[lastRun.length - 1];
@@ -523,8 +519,8 @@ let _DEBUG = false;
         // For point, we just add a single stitch
         let stitches = [
           {
-            x: x * 10,
-            y: y * 10,
+            x: x,
+            y: y,
           },
         ];
         _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
@@ -572,12 +568,11 @@ let _DEBUG = false;
 
         if (_doStroke) {
           const stitches = [];
-          
 
-          strokeStitches.push(...convertLineToStitches(x, y, x + w, y));
-          strokeStitches.push(...convertLineToStitches(x + w, y, x + w, y + h));
-          strokeStitches.push(...convertLineToStitches(x + w, y + h, x, y + h));
-          strokeStitches.push(...convertLineToStitches(x, y + h, x, y));
+          strokeStitches.push(...convertLineToStitches(x, y, x + w, y, _strokeSettings));
+          strokeStitches.push(...convertLineToStitches(x + w, y, x + w, y + h, _strokeSettings));
+          strokeStitches.push(...convertLineToStitches(x + w, y + h, x, y + h, _strokeSettings));
+          strokeStitches.push(...convertLineToStitches(x, y + h, x, y, _strokeSettings));
 
           //stitches.push(...strokeStitches);
           _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
@@ -660,6 +655,30 @@ let _DEBUG = false;
   };
 
   /**
+   * Sets the stroke settings for embroidery.
+   * @method setStrokeSettings
+   * @for p5
+   * @param {Object} settings - The settings for the stroke
+   */
+
+  p5embroidery.setStrokeSettings = function (settings) {
+    // Merge default settings with provided settings
+    Object.assign(_strokeSettings, settings);
+  };
+
+  /**
+   * Sets the fill settings for embroidery.
+   * @method setFillSettings
+   * @for p5
+   * @param {Object} settings - The settings for the fill
+   */
+
+  p5embroidery.setFillSettings = function (settings) {
+    // Merge default settings with provided settings
+    Object.assign(_fillSettings, settings);
+  };
+
+  /**
    * Sets the draw mode for embroidery.
    * @method setDrawMode
    * @for p5
@@ -683,12 +702,12 @@ let _DEBUG = false;
   /**
    * Converts a line segment into a series of stitches.
    * @private
-   * @param {number} x1 - Starting x-coordinate
-   * @param {number} y1 - Starting y-coordinate
-   * @param {number} x2 - Ending x-coordinate
-   * @param {number} y2 - Ending y-coordinate
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
    * @param {Object} stitchSettings - Settings for the stitches
-   * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function convertLineToStitches(x1, y1, x2, y2, stitchSettings = _embroiderySettings) {
     if (_DEBUG)
@@ -736,12 +755,12 @@ let _DEBUG = false;
   /**
    * Creates zigzag stitches
    * @private
-   * @param {number} x1 - Starting x-coordinate
-   * @param {number} y1 - Starting y-coordinate
-   * @param {number} x2 - Ending x-coordinate
-   * @param {number} y2 - Ending y-coordinate
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
    * @param {Object} stitchSettings - Settings for the stitches
-   * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function lineZigzagStitching(x1, y1, x2, y2, stitchSettings) {
     let stitches = [];
@@ -766,8 +785,8 @@ let _DEBUG = false;
 
     // Add first point
     stitches.push({
-      x: (x1 + perpX * halfWidth * side) * 10,
-      y: (y1 + perpY * halfWidth * side) * 10,
+      x: x1 + perpX * halfWidth * side,
+      y: y1 + perpY * halfWidth * side,
     });
 
     // Add zigzag points
@@ -779,8 +798,8 @@ let _DEBUG = false;
       let pointY = y1 + dy * t + perpY * halfWidth * side;
 
       stitches.push({
-        x: pointX * 10,
-        y: pointY * 10,
+        x: pointX,
+        y: pointY,
       });
     }
 
@@ -788,8 +807,8 @@ let _DEBUG = false;
     if (side !== -1) {
       // If we didn't end on the opposite side
       stitches.push({
-        x: (x2 + perpX * halfWidth * -1) * 10, // End on opposite side
-        y: (y2 + perpY * halfWidth * -1) * 10,
+        x: x2 + perpX * halfWidth * -1, // End on opposite side
+        y: y2 + perpY * halfWidth * -1,
       });
     }
 
@@ -800,11 +819,11 @@ let _DEBUG = false;
   /**
    * Creates straight line stitches (直線縫い - Chokusen Nui)
    * @private
-   * @param {number} x1 - Starting x-coordinate
-   * @param {number} y1 - Starting y-coordinate
-   * @param {number} x2 - Ending x-coordinate
-   * @param {number} y2 - Ending y-coordinate
-   * @returns {Array<{x: number, y: number}>} Array of stitch points in 0.1mm units
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function straightLineStitching(x1, y1, x2, y2, stitchSettings = _embroiderySettings) {
     let stitches = [];
@@ -813,8 +832,8 @@ let _DEBUG = false;
     const distance = _p5Instance.dist(x1, y1, x2, y2);
     // Add first stitch at starting point
     stitches.push({
-      x: x1 * 10,
-      y: y1 * 10,
+      x: x1,
+      y: y1,
     });
 
     // If distance is less than minimum stitch length, we're done
@@ -841,8 +860,8 @@ let _DEBUG = false;
       let t = Math.min(currentDistance / distance, 1);
       //console.log("t",t)
       stitches.push({
-        x: (x1 + dx * t) * 10,
-        y: (y1 + dy * t) * 10,
+        x: x1 + dx * t,
+        y: y1 + dy * t,
       });
     }
 
@@ -850,8 +869,8 @@ let _DEBUG = false;
     let remainingDistance = distance - currentDistance;
     if (remainingDistance > stitchSettings.minStitchLength || numStitches === 0) {
       stitches.push({
-        x: x2 * 10,
-        y: y2 * 10,
+        x: x2,
+        y: y2,
       });
     }
 
@@ -863,24 +882,9 @@ let _DEBUG = false;
    * Converts an array of stitches into a zigzag pattern
    * @method zigzagStitches
    * @for p5
-   * @param {Array<{x: number, y: number}>} stitches - Array of stitch points in 0.1mm units
+   * @param {Array<{x: number, y: number}>} stitches - Array of stitch points in mm
    * @param {Number} width - Width of the zigzag in mm
-   * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in 0.1mm units
-   * @example
-   *
-   *
-   * function setup() {
-   *   createCanvas(400, 400);
-   *   beginRecord(this);
-   *   // Create a straight line
-   *   let straightStitches = straightLineStitching(10, 10, 50, 10, 40);
-   *   // Convert to zigzag with 3mm width
-   *   let zigzagStitches = zigzagStitches(straightStitches, 3);
-   *   // Add to embroidery
-   *   _stitchData.threads[_currentThreadIndex].runs.push(zigzagStitches);
-   * }
-   *
-   *
+   * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in mm
    */
   function zigzagStitches(stitches, width) {
     if (!stitches || stitches.length < 2) {
@@ -888,20 +892,14 @@ let _DEBUG = false;
       return stitches;
     }
 
-    // Convert from 0.1mm units to mm for calculations
-    const mmStitches = stitches.map((stitch) => ({
-      x: stitch.x / 10,
-      y: stitch.y / 10,
-    }));
-
     const zigzagResult = [];
     const halfWidth = width / 2;
     let side = 1; // Start with one side
 
     // Process each segment between consecutive points
-    for (let i = 0; i < mmStitches.length - 1; i++) {
-      const p1 = mmStitches[i];
-      const p2 = mmStitches[i + 1];
+    for (let i = 0; i < stitches.length - 1; i++) {
+      const p1 = stitches[i];
+      const p2 = stitches[i + 1];
 
       // Calculate segment direction vector
       const dx = p2.x - p1.x;
@@ -918,23 +916,23 @@ let _DEBUG = false;
       // If this is the first point, add it with offset
       if (i === 0) {
         zigzagResult.push({
-          x: (p1.x + perpX * halfWidth * side) * 10,
-          y: (p1.y + perpY * halfWidth * side) * 10,
+          x: p1.x + perpX * halfWidth * side,
+          y: p1.y + perpY * halfWidth * side,
         });
       }
 
       // Add the second point with opposite offset
       side = -side;
       zigzagResult.push({
-        x: (p2.x + perpX * halfWidth * side) * 10,
-        y: (p2.y + perpY * halfWidth * side) * 10,
+        x: p2.x + perpX * halfWidth * side,
+        y: p2.y + perpY * halfWidth * side,
       });
     }
 
     // If we have an odd number of points, add the last point with opposite offset
-    if (mmStitches.length % 2 === 0) {
-      const lastPoint = mmStitches[mmStitches.length - 1];
-      const secondLastPoint = mmStitches[mmStitches.length - 2];
+    if (stitches.length % 2 === 0) {
+      const lastPoint = stitches[stitches.length - 1];
+      const secondLastPoint = stitches[stitches.length - 2];
 
       // Calculate direction for the last segment
       const dx = lastPoint.x - secondLastPoint.x;
@@ -948,72 +946,12 @@ let _DEBUG = false;
       // Add the last point with opposite offset
       side = -side;
       zigzagResult.push({
-        x: (lastPoint.x + perpX * halfWidth * side) * 10,
-        y: (lastPoint.y + perpY * halfWidth * side) * 10,
+        x: lastPoint.x + perpX * halfWidth * side,
+        y: lastPoint.y + perpY * halfWidth * side,
       });
     }
 
     if (_DEBUG) console.log("Generated zigzag from existing stitches:", zigzagResult);
-    return zigzagResult;
-  }
-
-  /**
-   * Creates a more advanced zigzag pattern with control over density
-   * @method createZigzagFromPath
-   * @for p5
-   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
-   * @param {Number} width - Width of the zigzag in mm
-   * @param {Number} [density=_embrSettings.stitchLength] - Distance between zigzag points in mm
-   * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in 0.1mm units
-   */
-  function createZigzagFromPath(pathPoints, width, density = _embroiderySettings.stitchLength) {
-    if (!pathPoints || pathPoints.length < 2) {
-      console.warn("Cannot create zigzag from insufficient path points");
-      return [];
-    }
-
-    const zigzagResult = [];
-    const halfWidth = width / 2;
-    let side = 1; // Start with one side
-
-    // Process each segment between consecutive points
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const p1 = pathPoints[i];
-      const p2 = pathPoints[i + 1];
-
-      // Calculate segment direction vector
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Skip if points are too close
-      if (distance < 0.1) continue;
-
-      // Calculate perpendicular vector
-      const perpX = -dy / distance;
-      const perpY = dx / distance;
-
-      // Calculate number of zigzag points for this segment
-      const numPoints = Math.max(2, Math.ceil(distance / density));
-
-      // Add zigzag points along the segment
-      for (let j = 0; j <= numPoints; j++) {
-        const t = j / numPoints;
-
-        // Alternate sides for zigzag effect
-        if (j > 0) side = -side;
-
-        const pointX = p1.x + dx * t + perpX * halfWidth * side;
-        const pointY = p1.y + dy * t + perpY * halfWidth * side;
-
-        zigzagResult.push({
-          x: pointX * 10,
-          y: pointY * 10,
-        });
-      }
-    }
-
-    if (_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
     return zigzagResult;
   }
 
@@ -1187,6 +1125,7 @@ let _DEBUG = false;
           points.push({
             x: stitch.x,
             y: stitch.y,
+            command: stitch.command,
           });
         }
       }
@@ -1194,9 +1133,11 @@ let _DEBUG = false;
 
     const gcodeWriter = new GCodeWriter();
     gcodeWriter.addComment("Embroidery Pattern");
-    gcodeWriter.move(points[0].x, points[0].y);
-    for (const point of points) {
-      gcodeWriter.move(point.x, point.y);
+    if (points.length > 0) {
+      gcodeWriter.move(points[0].x, points[0].y);
+      for (const point of points) {
+        gcodeWriter.move(point.x, point.y);
+      }
     }
     gcodeWriter.saveGcode(points, "EmbroideryPattern", filename);
   };
@@ -1256,11 +1197,15 @@ let _DEBUG = false;
       for (const run of thread.runs) {
         // Check if this is a thread trim command
         if (run.length === 1 && run[0].command === "trim") {
-          if (_DEBUG) console.log("Trim command at:", run[0].x, run[0].y);
+          if (_DEBUG) {
+            console.log("Trim command at:", run[0].x, run[0].y);
+            console.log("Canvas size:", _stitchData.width, _stitchData.height);
+          }
 
+          // Convert from mm to 0.1mm for DST format
           points.push({
-            x: run[0].x,
-            y: run[0].y,
+            x: run[0].x * 10, // Convert from mm to 0.1mm for DST format
+            y: run[0].y * 10, // Convert from mm to 0.1mm for DST format
             jump: true,
             trim: true,
           });
@@ -1272,12 +1217,16 @@ let _DEBUG = false;
         for (const stitch of run) {
           if (_DEBUG)
             console.log("Stitch point:", {
-              original: { x: stitch.x / 10, y: stitch.y / 10 },
-              dst: { x: stitch.x, y: stitch.y },
+              mm: { x: stitch.x, y: stitch.y },
+              dst: { x: stitch.x * 10, y: stitch.y * 10 }, // Convert to DST units (0.1mm) for logging
             });
+
+          // Convert from mm to 0.1mm for DST format
           points.push({
-            x: stitch.x,
-            y: stitch.y,
+            x: stitch.x * 10, // Convert to DST units (0.1mm)
+            y: stitch.y * 10, // Convert to DST units (0.1mm)
+            command: stitch.command,
+            jump: stitch.command === "jump",
           });
         }
       }
@@ -1289,9 +1238,32 @@ let _DEBUG = false;
       return;
     }
 
-    if (_DEBUG) console.log("=== Final Points Array ===");
-    if (_DEBUG) console.log("First point:", points[0]);
-    if (_DEBUG) console.log("Last point:", points[points.length - 1]);
+    if (_DEBUG) {
+      console.log("=== Final Points Array ===");
+      console.log("Total points:", points.length);
+      console.log("First point:", points[0]);
+      console.log("Last point:", points[points.length - 1]);
+
+      // Log bounding box
+      let minX = Infinity,
+        maxX = -Infinity,
+        minY = Infinity,
+        maxY = -Infinity;
+      for (const point of points) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+      console.log("Bounding box (0.1mm):", {
+        minX,
+        maxX,
+        minY,
+        maxY,
+        width: maxX - minX,
+        height: maxY - minY,
+      });
+    }
 
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
   };
@@ -1331,12 +1303,14 @@ let _DEBUG = false;
         return; // No stitches to trim
       }
 
-      // Get the last stitch position from the last run
+      // Get the last stitch position from the last run (in mm)
       let lastStitchIndex = lastRun.length - 1;
       let currentX = lastRun[lastStitchIndex].x;
       let currentY = lastRun[lastStitchIndex].y;
 
-      // Add a special point to indicate thread trim
+      if (_DEBUG) console.log("Adding trim at position:", currentX, currentY);
+
+      // Add a special point to indicate thread trim (in mm)
       _stitchData.threads[threadIndex].runs.push([
         {
           x: currentX,
@@ -1350,12 +1324,12 @@ let _DEBUG = false;
         _p5Instance.push();
         _originalFillFunc.call(_p5Instance, 0);
         let lineLength = 10;
-        let endX = mmToPixel(currentX / 10) + lineLength;
-        let endY = mmToPixel(currentY / 10) - lineLength;
+        let endX = mmToPixel(currentX) + lineLength;
+        let endY = mmToPixel(currentY) - lineLength;
         _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // red for line
         _originalStrokeWeightFunc.call(_p5Instance, 0.5);
 
-        _originalLineFunc.call(_p5Instance, mmToPixel(currentX / 10), mmToPixel(currentY / 10), endX, endY);
+        _originalLineFunc.call(_p5Instance, mmToPixel(currentX), mmToPixel(currentY), endX, endY);
         // Place scissors at end of line
         _p5Instance.text("✂️", endX, endY);
         _p5Instance.pop();
@@ -1365,19 +1339,19 @@ let _DEBUG = false;
 
   /**
    * Draws stitches according to the current draw mode
-   * @param {Array} stitches - Array of stitch objects with x and y coordinates
+   * @param {Array} stitches - Array of stitch objects with x and y coordinates in mm
    */
   function drawStitches(stitches, threadIndex) {
-    let prevX = mmToPixel(stitches[0].x / 10);
-    let prevY = mmToPixel(stitches[0].y / 10);
+    let prevX = mmToPixel(stitches[0].x);
+    let prevY = mmToPixel(stitches[0].y);
 
     if (_drawMode === "stitch") {
       // Draw stitch lines
       _p5Instance.push();
 
       for (let i = 1; i < stitches.length; i++) {
-        let currentX = mmToPixel(stitches[i].x / 10);
-        let currentY = mmToPixel(stitches[i].y / 10);
+        let currentX = mmToPixel(stitches[i].x);
+        let currentY = mmToPixel(stitches[i].y);
 
         if (i === 0) {
           // Draw small dots at stitch points
@@ -1412,8 +1386,8 @@ let _DEBUG = false;
       // Draw background dots for thread ends
 
       for (let i = 1; i < stitches.length; i++) {
-        let currentX = mmToPixel(stitches[i].x / 10);
-        let currentY = mmToPixel(stitches[i].y / 10);
+        let currentX = mmToPixel(stitches[i].x);
+        let currentY = mmToPixel(stitches[i].y);
         _p5Instance.noStroke();
         _originalFillFunc.call(_p5Instance, 15); // White background dots
 
@@ -1455,30 +1429,12 @@ let _DEBUG = false;
 
       _p5Instance.pop();
     }
-    // else if (_drawMode === "p5") {
-    //   // For p5 mode, we need to draw a line from the starting point to each stitch
-    //   if (stitches.length > 0) {
-    //     // prevX and prevY are already in mm, but we need to convert them to pixels
-    //     // For each stitch, draw a line from the previous point
-    //     for (let i = 1; i < stitches.length; i++) {
-    //       // Convert stitch coordinates from tenths of mm to pixels
-    //       const currentX = mmToPixel(stitches[i].x / 10);
-    //       const currentY = mmToPixel(stitches[i].y / 10);
-
-    //       _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
-
-    //       // Update the previous point
-    //       prevX = currentX;
-    //       prevY = currentY;
-    //     }
-    //   }
-    // }
 
     // Return the last stitch position for chaining
     return stitches.length > 0
       ? {
-          x: stitches[stitches.length - 1].x / 10,
-          y: stitches[stitches.length - 1].y / 10,
+          x: stitches[stitches.length - 1].x,
+          y: stitches[stitches.length - 1].y,
         }
       : { x: startX, y: startY };
   }
@@ -1486,11 +1442,12 @@ let _DEBUG = false;
   /**
    * Creates a tatami fill pattern for a rectangular area.
    * @private
-   * @param {number} x - X coordinate of the rectangle
-   * @param {number} y - Y coordinate of the rectangle
-   * @param {number} w - Width of the rectangle
-   * @param {number} h - Height of the rectangle
-   * @returns {Array<{x: number, y: number}>} Array of stitch points
+   * @param {number} x - X coordinate of the rectangle in mm
+   * @param {number} y - Y coordinate of the rectangle in mm
+   * @param {number} w - Width of the rectangle in mm
+   * @param {number} h - Height of the rectangle in mm
+   * @param {Object} stitchSettings - Fill settings object
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function createTatamiFill(x, y, w, h, stitchSettings = _fillSettings) {
     const stitches = [];
@@ -1540,12 +1497,76 @@ let _DEBUG = false;
       // Calculate number of stitches in this row
       const rowLength = Math.abs(rowX2 - rowX1);
 
-      stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY, stitchSettings));
+      if (i % 2 === 0) {
+        stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY, stitchSettings));
+      } else {
+        stitches.push(...straightLineStitching(rowX2, rowY, rowX1, rowY, stitchSettings));
+      }
 
       forward = !forward; // Alternate direction for next row
     }
 
     return stitches;
+  }
+
+  /**
+   * Creates a more advanced zigzag pattern with control over density
+   * @method createZigzagFromPath
+   * @for p5
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Number} width - Width of the zigzag in mm
+   * @param {Number} [density=_embrSettings.stitchLength] - Distance between zigzag points in mm
+   * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in mm
+   */
+  function createZigzagFromPath(pathPoints, width, density = _embroiderySettings.stitchLength) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create zigzag from insufficient path points");
+      return [];
+    }
+
+    const zigzagResult = [];
+    const halfWidth = width / 2;
+    let side = 1; // Start with one side
+
+    // Process each segment between consecutive points
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+
+      // Calculate segment direction vector
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Skip if points are too close
+      if (distance < 0.1) continue;
+
+      // Calculate perpendicular vector
+      const perpX = -dy / distance;
+      const perpY = dx / distance;
+
+      // Calculate number of zigzag points for this segment
+      const numPoints = Math.max(2, Math.ceil(distance / density));
+
+      // Add zigzag points along the segment
+      for (let j = 0; j <= numPoints; j++) {
+        const t = j / numPoints;
+
+        // Alternate sides for zigzag effect
+        if (j > 0) side = -side;
+
+        const pointX = p1.x + dx * t + perpX * halfWidth * side;
+        const pointY = p1.y + dy * t + perpY * halfWidth * side;
+
+        zigzagResult.push({
+          x: pointX,
+          y: pointY,
+        });
+      }
+    }
+
+    if (_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
+    return zigzagResult;
   }
 
   // Expose public functions
@@ -1566,6 +1587,7 @@ let _DEBUG = false;
   global.FILL_MODE = FILL_MODE;
   global.setFillMode = p5embroidery.setFillMode;
   global.setFillSettings = p5embroidery.setFillSettings;
+  global.setStrokeSettings = p5embroidery.setStrokeSettings;
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
 /**

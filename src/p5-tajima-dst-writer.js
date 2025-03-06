@@ -2,6 +2,10 @@
  * Class for writing Tajima DST embroidery files.
  * @class DSTWriter
  */
+
+// Debug flag - set to false to disable debug logging
+const _DEBUG_DST = true;
+
 export class DSTWriter {
   constructor() {
     this.data = [];
@@ -24,6 +28,21 @@ export class DSTWriter {
   }
 
   encodeRecord(x, y, flag) {
+    if (_DEBUG_DST) {
+      console.log("Encoding record:", {
+        x,
+        y,
+        flag:
+          flag === DSTWriter.JUMP
+            ? "JUMP"
+            : flag === DSTWriter.STITCH
+              ? "STITCH"
+              : flag === DSTWriter.COLOR_CHANGE
+                ? "COLOR_CHANGE"
+                : flag,
+      });
+    }
+
     y = -y; // DST uses a different coordinate system
     let b0 = 0,
       b1 = 0,
@@ -129,6 +148,15 @@ export class DSTWriter {
 
   move(x, y, flag = DSTWriter.STITCH) {
     if (x !== null && y !== null) {
+      if (_DEBUG_DST) {
+        console.log("Move called with:", {
+          targetX: x,
+          targetY: y,
+          flag: flag === DSTWriter.JUMP ? "JUMP" : flag === DSTWriter.STITCH ? "STITCH" : flag,
+          currentPosition: { x: this.currentX, y: this.currentY },
+        });
+      }
+
       let dx = Math.round(x) - this.currentX;
       let dy = Math.round(y) - this.currentY;
 
@@ -158,6 +186,14 @@ export class DSTWriter {
       this.maxX = Math.max(this.maxX, this.currentX);
       this.minY = Math.min(this.minY, this.currentY);
       this.maxY = Math.max(this.maxY, this.currentY);
+
+      if (_DEBUG_DST) {
+        console.log("After move:", {
+          newPosition: { x: this.currentX, y: this.currentY },
+          dx: dx,
+          dy: dy,
+        });
+      }
     }
   }
 
@@ -166,28 +202,56 @@ export class DSTWriter {
       maxX = -Infinity,
       minY = Infinity,
       maxY = -Infinity;
+
+    // Log all trim points for debugging
+    if (_DEBUG_DST) {
+      const trimPoints = points.filter((p) => p.trim);
+      if (trimPoints.length > 0) {
+        console.log("Trim points in calculateBorderSize:", trimPoints);
+      }
+    }
+
     for (let point of points) {
       minX = Math.min(minX, point.x);
       maxX = Math.max(maxX, point.x);
       minY = Math.min(minY, point.y);
       maxY = Math.max(maxY, point.y);
     }
-    return {
+
+    const result = {
       left: Math.abs(Math.floor(minX)),
       top: Math.abs(Math.floor(minY)),
       right: Math.abs(Math.ceil(maxX)),
       bottom: Math.abs(Math.ceil(maxY)),
       width: Math.ceil(maxX - minX),
       height: Math.ceil(maxY - minY),
+      // Add raw bounds for debugging
+      bounds: {
+        minX,
+        maxX,
+        minY,
+        maxY,
+      },
     };
+
+    if (_DEBUG_DST) {
+      console.log("Border calculation:", {
+        points: points.length,
+        result,
+      });
+    }
+
+    return result;
   }
 
   generateDST(points, title) {
-    console.log("=== DSTWriter generateDST ===");
-    console.log("Initial state:", {
-      currentX: this.currentX,
-      currentY: this.currentY,
-    });
+    if (_DEBUG_DST) {
+      console.log("=== DSTWriter generateDST ===");
+      console.log("Initial state:", {
+        currentX: this.currentX,
+        currentY: this.currentY,
+      });
+    }
 
     // Reset data and counters
     this.data = [];
@@ -195,40 +259,81 @@ export class DSTWriter {
     this.currentY = 0;
     this.stitchCount = 0;
     this.colorChangeCount = 0;
+    this.minX = Infinity;
+    this.maxX = -Infinity;
+    this.minY = Infinity;
+    this.maxY = -Infinity;
 
     // Calculate border size before transformation
     let border = this.calculateBorderSize(points);
-    console.log("Original border size:", border);
+    if (_DEBUG_DST) {
+      console.log("Original border size:", border);
+    }
 
     // Transform points to center-origin coordinates
     const centerX = border.width / 2;
     const centerY = border.height / 2;
 
-    const transformedPoints = points.map((point) => ({
-      ...point,
-      x: point.x - (border.left + centerX),
-      y: point.y - (border.top + centerY),
-    }));
+    if (_DEBUG_DST) {
+      console.log("Transformation values:", {
+        centerX,
+        centerY,
+        left: border.left,
+        top: border.top,
+        offset: {
+          x: border.left + centerX,
+          y: border.top + centerY,
+        },
+      });
+    }
 
-    console.log("Coordinate transformation:", {
-      centerX,
-      centerY,
-      originalFirstPoint: points[0],
-      transformedFirstPoint: transformedPoints[0],
+    const transformedPoints = points.map((point) => {
+      // Create a new point object with all properties from the original point
+      const newPoint = { ...point };
+
+      // Transform coordinates to center-origin
+      newPoint.x = point.x - (border.left + centerX);
+      newPoint.y = point.y - (border.top + centerY);
+
+      // Log transformation for trim points
+      if (_DEBUG_DST && point.trim) {
+        console.log("Transforming trim point:", {
+          original: { x: point.x, y: point.y },
+          transformed: { x: newPoint.x, y: newPoint.y },
+          offset: { x: border.left + centerX, y: border.top + centerY },
+        });
+      }
+
+      return newPoint;
     });
+
+    if (_DEBUG_DST) {
+      console.log("Coordinate transformation:", {
+        centerX,
+        centerY,
+        originalFirstPoint: points[0],
+        transformedFirstPoint: transformedPoints[0],
+      });
+    }
 
     // Recalculate border size after transformation
     border = this.calculateBorderSize(transformedPoints);
-    console.log("Transformed border size:", border);
+    if (_DEBUG_DST) {
+      console.log("Transformed border size:", border);
+    }
 
     // Generate stitches using transformed points
     for (let i = 0; i < transformedPoints.length; i++) {
       const point = transformedPoints[i];
-      console.log("Processing point:", i, point);
+      if (_DEBUG_DST) {
+        console.log("Processing point:", i, point);
+      }
 
       // Handle color change
       if (point.colorChange) {
-        console.log("Color change at point:", i);
+        if (_DEBUG_DST) {
+          console.log("Color change at point:", i);
+        }
         // Add a color change command at the current position
         // In DST, we don't move but just insert a color change command
         this.data.push(...this.encodeRecord(0, 0, DSTWriter.COLOR_CHANGE));
@@ -238,9 +343,26 @@ export class DSTWriter {
 
       // Handle thread trim
       if (point.trim) {
-        console.log("Thread trim at point:", i);
+        if (_DEBUG_DST) {
+          console.log("Thread trim at point:", i, {
+            originalPoint: point,
+            currentPosition: { x: this.currentX, y: this.currentY },
+          });
+        }
+
         // In DST format, thread trimming is signaled by a specific pattern of jump stitches
+        // First, ensure we're at the correct position
+        this.move(point.x, point.y, DSTWriter.JUMP);
+
+        if (_DEBUG_DST) {
+          console.log("After move to trim position:", {
+            targetPosition: { x: point.x, y: point.y },
+            actualPosition: { x: this.currentX, y: this.currentY },
+          });
+        }
+
         // Generate a zigzag pattern of 3 jumps that embroidery machines recognize as a trim command
+        // These are small relative movements from the current position
 
         // First jump: up and right
         this.data.push(...this.encodeRecord(3, 3, DSTWriter.JUMP));
@@ -267,23 +389,32 @@ export class DSTWriter {
       const flag = i === 0 || point.jump ? DSTWriter.JUMP : DSTWriter.STITCH;
       this.move(point.x, point.y, flag);
 
-      console.log("After move:", {
-        currentX: this.currentX,
-        currentY: this.currentY,
+      if (_DEBUG_DST) {
+        console.log("After move:", {
+          point: i,
+          position: { x: this.currentX, y: this.currentY },
+          flag: flag === DSTWriter.JUMP ? "JUMP" : "STITCH",
+        });
+      }
+    }
+
+    // Add end record
+    this.move(0, 0, DSTWriter.END);
+
+    if (_DEBUG_DST) {
+      console.log("Final state:", {
+        stitchCount: this.stitchCount,
+        colorChangeCount: this.colorChangeCount,
+        bounds: {
+          minX: this.minX,
+          maxX: this.maxX,
+          minY: this.minY,
+          maxY: this.maxY,
+        },
       });
     }
 
-    // Add end of pattern
-    this.move(0, 0, DSTWriter.END);
-
-    console.log("Final state:", {
-      currentX: this.currentX,
-      currentY: this.currentY,
-      stitchCount: this.stitchCount,
-      colorChangeCount: this.colorChangeCount,
-    });
-
-    // Prepare header
+    // Create header
     let header = new Array(512).fill(0x20); // Fill with spaces
     let headerString =
       `LA:${title.padEnd(16)}\r` +
@@ -342,7 +473,9 @@ export class DSTWriter {
   saveDST(points, title, filename) {
     let dstData = this.generateDST(points, title);
     this.saveBytes(dstData, filename);
-    console.log("DST file saved!");
+    if (_DEBUG_DST) {
+      console.log("DST file saved!");
+    }
   }
 }
 
