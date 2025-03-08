@@ -35,7 +35,6 @@ function setup() {
   let exportGcodeButton = createButton("Export Gcode");
   exportGcodeButton.mousePressed(() => {
     exportGcode("colorExample.gcode");
-
   });
   exportGcodeButton.position(90, height + 60);
 
