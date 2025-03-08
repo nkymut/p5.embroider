@@ -2,6 +2,7 @@
 # Embroidery files
 *.dst
 *.gcode
+docs/devdoc/*
 
 # macOS
 .DS_Store

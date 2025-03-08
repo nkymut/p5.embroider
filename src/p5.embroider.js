@@ -663,6 +663,13 @@ let _DEBUG = false;
 
   p5embroidery.setStrokeSettings = function (settings) {
     // Merge default settings with provided settings
+    // Validate that settings only contains valid properties
+    for (const key in settings) {
+      if (!_strokeSettings.hasOwnProperty(key)) {
+        console.warn(`Invalid stroke setting: ${key}`);
+        delete settings[key];
+      }
+    }
     Object.assign(_strokeSettings, settings);
   };
 
@@ -1497,12 +1504,8 @@ let _DEBUG = false;
       // Calculate number of stitches in this row
       const rowLength = Math.abs(rowX2 - rowX1);
 
-      if (i % 2 === 0) {
-        stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY, stitchSettings));
-      } else {
-        stitches.push(...straightLineStitching(rowX2, rowY, rowX1, rowY, stitchSettings));
-      }
-
+      stitches.push(...straightLineStitching(rowX1, rowY, rowX2, rowY, stitchSettings));
+      
       forward = !forward; // Alternate direction for next row
     }
 
