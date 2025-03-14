@@ -1,5 +1,5 @@
-import { DSTWriter } from "./p5-tajima-dst-writer.js";
-import { GCodeWriter } from "./p5-gcode-writer.js";
+import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
+import { GCodeWriter } from "./io/p5-gcode-writer.js";
 
 let _DEBUG = false;
 
@@ -222,7 +222,7 @@ let _DEBUG = false;
     _originalLineFunc = window.line;
     window.line = function (x1, y1, x2, y2) {
       if (_recording) {
-        let stitches = convertLineToStitches(x1, y1, x2, y2);
+        let stitches = convertLineToStitches(x1, y1, x2, y2, _strokeSettings);
         _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
 
         if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -652,6 +652,10 @@ let _DEBUG = false;
     _embroiderySettings.minStitchLength = Math.max(0, minLength);
     _embroiderySettings.stitchLength = Math.max(0.1, desiredLength);
     _embroiderySettings.resampleNoise = Math.min(1, Math.max(0, noise));
+
+    _strokeSettings.minStitchLength = _embroiderySettings.minStitchLength;
+    _strokeSettings.stitchLength = _embroiderySettings.stitchLength;
+    _strokeSettings.resampleNoise = _embroiderySettings.resampleNoise;
   };
 
   /**
@@ -777,6 +781,7 @@ let _DEBUG = false;
 
     // Calculate number of zigzag segments
     let zigzagDistance = stitchSettings.stitchLength;
+    console.log("zigzagDistance", zigzagDistance);
     let numZigzags = Math.max(2, Math.floor(distance / zigzagDistance));
 
     // Create zigzag pattern
