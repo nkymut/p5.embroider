@@ -3,7 +3,7 @@
 
 let _drawMode = "stitch";
 
-let roygbiv = ["red", "orange", "yellow", "green", "blue", "indigo", "violet"];
+let roygbiv = ["red", "orange", "yellow", "green", "blue", "indigo"];
 
 function setup() {
   createCanvas(mmToPixel(100), mmToPixel(100));
@@ -43,7 +43,7 @@ function setup() {
 
 function draw() {
   background("#FFF5DC");
-  let stitchWidth = 5;
+  let stitchWidth = 7;
   // Set the drawing mode to show stitches
   stroke(255, 0, 0);
   noFill();
