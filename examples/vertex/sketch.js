@@ -1,4 +1,4 @@
-let drawMode = "stitch";
+let drawMode = "realistic";
 
 function setup() {
   createCanvas(mmToPixel(100), mmToPixel(100));
@@ -52,7 +52,7 @@ function draw() {
   stroke(0, 200, 200);
   strokeWeight(2);
 
-  beginShape(); 
+  beginShape();
   vertex(0, 0);
   vertex(80, 0);
   vertex(80, 80);
@@ -61,20 +61,21 @@ function draw() {
   endShape(CLOSE);
   trimThread();
 
-  beginShape(); 
-   //random 10 vertex within 100x100
-   for (let i = 0; i < 4; i++) {
-    vertex(random(50), random(50));
-   }
-  endShape();
-  
+  for (let i = 0; i < 10; i++) {
+  beginShape();
+  //random 10 vertex within 100x100
 
+  for (let i = 0; i < 3; i++) {
+    vertex(5+random(60), 5+random(60));
+  }
+  endShape(CLOSE);
   trimThread();
+  }
+
+  
 
   // Stop recording and export as DST
   endRecord();
-
-
 }
 
 function keyPressed() {
