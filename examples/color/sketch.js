@@ -51,8 +51,8 @@ function draw() {
   //translate(0, 0);
   beginRecord(this);
   strokeWeight(stitchWidth);
-  setStitch(0.01, 0.2, 0);
-
+  setStitch(0.1, 0.5, 0);
+  setStrokeMode("zigzag");
   for (let i = 0; i < roygbiv.length; i++) {
     stroke(roygbiv[roygbiv.length - 1 - i]);
     ellipse(50, 50, stitchWidth * 2 + stitchWidth * 2 * i, stitchWidth * 2 + stitchWidth * 2 * i);

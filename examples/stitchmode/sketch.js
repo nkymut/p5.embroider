@@ -19,13 +19,13 @@ function setup() {
 
   let exportDstButton = createButton("Export DST");
   exportDstButton.mousePressed(() => {
-    exportEmbroidery("boxtest.dst");
+    exportEmbroidery("stitchmode.dst");
   });
   exportDstButton.position(0, height + 30);
 
   let exportGcodeButton = createButton("Export Gcode");
   exportGcodeButton.mousePressed(() => {
-    exportGcode("boxtest.gcode");
+    exportGcode("stitchmode.gcode");
   });
   exportGcodeButton.position(90, height + 30);
 
@@ -129,10 +129,10 @@ function draw() {
 function keyPressed() {
   switch (key) {
     case "d":
-      exportEmbroidery("boxtest.dst");
+      exportEmbroidery("stitchmode.dst");
       break;
     case "g":
-      exportGcode("boxtest.gcode");
+      exportGcode("stitchmode.gcode");
       break;
   }
 }
