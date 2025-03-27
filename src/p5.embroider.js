@@ -46,6 +46,7 @@ let _DEBUG = false;
 
   // stroke mode constants
   const STROKE_MODE = {
+    STRAIGHT: "straight",
     ZIGZAG: "zigzag",
     LINES: "lines",
     SASHIKO: "sashiko",
@@ -59,7 +60,7 @@ let _DEBUG = false;
   };
 
   let _doStroke = false; // Track if stroke is enabled
-  let _currentStrokeMode = STROKE_MODE.ZIGZAG;
+  let _currentStrokeMode = STROKE_MODE.STRAIGHT;
 
   let _doFill = false; // Track if fill is enabled
   let _currentFill = null; // Store current fill color and properties
@@ -83,6 +84,7 @@ let _DEBUG = false;
     minStitchLength: 1, // mm
     resampleNoise: 0, // 0-1 range
     strokeWeight: 0, // Width of the embroidery line
+    strokeMode: STROKE_MODE.STRAIGHT,
   };
 
   /**
@@ -102,6 +104,7 @@ let _DEBUG = false;
   p5embroidery.setStrokeMode = function (mode) {
     if (Object.values(STROKE_MODE).includes(mode)) {
       _currentStrokeMode = mode;
+      _strokeSettings.strokeMode = mode;
     } else {
       console.warn(`Invalid stroke mode: ${mode}. Using default: ${_currentStrokeMode}`);
     }
@@ -249,7 +252,6 @@ let _DEBUG = false;
         if (_drawMode === "p5") {
           _originalBeginShapeFunc.apply(this, arguments);
         }
-        console.log("beginShape", kind);
       } else {
         _originalBeginShapeFunc.apply(this, arguments);
       }
@@ -339,6 +341,8 @@ let _DEBUG = false;
     };
   }
 
+  
+
   let _originalVertexFunc;
   function overrideVertexFunction() {
     _originalVertexFunc = window.vertex;
@@ -363,7 +367,7 @@ let _DEBUG = false;
         }
 
         _vertices.push(vert);
-        console.log("_vertices", _vertices);
+        if(_DEBUG) console.log("_vertices", _vertices);
       } else {
         let args = [mmToPixel(x), mmToPixel(y), moveTo, u, v];
         _originalVertexFunc.apply(this, arguments);
@@ -372,52 +376,37 @@ let _DEBUG = false;
   }
 
   p5embroidery.convertVerticesToStitches = function (vertices, strokeSettings) {
-    const stitches = [];
+    let stitches = [];
 
     if (!vertices || vertices.length < 2) {
       return stitches;
     }
 
-    // Add the first vertex as a stitch
-    stitches.push({
-      x: vertices[0].x,
-      y: vertices[0].y,
-    });
+    // Extract x,y coordinates from vertex objects for compatibility with path functions
+    const pathPoints = vertices.map(v => ({
+      x: v.x,
+      y: v.y
+    }));
 
-    for (let i = 1; i < vertices.length; i++) {
-      const currentPoint = vertices[i - 1];
-      const nextPoint = vertices[i];
-      const dx = nextPoint.x - currentPoint.x;
-      const dy = nextPoint.y - currentPoint.y;
-      const distance = _p5Instance.dist(currentPoint.x, currentPoint.y, nextPoint.x, nextPoint.y);
-
-      if (distance > strokeSettings.stitchLength) {
-        const numStitches = Math.floor(distance / strokeSettings.stitchLength);
-
-        // Add intermediate stitches
-        for (let j = 1; j <= numStitches; j++) {
-          // Add noise to stitch length if specified
-          let t = j / (numStitches + 1);
-          if (strokeSettings.resampleNoise > 0) {
-            const noise = (Math.random() * 2 - 1) * strokeSettings.resampleNoise;
-            t = Math.min(1, Math.max(0, t * (1 + noise)));
-          }
-
-          stitches.push({
-            x: currentPoint.x + dx * t,
-            y: currentPoint.y + dy * t,
-          });
-        }
+    // If we have a stroke weight, use the appropriate path-based function
+    if (strokeSettings.strokeWeight > 0) {
+      switch (strokeSettings.strokeMode) {
+        case STROKE_MODE.STRAIGHT:
+          return straightLineStitchingFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.ZIGZAG:
+          return lineZigzagStitchingFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.LINES:
+          return multiLineStitchingFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.SASHIKO:
+          return sashikoStitchingFromPath(pathPoints, strokeSettings);
+        default:
+          // For simple paths, use the convertPathToStitches function
+          return convertPathToStitches(pathPoints, strokeSettings);
       }
-
-      // Add the endpoint
-      stitches.push({
-        x: nextPoint.x,
-        y: nextPoint.y,
-      });
+    } else {
+      // For normal width lines, just use the generic path to stitches conversion
+      return convertPathToStitches(pathPoints, strokeSettings);
     }
-
-    return stitches;
   };
 
   /**
@@ -600,7 +589,7 @@ let _DEBUG = false;
         _doFill = false;
         _currentFill = null;
       }
-      _originalNoFillFunc.apply(this, arguments);
+      _p5Instance.noFill.apply(this, arguments);
     };
   }
 
@@ -615,7 +604,7 @@ let _DEBUG = false;
       if (_recording) {
         // Set the stroke weight in the stroke settings
         _strokeSettings.strokeWeight = weight;
-        _embroiderySettings.stitchWidth = weight;
+        //_embroiderySettings.stitchWidth = weight;
 
         _originalStrokeWeightFunc.call(this, mmToPixel(weight));
       } else {
@@ -955,6 +944,8 @@ let _DEBUG = false;
 
     if (stitchSettings.strokeWeight > 0) {
       switch (_currentStrokeMode) {
+        case STROKE_MODE.STRAIGHT:
+          return straightLineStitching(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.ZIGZAG:
           return lineZigzagStitching(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.LINES:
@@ -970,6 +961,52 @@ let _DEBUG = false;
   }
 
   /**
+   * Converts a path into a series of stitches.
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function convertPathToStitches(pathPoints, stitchSettings = _embroiderySettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot convert path to stitches from insufficient path points");
+      return [];
+    }
+    
+    if (stitchSettings.strokeWeight > 0) {
+      switch (_currentStrokeMode) {
+   
+        case STROKE_MODE.ZIGZAG:
+          return lineZigzagStitchingFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.LINES:
+          return multiLineStitchingFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.SASHIKO:
+          return sashikoStitchingFromPath(pathPoints, stitchSettings);
+        default:
+          // For simple straight stitches, we'll need to break this down segment by segment
+          const result = [];
+          for (let i = 0; i < pathPoints.length - 1; i++) {
+            const p1 = pathPoints[i];
+            const p2 = pathPoints[i + 1];
+            const segmentStitches = straightLineStitching(p1.x, p1.y, p2.x, p2.y, stitchSettings);
+            result.push(...segmentStitches);
+          }
+          return result;
+      }
+    } else {
+      // For simple straight stitches, we'll need to break this down segment by segment
+      const result = [];
+      for (let i = 0; i < pathPoints.length - 1; i++) {
+        const p1 = pathPoints[i];
+        const p2 = pathPoints[i + 1];
+        const segmentStitches = straightLineStitching(p1.x, p1.y, p2.x, p2.y, stitchSettings);
+        result.push(...segmentStitches);
+      }
+      return result;
+    }
+  }
+
+  /**
    * Creates zigzag stitches
    * @private
    * @param {number} x1 - Starting x-coordinate in mm
@@ -980,6 +1017,14 @@ let _DEBUG = false;
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function lineZigzagStitching(x1, y1, x2, y2, stitchSettings) {
+    // This is now a wrapper function that calls the path-based implementation
+    const pathPoints = [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ];
+    
+    // For a simple straight line, we can implement the zigzag directly
+    // instead of calling the path-based version
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
@@ -994,7 +1039,6 @@ let _DEBUG = false;
 
     // Calculate number of zigzag segments
     let zigzagDistance = stitchSettings.stitchLength;
-    console.log("zigzagDistance", zigzagDistance);
     let numZigzags = Math.max(2, Math.floor(distance / zigzagDistance));
 
     // Create zigzag pattern
@@ -1047,7 +1091,7 @@ let _DEBUG = false;
     let stitches = [];
     let dx = x2 - x1;
     let dy = y2 - y1;
-    const distance = _p5Instance.dist(x1, y1, x2, y2);
+    const distance = Math.sqrt(dx * dx + dy * dy);
     // Add first stitch at starting point
     stitches.push({
       x: x1,
@@ -1173,117 +1217,231 @@ let _DEBUG = false;
     return zigzagResult;
   }
 
+  /**
+   * Creates line zigzag stitches that takes an array of path points
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function lineZigzagStitchingFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create zigzag stitching from insufficient path points");
+      return [];
+    }
+    
+    const result = [];
+    const width = stitchSettings.strokeWeight > 0 ? stitchSettings.strokeWeight : 2;
+    
+    // Process each segment between consecutive points
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+      
+      // Get zigzag stitches for this segment
+      const segmentStitches = lineZigzagStitching(p1.x, p1.y, p2.x, p2.y, stitchSettings);
+      result.push(...segmentStitches);
+    }
+    
+    return result;
+  }
+
   // Implement the new stitching methods
   function multiLineStitching(x1, y1, x2, y2, stitchSettings) {
-    // Calculate the number of lines based on stroke weight
+    // This is now a wrapper function that calls the path-based implementation
+    const pathPoints = [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ];
+    return multiLineStitchingFromPath(pathPoints, stitchSettings);
+  }
+
+  /**
+   * Creates multi-line stitches from an array of stitch points
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function multiLineStitchingFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create multi-line stitching from insufficient path points");
+      return [];
+    }
+
     const threadWeight = stitchSettings.stitchWidth || 0.2;
     const width = stitchSettings.strokeWeight || 2;
     const numLines = Math.max(2, Math.floor(width / threadWeight));
-    const stitches = [];
-    const distance = _p5Instance.dist(x1, y1, x2, y2);
-
-    // Calculate the direction vector and perpendicular vector
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const len = Math.sqrt(dx * dx + dy * dy);
-
-    // Normalize direction vector
-    const dirX = dx / len;
-    const dirY = dy / len;
-
-    // Calculate perpendicular vector
-    const perpX = -dirY;
-    const perpY = dirX;
-
+    const result = [];
+    
     // Calculate the spacing between lines
     const spacing = width / (numLines - 1);
 
-    // Generate multiple parallel lines
+    // Generate multiple parallel paths
     for (let i = 0; i < numLines; i++) {
       // Calculate offset from center
       const offset = i * spacing - width / 2;
-
-      // Calculate start and end points for this line
-      const startX = x1 + perpX * offset;
-      const startY = y1 + perpY * offset;
-      const endX = x2 + perpX * offset;
-      const endY = y2 + perpY * offset;
-
+      const offsetPath = [];
+      
+      // Calculate perpendicular vectors for each segment and apply offset
+      for (let j = 0; j < pathPoints.length; j++) {
+        // For first point or when calculating new perpendicular
+        if (j === 0 || j === pathPoints.length - 1) {
+          let perpX, perpY;
+          
+          if (j === 0) {
+            // For first point, use direction to next point
+            const dx = pathPoints[1].x - pathPoints[0].x;
+            const dy = pathPoints[1].y - pathPoints[0].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            perpX = -dy / distance;
+            perpY = dx / distance;
+          } else {
+            // For last point, use direction from previous point
+            const dx = pathPoints[j].x - pathPoints[j-1].x;
+            const dy = pathPoints[j].y - pathPoints[j-1].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            perpX = -dy / distance;
+            perpY = dx / distance;
+          }
+          
+          offsetPath.push({
+            x: pathPoints[j].x + perpX * offset,
+            y: pathPoints[j].y + perpY * offset
+          });
+        } else {
+          // For interior points, average the perpendiculars of adjacent segments
+          const prevDx = pathPoints[j].x - pathPoints[j-1].x;
+          const prevDy = pathPoints[j].y - pathPoints[j-1].y;
+          const prevDistance = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+          
+          const nextDx = pathPoints[j+1].x - pathPoints[j].x;
+          const nextDy = pathPoints[j+1].y - pathPoints[j].y;
+          const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+          
+          // Calculate perpendicular vectors
+          const prevPerpX = -prevDy / prevDistance;
+          const prevPerpY = prevDx / prevDistance;
+          
+          const nextPerpX = -nextDy / nextDistance;
+          const nextPerpY = nextDx / nextDistance;
+          
+          // Average the perpendicular vectors
+          const perpX = (prevPerpX + nextPerpX) / 2;
+          const perpY = (prevPerpY + nextPerpY) / 2;
+          
+          // Normalize the averaged vector
+          const length = Math.sqrt(perpX * perpX + perpY * perpY);
+          
+          offsetPath.push({
+            x: pathPoints[j].x + (perpX / length) * offset,
+            y: pathPoints[j].y + (perpY / length) * offset
+          });
+        }
+      }
+      
       // For even lines, go from start to end
       // For odd lines, go from end to start (back and forth pattern)
-
       if (i % 2 === 0) {
-        const lineStitches = straightLineStitching(startX, startY, endX, endY, stitchSettings);
-        stitches.push(...lineStitches);
+        for (let j = 0; j < offsetPath.length - 1; j++) {
+          const start = offsetPath[j];
+          const end = offsetPath[j+1];
+          const lineStitches = straightLineStitching(start.x, start.y, end.x, end.y, stitchSettings);
+          result.push(...lineStitches);
+        }
       } else {
-        const lineStitches = straightLineStitching(endX, endY, startX, startY, stitchSettings);
-        stitches.push(...lineStitches);
+        for (let j = offsetPath.length - 1; j > 0; j--) {
+          const start = offsetPath[j];
+          const end = offsetPath[j-1];
+          const lineStitches = straightLineStitching(start.x, start.y, end.x, end.y, stitchSettings);
+          result.push(...lineStitches);
+        }
       }
     }
-
-    return stitches;
+    
+    return result;
   }
 
   function sashikoStitching(x1, y1, x2, y2, stitchSettings) {
-    // Sashiko is a traditional Japanese embroidery technique with evenly spaced running stitches
-    // This implementation creates a pattern of dashed lines
-    const stitches = [];
-    const threadWeight = stitchSettings.stitchWidth || 0.2;
-    const width = stitchSettings.strokeWeight || 2;
-    const numLines = Math.max(2, Math.floor(width / threadWeight));
+    // This is now a wrapper function that calls the path-based implementation
+    const pathPoints = [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ];
+    return sashikoStitchingFromPath(pathPoints, stitchSettings);
+  }
 
-    // Calculate direction and perpendicular vectors
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Normalize direction vector
-    const dirX = dx / distance;
-    const dirY = dy / distance;
-    const perpX = -dirY;
-    const perpY = dirX;
-
-    // Calculate spacing between lines
-    const spacing = width / (numLines - 1);
-
-    // Sashiko stitch length (longer than regular stitches)
-    const sashikoStitchLength = stitchSettings.stitchLength * 2;
-    const multilineLength = sashikoStitchLength * 0.5;
-    const straightLength = sashikoStitchLength * 0.5;
-
-    let currentDist = 0;
-    let isMultiline = true;
-
-    while (currentDist < distance) {
-      const segmentLength = isMultiline ? multilineLength : straightLength;
-      const endDist = Math.min(currentDist + segmentLength, distance);
-
-      // Calculate segment start and end points
-      const segStartX = x1 + dirX * currentDist;
-      const segStartY = y1 + dirY * currentDist;
-      const segEndX = x1 + dirX * endDist;
-      const segEndY = y1 + dirY * endDist;
-
-      if (isMultiline) {
-        const lineStitches = multiLineStitching(segStartX, segStartY, segEndX, segEndY, stitchSettings);
-        stitches.push(...lineStitches);
-      } else {
-        // Create single straight line for this segment
-        const lineStitches = straightLineStitching(segStartX, segStartY, segEndX, segEndY, stitchSettings);
-        stitches.push(...lineStitches);
-      }
-
-      // Move to next segment)
-      currentDist = endDist;
-      isMultiline = !isMultiline; // Toggle between multiline and straight line
+  /**
+   * Creates sashiko stitches from an array of path points
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function sashikoStitchingFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create sashiko stitching from insufficient path points");
+      return [];
     }
-
-    if (_DEBUG) console.log("sashikoStitching", stitches);
-    // Convert coordinates to internal format (tenths of mm)
-    return stitches.map((stitch) => ({
-      x: stitch.x,
-      y: stitch.y,
-    }));
+    
+    const result = [];
+    
+    // Process each segment between consecutive points
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+      
+      // Calculate direction and distance
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Normalize direction vector
+      const dirX = dx / distance;
+      const dirY = dy / distance;
+      
+      // Sashiko stitch length (longer than regular stitches)
+      const sashikoStitchLength = stitchSettings.stitchLength * 2;
+      const multilineLength = sashikoStitchLength * 0.5;
+      const straightLength = sashikoStitchLength * 0.5;
+      
+      let currentDist = 0;
+      let isMultiline = true;
+      
+      // Create segments along this path section
+      while (currentDist < distance) {
+        const segmentLength = isMultiline ? multilineLength : straightLength;
+        const endDist = Math.min(currentDist + segmentLength, distance);
+        
+        // Calculate segment start and end points
+        const segStartX = p1.x + dirX * currentDist;
+        const segStartY = p1.y + dirY * currentDist;
+        const segEndX = p1.x + dirX * endDist;
+        const segEndY = p1.y + dirY * endDist;
+        
+        // Create segment pathPoints
+        const segmentPoints = [
+          { x: segStartX, y: segStartY },
+          { x: segEndX, y: segEndY }
+        ];
+        
+        if (isMultiline) {
+          // Use the pathPoints version of multiLine stitching
+          const lineStitches = multiLineStitchingFromPath(segmentPoints, stitchSettings);
+          result.push(...lineStitches);
+        } else {
+          // Create single straight line for this segment
+          const lineStitches = straightLineStitching(segStartX, segStartY, segEndX, segEndY, stitchSettings);
+          result.push(...lineStitches);
+        }
+        
+        // Move to next segment
+        currentDist = endDist;
+        isMultiline = !isMultiline; // Toggle between multiline and straight line
+      }
+    }
+    
+    return result;
   }
 
   /**
@@ -1651,7 +1809,7 @@ let _DEBUG = false;
         prevX = currentX;
         prevY = currentY;
       }
-
+      _p5Instance.strokeCap(SQUARE);
       _p5Instance.pop();
     }
 
@@ -1813,6 +1971,12 @@ let _DEBUG = false;
   global.setFillMode = p5embroidery.setFillMode;
   global.setFillSettings = p5embroidery.setFillSettings;
   global.setStrokeSettings = p5embroidery.setStrokeSettings;
+  
+  // Expose new path-based functions
+  global.convertPathToStitches = convertPathToStitches;
+  global.multiLineStitchingFromPath = multiLineStitchingFromPath;
+  global.sashikoStitchingFromPath = sashikoStitchingFromPath;
+  global.lineZigzagStitchingFromPath = lineZigzagStitchingFromPath;
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
 /**
@@ -1855,4 +2019,86 @@ function mmToPixel(mm, dpi = 96) {
  */
 function pixelToMm(pixels, dpi = 96) {
   return (pixels * 25.4) / dpi;
+}
+
+/**
+ * Creates straight line stitches from an array of path points
+ * @private
+ * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+ * @param {Object} stitchSettings - Settings for the stitches
+ * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+ */
+function straightLineStitchingFromPath(pathPoints, stitchSettings = _embroiderySettings) {
+  if (!pathPoints || pathPoints.length < 2) {
+    console.warn("Cannot create straight stitching from insufficient path points");
+    return [];
+  }
+  
+  const result = [];
+  
+  // Process each segment between consecutive points
+  for (let i = 0; i < pathPoints.length - 1; i++) {
+    const p1 = pathPoints[i];
+    const p2 = pathPoints[i + 1];
+    
+    // For the first segment, include the starting point
+    if (i === 0) {
+      result.push({
+        x: p1.x,
+        y: p1.y
+      });
+    }
+    
+    // Calculate segment properties
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Skip if the segment is too short
+    if (distance < stitchSettings.minStitchLength) {
+      // Still include the endpoint
+      result.push({
+        x: p2.x,
+        y: p2.y
+      });
+      continue;
+    }
+    
+    // Calculate number of stitches for this segment
+    let baseStitchLength = stitchSettings.stitchLength;
+    let numStitches = Math.floor(distance / baseStitchLength);
+    let currentDistance = 0;
+    
+    // Create intermediate stitches along this segment
+    for (let j = 0; j < numStitches; j++) {
+      // Add noise to stitch length if specified
+      let stitchLength = baseStitchLength;
+      if (stitchSettings.resampleNoise > 0) {
+        let noise = (Math.random() * 2 - 1) * stitchSettings.resampleNoise;
+        stitchLength *= 1 + noise;
+      }
+      
+      // Update cumulative distance
+      currentDistance += stitchLength;
+      let t = Math.min(currentDistance / distance, 1);
+      
+      // Add the stitch point
+      result.push({
+        x: p1.x + dx * t,
+        y: p1.y + dy * t
+      });
+    }
+    
+    // Add endpoint of this segment
+    let remainingDistance = distance - currentDistance;
+    if (remainingDistance > stitchSettings.minStitchLength || numStitches === 0) {
+      result.push({
+        x: p2.x,
+        y: p2.y
+      });
+    }
+  }
+  
+  if (_DEBUG) console.log("Generated straight line path stitches:", result);
+  return result;
 }

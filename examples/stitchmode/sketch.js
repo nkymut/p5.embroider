@@ -46,8 +46,8 @@ let linesSettings = {
 
 let sashikoSettings = {
   minStitchLength: 0.5,
-  stitchLength: 3,
-  strokeWeight: 1.2,
+  stitchLength: 3.2,
+  strokeWeight: 0.8,
 };
 
 function draw() {
@@ -57,6 +57,7 @@ function draw() {
   setDrawMode(drawMode);
   noFill();
   beginRecord(this);
+  strokeCap(SQUARE);
 
   setStitch(zigzagSettings.minStitchLength, zigzagSettings.stitchLength, 0);
   stroke(200, 200, 200);
