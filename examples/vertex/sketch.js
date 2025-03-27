@@ -32,8 +32,6 @@ function setup() {
   });
   exportGcodeButton.position(90, height + 30);
 
- 
-
   noLoop(); // Stop the draw loop after exporting
 }
 
@@ -70,31 +68,31 @@ function draw() {
   setStitch(0.1, 1, 0);
   stroke(255, 0, 100);
   strokeWeight(1.4);
-  
+
   const stitchSize = 5;
-  
+
   // Define three colors for the cross-stitches
   const colors = [
-    [255, 0, 100],   // Pink
-    [0, 150, 255],   // Blue
-    [255, 200, 0]    // Yellow
+    [255, 0, 100], // Pink
+    [0, 150, 255], // Blue
+    [255, 200, 0], // Yellow
   ];
-  
+
   // Create a 3x3 grid of color groups
   const gridSize = 3;
   const cellSize = 75 / gridSize; // Divide the 70x70 area into a 3x3 grid
-  
+
   // fill the square with cross-stitches
   for (let gridX = 0; gridX < gridSize; gridX++) {
     for (let gridY = 0; gridY < gridSize; gridY++) {
       // Select color based on grid position
       const colorIndex = (gridX + gridY) % 3;
       stroke(colors[colorIndex][0], colors[colorIndex][1], colors[colorIndex][2]);
-      
+
       // Calculate the starting position for this grid cell
       const startX = 5 + gridX * cellSize;
       const startY = 5 + gridY * cellSize;
-      
+
       // Fill this grid cell with cross-stitches
       for (let x = startX; x < startX + cellSize - stitchSize; x += stitchSize) {
         for (let y = startY; y < startY + cellSize - stitchSize; y += stitchSize) {
@@ -112,9 +110,8 @@ function draw() {
           trimThread();
         }
       }
-      
+
       // Trim thread after completing each color group
-      
     }
   }
 

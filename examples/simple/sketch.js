@@ -40,13 +40,14 @@ function draw() {
   noFill();
   beginRecord(this);
   // Draw a 100mm square
-  //setStitch(0.1, 0.2, 0);
+  setStitch(0.1, 0.2, 0);
   setStrokeSettings({
     strokeLength: 0.2,
     noise: 0.0,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
+  setStrokeMode("zigzag");
 
   line(80, 0, 80, 80); // right
   trimThread();
