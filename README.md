@@ -17,7 +17,7 @@ To use p5.sensor in your project, include the library in your HTML file:
 ### CDNs
 
 ```html
-<script src=https://unpkg.com/p5.embroider@0.1.0/lib/p5.embroider.js"></script>
+<script src="https://unpkg.com/p5.embroider@0.1.0/lib/p5.embroider.js"></script>
 ```
 
 ### GitHub Pages
