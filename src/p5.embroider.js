@@ -605,7 +605,7 @@ let _DEBUG = false;
         _doFill = false;
         _currentFill = null;
       }
-      _p5Instance.noFill.apply(this, arguments);
+      _originalNoFillFunc.apply(this, arguments);
     };
   }
 
@@ -616,13 +616,14 @@ let _DEBUG = false;
   let _originalStrokeWeightFunc;
   function overrideStrokeWeightFunction() {
     _originalStrokeWeightFunc = window.strokeWeight;
+
     window.strokeWeight = function (weight) {
       if (_recording) {
         // Set the stroke weight in the stroke settings
         _strokeSettings.strokeWeight = weight;
         //_embroiderySettings.stitchWidth = weight;
 
-        _originalStrokeWeightFunc.call(this, mmToPixel(weight));
+        _originalStrokeWeightFunc.call(this, weight);
       } else {
         _originalStrokeWeightFunc.apply(this, arguments);
       }
@@ -762,7 +763,7 @@ let _DEBUG = false;
 
         if (_drawMode === "stitch" || _drawMode === "realistic" || _drawMode === "p5") {
           _p5Instance.push();
-          _originalStrokeFunc.stroke(255, 0, 0); // Red for stitch points
+          _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // Red for stitch points
           _originalStrokeWeightFunc.call(_p5Instance, 3);
           _originalPointFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y));
           _p5Instance.pop();
