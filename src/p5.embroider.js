@@ -440,6 +440,7 @@ let _DEBUG = false;
         if (_drawMode === "stitch" || _drawMode === "realistic") {
           drawStitches(stitches, _strokeThreadIndex);
         } else {
+          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
           _originalLineFunc.call(this, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2));
         }
       } else {
@@ -732,6 +733,8 @@ let _DEBUG = false;
 
           // Draw the stitches
           if (_drawMode === "p5") {
+            console.log("_strokeSettings.strokeWeight", _strokeSettings.strokeWeight);
+            _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
             _originalEllipseFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
           } else {
             drawStitches(stitches, _strokeThreadIndex);
@@ -769,6 +772,7 @@ let _DEBUG = false;
           _p5Instance.pop();
         }
       } else {
+        _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
         _originalPointFunc.apply(this, arguments);
       }
     };
@@ -823,6 +827,7 @@ let _DEBUG = false;
           drawStitches(fillStitches, _fillThreadIndex);
           drawStitches(strokeStitches, _strokeThreadIndex);
         } else {
+          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
           _originalRectFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
         }
       } else {
