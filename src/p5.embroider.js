@@ -520,11 +520,8 @@ let _DEBUG = false;
           threadIndex = _stitchData.threads.length - 1;
         }
 
-        // If we're changing to a different thread and have existing stitches,
-        // add a thread trim command at the current position
-        if (_strokeThreadIndex !== threadIndex && _stitchData.threads[_strokeThreadIndex] !== undefined) {
-          trimThread();
-        }
+        // Note: Color changes are handled automatically during export
+        // Manual trimThread() calls can still be made if needed
 
         // Set the current thread index
         _strokeThreadIndex = threadIndex;

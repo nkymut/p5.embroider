@@ -3,6 +3,9 @@
 *.dst
 *.gcode
 docs/devdoc/*
+_Claude
+.claude/
+Claude.md
 
 # macOS
 .DS_Store
