@@ -1,7 +1,7 @@
 import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 
-let _DEBUG = false;
+let _DEBUG = true;
 
 (function (global) {
   const p5embroidery = global.p5embroidery || {};
@@ -1098,6 +1098,16 @@ let _DEBUG = false;
     let dy = y2 - y1;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
+    // Check for zero distance to prevent division by zero
+    if (distance === 0 || distance < 0.001) {
+      // If points are the same or very close, just return the start point
+      if (_DEBUG) console.log("Zero distance detected in zigzagStitch, returning single point");
+      return [{
+        x: x1,
+        y: y1,
+      }];
+    }
+
     // Calculate perpendicular vector for zigzag
     let perpX = -dy / distance;
     let perpY = dx / distance;
@@ -1286,6 +1296,10 @@ let _DEBUG = false;
             const dx = pathPoints[1].x - pathPoints[0].x;
             const dy = pathPoints[1].y - pathPoints[0].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance === 0 || distance < 0.001) {
+              // Skip this point if distance is zero
+              continue;
+            }
             perpX = -dy / distance;
             perpY = dx / distance;
           } else {
@@ -1293,6 +1307,10 @@ let _DEBUG = false;
             const dx = pathPoints[j].x - pathPoints[j - 1].x;
             const dy = pathPoints[j].y - pathPoints[j - 1].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance === 0 || distance < 0.001) {
+              // Skip this point if distance is zero
+              continue;
+            }
             perpX = -dy / distance;
             perpY = dx / distance;
           }
@@ -1534,6 +1552,7 @@ let _DEBUG = false;
 
     if (_DEBUG) console.log("=== Starting DST Export ===");
     if (_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
+    if (_DEBUG) console.log("Stitch data:", _stitchData);
 
     let currentThreadIndex = -1;
 
@@ -1570,6 +1589,13 @@ let _DEBUG = false;
             console.log("Canvas size:", _stitchData.width, _stitchData.height);
           }
 
+          // Validate trim command coordinates
+          if (run[0].x == null || run[0].y == null || 
+              !isFinite(run[0].x) || !isFinite(run[0].y)) {
+            if (_DEBUG) console.warn("Skipping invalid trim command with null/NaN coordinates:", run[0]);
+            continue;
+          }
+
           // Convert from mm to 0.1mm for DST format
           points.push({
             x: run[0].x * 10, // Convert from mm to 0.1mm for DST format
@@ -1582,12 +1608,20 @@ let _DEBUG = false;
 
         // Normal stitches
         if (_DEBUG) console.log("=== New Stitch Run ===");
+        if (_DEBUG) console.log("Run:", run);
         for (const stitch of run) {
-          if (_DEBUG)
-            console.log("Stitch point:", {
-              mm: { x: stitch.x, y: stitch.y },
-              dst: { x: stitch.x * 10, y: stitch.y * 10 }, // Convert to DST units (0.1mm) for logging
-            });
+          // Validate stitch coordinates before processing
+          if (stitch.x == null || stitch.y == null || 
+              !isFinite(stitch.x) || !isFinite(stitch.y)) {
+            if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
+            continue;
+          }
+
+          // if (_DEBUG)
+          //   console.log("Stitch point:", {
+          //     mm: { x: stitch.x, y: stitch.y },
+          //     dst: { x: stitch.x * 10, y: stitch.y * 10 }, // Convert to DST units (0.1mm) for logging
+          //   });
 
           // Convert from mm to 0.1mm for DST format
           points.push({
@@ -1658,16 +1692,19 @@ let _DEBUG = false;
       // Get the current thread
       const currentThread = _stitchData.threads[threadIndex];
 
-      // Check if there are any runs in the current thread
-      if (!currentThread || currentThread.runs.length === 0) {
-        return; // Nothing to trim
-      }
+      // // Check if there are any runs in the current thread
+      // if (!currentThread || currentThread.runs.length === 0) {
+      //   console.warn("trimThread: No runs found for thread", threadIndex);
+
+      //   return; // Nothing to trim
+      // }
 
       // Get the last run in the current thread
       const lastRun = currentThread.runs[currentThread.runs.length - 1];
 
       // Check if the last run has any stitches
       if (!lastRun || lastRun.length === 0) {
+        console.warn("trimThread: No stitches to trim for thread", threadIndex);
         return; // No stitches to trim
       }
 
@@ -1678,6 +1715,7 @@ let _DEBUG = false;
 
       if (_DEBUG) console.log("Adding trim at position:", currentX, currentY);
 
+      
       // Add a special point to indicate thread trim (in mm)
       _stitchData.threads[threadIndex].runs.push([
         {
@@ -2265,6 +2303,12 @@ let _DEBUG = false;
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Prevent division by zero for zero-length segments
+      if (distance === 0) {
+        console.warn("Zero distance detected, skipping segment");
+        continue;
+      }
 
       // Skip if points are too close
       if (distance < 0.1) continue;
