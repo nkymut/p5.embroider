@@ -8,7 +8,7 @@
 **Note:** This library is currently in early Alpha stage. Expect frequent and significant breaking changes. Please use with caution.
 
 
-Version 0.1.0, March 27, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
+Version 0.1.5, June 23, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
 
 ## Installation
@@ -17,7 +17,7 @@ To use p5.sensor in your project, include the library in your HTML file:
 ### CDNs
 
 ```html
-<script src="https://unpkg.com/p5.embroider@0.1.0/lib/p5.embroider.js"></script>
+<script src="https://unpkg.com/p5.embroider/lib/p5.embroider.js"></script>
 ```
 
 ### GitHub Pages
