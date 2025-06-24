@@ -71,7 +71,7 @@ let _DEBUG = true;
     minStitchLength: 0.5, // mm
     resampleNoise: 0, // 0-1 range
     angle: 0, // Angle in radians
-    spacing: 3, // Space between rows in mm
+    rowSpacing: 0.8, // Space between rows in mm
     tieDistance: 15, // Distance between tie-down stitches in mm
     alternateAngle: false, // Whether to alternate angles between shapes
     color: { r: 0, g: 0, b: 0 },
@@ -134,7 +134,7 @@ let _DEBUG = true;
    * @param {number} [settings.minStitchLength] - Minimum stitch length in mm
    * @param {number} [settings.resampleNoise] - Amount of random variation (0-1)
    * @param {number} [settings.angle] - Fill angle in degrees
-   * @param {number} [settings.spacing] - Space between rows in mm
+   * @param {number} [settings.rowSpacing] - Space between rows in mm
    * @param {number} [settings.tieDistance] - Distance between tie-down stitches in mm
    * @param {boolean} [settings.alternateAngle] - Whether to alternate angles between shapes
    */
@@ -155,8 +155,8 @@ let _DEBUG = true;
     if (settings.angle !== undefined) {
       _fillSettings.angle = (settings.angle * Math.PI) / 180; // Convert to radians
     }
-    if (settings.spacing !== undefined) {
-      _fillSettings.spacing = settings.spacing;
+    if (settings.rowSpacing !== undefined) {
+      _fillSettings.rowSpacing = settings.rowSpacing;
     }
     if (settings.tieDistance !== undefined) {
       _fillSettings.tieDistance = settings.tieDistance;
@@ -310,8 +310,6 @@ let _DEBUG = true;
             drawStitches(fillStitches, _fillThreadIndex);
           }
         }
-
-        
 
         //convert vertices to embroidery stitches
         const stitches = p5embroidery.convertVerticesToStitches(_vertices, _strokeSettings);
@@ -691,6 +689,18 @@ let _DEBUG = true;
 
         // Record the stitches if we're recording
         if (_recording) {
+
+          if(_doFill) {
+            // Convert vertices to pathPoints format for the fill function
+            const fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            
+            // Draw fill stitches in visual modes
+            if (_drawMode === "stitch" || _drawMode === "realistic") {
+              drawStitches(fillStitches, _fillThreadIndex);
+            }
+          }
+
           // Get the current position (in mm)
           let currentX, currentY;
           if (
@@ -824,9 +834,6 @@ let _DEBUG = true;
   function overrideRectFunction() {
     _originalRectFunc = window.rect;
     window.rect = function (x, y, w, h) {
-      let fillStitches = [];
-      let strokeStitches = [];
-
       if (_recording) {
         // Get the current rectMode from p5 instance
         const mode = _p5Instance._renderer._rectMode;
@@ -853,15 +860,26 @@ let _DEBUG = true;
           y2 = y + h;
         }
 
-        // Handle fill first if enabled
+        const pathPoints = [
+          { x: x1, y: y1 }, // top-left
+          { x: x2, y: y1 }, // top-right
+          { x: x2, y: y2 }, // bottom-right
+          { x: x1, y: y2 }, // bottom-left
+          { x: x1, y: y1 }  // close the path
+        ];
+        console.log("pathPoints", pathPoints);
+   
+
         if (_doFill) {
+          let fillStitches = [];
+          
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
-              fillStitches = createTatamiFill(x1, y1, w, h, _fillSettings);
+              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
               break;
-            // Add other fill modes here
+            // Add other fill modes here as they are implemented
             default:
-              fillStitches = createTatamiFill(x, y, w, h, _fillSettings);
+              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
           }
 
           if (fillStitches && fillStitches.length > 0) {
@@ -875,26 +893,26 @@ let _DEBUG = true;
           }
         }
 
+        // Step 3: Handle stroke if enabled
         if (_doStroke) {
-          strokeStitches.push(...convertLineToStitches(x1, y1, x2, y1, _strokeSettings));
-          strokeStitches.push(...convertLineToStitches(x2, y1, x2, y2, _strokeSettings));
-          strokeStitches.push(...convertLineToStitches(x2, y2, x1, y2, _strokeSettings));
-          strokeStitches.push(...convertLineToStitches(x1, y2, x1, y1, _strokeSettings));
+          // Use the path-based stroke approach for consistency
+          const strokeStitches = p5embroidery.convertVerticesToStitches(
+            pathPoints.map(p => ({ x: p.x, y: p.y, isVert: true })), 
+            _strokeSettings
+          );
 
           if (strokeStitches && strokeStitches.length > 0) {
             _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+            
+            // Draw stroke stitches if in appropriate mode
+            if (_drawMode === "stitch" || _drawMode === "realistic") {
+              drawStitches(strokeStitches, _strokeThreadIndex);
+            }
           }
         }
 
-        // Draw the stitches
-        if (_drawMode === "stitch" || _drawMode === "realistic") {
-          if (fillStitches && fillStitches.length > 0) {
-            drawStitches(fillStitches, _fillThreadIndex);
-          }
-          if (strokeStitches && strokeStitches.length > 0) {
-            drawStitches(strokeStitches, _strokeThreadIndex);
-          }
-        } else {
+        // Handle p5 drawing mode
+        if (_drawMode === "p5") {
           _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
           _originalRectFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
         }
@@ -1925,77 +1943,6 @@ let _DEBUG = true;
         }
       : { x: startX, y: startY };
   }
-
-  /**
-   * Creates a tatami fill pattern for a rectangular area.
-   * @method createTatamiFill
-   * @private
-   * @param {number} x - X coordinate of the rectangle in mm
-   * @param {number} y - Y coordinate of the rectangle in mm
-   * @param {number} w - Width of the rectangle in mm
-   * @param {number} h - Height of the rectangle in mm
-   * @param {Object} [stitchSettings=_fillSettings] - Fill settings object
-   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
-   */
-  function createTatamiFill(x, y, w, h, stitchSettings = _fillSettings) {
-    const stitches = [];
-    const angle = stitchSettings.angle;
-    const stitchLength = stitchSettings.stitchLength;
-    const stitchWidth = stitchSettings.stitchWidth;
-    const minStitchLength = stitchSettings.minStitchLength;
-    const resampleNoise = stitchSettings.resampleNoise;
-    const tieDistance = stitchSettings.tieDistance;
-
-    // Convert rectangle to rotated coordinates
-    const cos_angle = Math.cos(angle);
-    const sin_angle = Math.sin(angle);
-
-    // Calculate rotated bounds
-    const points = [
-      { x: x, y: y },
-      { x: x + w, y: y },
-      { x: x + w, y: y + h },
-      { x: x, y: y + h },
-    ];
-
-    // Rotate points
-    const rotated = points.map((p) => ({
-      x: (p.x - x) * cos_angle - (p.y - y) * sin_angle,
-      y: (p.x - x) * sin_angle + (p.y - y) * cos_angle,
-    }));
-
-    // Find bounds of rotated rectangle
-    const minX = Math.min(...rotated.map((p) => p.x));
-    const maxX = Math.max(...rotated.map((p) => p.x));
-    const minY = Math.min(...rotated.map((p) => p.y));
-    const maxY = Math.max(...rotated.map((p) => p.y));
-
-    // Calculate number of rows needed
-    const numRows = Math.ceil((maxY - minY) / stitchWidth);
-
-    // Generate rows of stitches
-    let forward = true;
-    for (let i = 0; i <= numRows; i++) {
-      const rowY = minY + i * stitchWidth;
-
-      // Calculate row endpoints
-      const rowX1 = forward ? minX : maxX;
-      const rowX2 = forward ? maxX : minX;
-
-      // Calculate number of stitches in this row
-      const rowLength = Math.abs(rowX2 - rowX1);
-
-      if (i % 2 === 0) {
-        stitches.push(...straightLineStitch(rowX1, rowY, rowX2, rowY, stitchSettings));
-      } else {
-        stitches.push(...straightLineStitch(rowX2, rowY, rowX1, rowY, stitchSettings));
-      }
-
-      forward = !forward; // Alternate direction for next row
-    }
-
-    return stitches;
-  }
   
   function getPathBounds(points) {
     const xs = points.map(p => p.x);
@@ -2016,7 +1963,7 @@ let _DEBUG = true;
   function createTatamiFillFromPath(pathPoints, settings) {
     // Default settings
     const angle = settings.angle || 0;
-    const spacing = settings.spacing || 4;
+    const spacing = settings.rowSpacing || 0.8;
     const stitchLength = settings.stitchLength || 3;
     
     // Calculate bounds of the polygon

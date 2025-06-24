@@ -64,6 +64,9 @@ function draw() {
   // Draw a 200px circle
   strokeWeight(5);
 
+  setFillMode("tatami");
+
+  fill(220, 220, 0);
   ellipse(40, 40, 60, 60);
 
   trimThread();
