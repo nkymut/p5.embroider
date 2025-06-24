@@ -165,17 +165,18 @@ function draw() {
   updateFillSettings();
   
   setStrokeSettings({
-    stitchLength: 0.2,
-    strokeWeight: 5,
+    stitchLength: 0.3,
+    stitchWidth: 5,
     resampleNoise: 0.1,
   });
-  
-  fill(0, 0, 200);
-  setStitch(0.1, 0.2, 0);
+
+  setStrokeMode("zigzag");
   strokeWeight(2);
   stroke(0, 0, 0);
+  fill(0, 0, 200);
+
   rectMode(CENTER);
-  rect(50, 50, 40, 40);
+  rect(50, 50, 40, 40, 5);
 
   trimThread();
   endRecord();

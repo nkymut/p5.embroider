@@ -42,7 +42,8 @@ function draw() {
   // Draw a 100mm square
   setStitch(0.1, 0.2, 0);
   setStrokeSettings({
-    strokeLength: 0.2,
+    stitchLength: 0.8,
+    stitchWidth: 5,
     noise: 0.0,
   });
   stroke(0, 0, 200);
