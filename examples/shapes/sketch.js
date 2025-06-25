@@ -41,16 +41,17 @@ function draw() {
   noFill();
   beginRecord(this);
   // Draw a 100mm square
-  setStitch(0.1, 0.2, 0);
+  setStitch(0.5, 0.2, 0);
   setStrokeSettings({
-    strokeLength: 0.2,
+    strokeLength: 0.4,
+    stitchWidth: 1.8,
     noise: 0.0,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
   setStrokeMode("zigzag");
 
-
+  strokeJoin(MITER);
   strokeWeight(5);
   fill(0,200,0)
   ellipse(25, 25, 50, 50);
@@ -58,7 +59,7 @@ function draw() {
   circle(25, 25, 25);
   trimThread();
   rectMode(CENTER);
-  rect(100, 25, 50, 50, 5);
+  rect(100, 25, 50, 50);
   trimThread();
   square(175, 25, 50);
   trimThread();
