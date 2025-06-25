@@ -1,7 +1,7 @@
 import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 
-let _DEBUG = true;
+let _DEBUG = false;
 
 (function (global) {
   const p5embroidery = global.p5embroidery || {};
@@ -765,7 +765,6 @@ let _DEBUG = true;
 
           // Draw the stitches
           if (_drawMode === "p5") {
-            console.log("_strokeSettings.strokeWeight", _strokeSettings.strokeWeight);
             _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
             _originalEllipseFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
           } else {
@@ -935,7 +934,6 @@ let _DEBUG = true;
           }
         }
 
-        // Step 3: Handle stroke if enabled
         if (_doStroke) {
           // Use the path-based stroke approach for consistency
           const strokeStitches = p5embroidery.convertVerticesToStitches(
@@ -955,8 +953,8 @@ let _DEBUG = true;
 
         // Handle p5 drawing mode
         if (_drawMode === "p5") {
-          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
-          _originalRectFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h), ...cornerRs.map(r => mmToPixel(r)));
+          _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
+          _originalRectFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h), ...cornerRs.map(r => mmToPixel(r)));
         }
       } else {
         _originalRectFunc.apply(this, arguments);
@@ -1027,8 +1025,8 @@ let _DEBUG = true;
           }
         }
         if (_drawMode === "p5") {
-          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
-          _originalTriangleFunc.call(this, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3));
+          _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
+          _originalTriangleFunc.call(_p5Instance, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3));
         }
       } else {
         _originalTriangleFunc.apply(this, arguments);
@@ -1082,8 +1080,8 @@ let _DEBUG = true;
           }
         }
         if (_drawMode === "p5") {
-          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
-          _originalQuadFunc.call(this, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3), mmToPixel(x4), mmToPixel(y4));
+          _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
+          _originalQuadFunc.call(_p5Instance, mmToPixel(x1), mmToPixel(y1), mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3), mmToPixel(x4), mmToPixel(y4));
         }
       } else {
         _originalQuadFunc.apply(this, arguments);
@@ -1145,8 +1143,8 @@ let _DEBUG = true;
           }
         }
         if (_drawMode === "p5") {
-          _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
-          _originalArcFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h), start, stop, mode);
+          _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
+          _originalArcFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h), start, stop, mode);
         }
       } else {
         _originalArcFunc.apply(this, arguments);
@@ -1193,6 +1191,10 @@ let _DEBUG = true;
     window.fill = _originalFillFunc;
     window.noFill = _originalNoFillFunc;
     window.rect = _originalRectFunc;
+    window.square = _originalSquareFunc;
+    window.triangle = _originalTriangleFunc;
+    window.quad = _originalQuadFunc;
+    window.arc = _originalArcFunc;
     window.vertex = _originalVertexFunc;
     window.beginShape = _originalBeginShapeFunc;
     window.endShape = _originalEndShapeFunc;

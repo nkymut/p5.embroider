@@ -1,7 +1,7 @@
 let drawMode = "stitch";
 
 function setup() {
-  createCanvas(mmToPixel(200), mmToPixel(200));
+  createCanvas(mmToPixel(250), mmToPixel(200));
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -36,6 +36,7 @@ function draw() {
   background("#FFF5DC");
   translate(mmToPixel(10), mmToPixel(10));
 
+  strokeCap(SQUARE);
   setDrawMode(drawMode);
   noFill();
   beginRecord(this);
@@ -51,17 +52,24 @@ function draw() {
 
 
   strokeWeight(5);
-
+  fill(0,200,0)
   ellipse(25, 25, 50, 50);
   trimThread();
   circle(25, 25, 25);
   trimThread();
   rectMode(CENTER);
-  rect(100, 25, 50, 50);
+  rect(100, 25, 50, 50, 5);
   trimThread();
-  square(100, 25, 25);
+  square(175, 25, 50);
+  trimThread();
 
+  triangle(25, 75, 50, 125, 5, 125);
   trimThread();
+  arc(100, 75, 50, 100, 0, PI);
+  trimThread();
+  quad(175, 75, 200, 100, 175, 125, 150, 100);
+  trimThread();
+
 
 
   // Stop recording and export as DST
