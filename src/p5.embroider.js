@@ -46,6 +46,21 @@ function setDebugMode(enabled) {
   let _strokeThreadIndex = 0;
   let _fillThreadIndex = 0;
 
+  // Transformation system
+  let _transformStack = [];
+  let _currentTransform = {
+    matrix: [1, 0, 0, 0, 1, 0, 0, 0, 1], // 3x3 identity matrix in column-major order
+    strokeSettings: null,
+    fillSettings: null,
+    strokeThreadIndex: 0,
+    fillThreadIndex: 0,
+    doStroke: false,
+    doFill: false,
+    drawMode: "stitch",
+    strokeMode: "straight",
+    fillMode: "tatami",
+  };
+
   // Embroidery settings
   const _embroiderySettings = {
     stitchLength: 3, // mm
@@ -110,6 +125,85 @@ function setDebugMode(enabled) {
     strokeMode: STROKE_MODE.STRAIGHT,
     strokeJoin: STROKE_JOIN.ROUND, // Add join setting
   };
+
+  /**
+   * Matrix utility functions for 2D transformations
+   * @private
+   */
+
+  /**
+   * Create an identity matrix
+   * @private
+   */
+  function createIdentityMatrix() {
+    return [1, 0, 0, 0, 1, 0, 0, 0, 1];
+  }
+
+  /**
+   * Multiply two 3x3 matrices (column-major order)
+   * @private
+   */
+  function multiplyMatrix(a, b) {
+    const result = new Array(9);
+    
+    result[0] = a[0] * b[0] + a[3] * b[1] + a[6] * b[2];
+    result[1] = a[1] * b[0] + a[4] * b[1] + a[7] * b[2];
+    result[2] = a[2] * b[0] + a[5] * b[1] + a[8] * b[2];
+    
+    result[3] = a[0] * b[3] + a[3] * b[4] + a[6] * b[5];
+    result[4] = a[1] * b[3] + a[4] * b[4] + a[7] * b[5];
+    result[5] = a[2] * b[3] + a[5] * b[4] + a[8] * b[5];
+    
+    result[6] = a[0] * b[6] + a[3] * b[7] + a[6] * b[8];
+    result[7] = a[1] * b[6] + a[4] * b[7] + a[7] * b[8];
+    result[8] = a[2] * b[6] + a[5] * b[7] + a[8] * b[8];
+    
+    return result;
+  }
+
+  /**
+   * Create a translation matrix
+   * @private
+   */
+  function createTranslationMatrix(x, y) {
+    return [1, 0, 0, 0, 1, 0, x, y, 1];
+  }
+
+  /**
+   * Create a rotation matrix
+   * @private
+   */
+  function createRotationMatrix(angle) {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    return [cos, sin, 0, -sin, cos, 0, 0, 0, 1];
+  }
+
+  /**
+   * Create a scale matrix
+   * @private
+   */
+  function createScaleMatrix(sx, sy = sx) {
+    return [sx, 0, 0, 0, sy, 0, 0, 0, 1];
+  }
+
+  /**
+   * Apply transformation matrix to a point
+   * @private
+   */
+  function transformPoint(point, matrix) {
+    const x = point.x * matrix[0] + point.y * matrix[3] + matrix[6];
+    const y = point.x * matrix[1] + point.y * matrix[4] + matrix[7];
+    return { x, y };
+  }
+
+  /**
+   * Apply transformation matrix to an array of points
+   * @private
+   */
+  function transformPoints(points, matrix) {
+    return points.map(point => transformPoint(point, matrix));
+  }
 
   /**
    * Sets the stroke mode for embroidery stitches.
@@ -446,10 +540,13 @@ function setDebugMode(enabled) {
 
     window.vertex = function (x, y, moveTo, u, v) {
       if (_recording) {
+        // Apply current transformation to the vertex coordinates
+        const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
+        
         // Create a vertex object with named properties instead of an array
         const vert = {
-          x: x,
-          y: y,
+          x: transformedPoint.x,
+          y: transformedPoint.y,
           u: u || 0,
           v: v || 0,
           isVert: true,
@@ -460,16 +557,16 @@ function setDebugMode(enabled) {
         }
 
         if (_drawMode === "p5") {
-          _originalVertexFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y), moveTo, u, v);
+          _originalVertexFunc.call(_p5Instance, mmToPixel(transformedPoint.x), mmToPixel(transformedPoint.y), moveTo, u, v);
         }
 
         // Add to appropriate container based on contour state
         if (_isContour) {
-          _currentContour.push({ x, y });
-          if (_DEBUG) console.log("Added to contour:", { x, y });
+          _currentContour.push({ x: transformedPoint.x, y: transformedPoint.y });
+          if (_DEBUG) console.log("Added to contour (transformed):", { x: transformedPoint.x, y: transformedPoint.y });
         } else {
           _vertices.push(vert);
-          if (_DEBUG) console.log("Added to vertices:", vert);
+          if (_DEBUG) console.log("Added to vertices (transformed):", vert);
         }
       } else {
         let args = [mmToPixel(x), mmToPixel(y), moveTo, u, v];
@@ -1154,6 +1251,178 @@ function setDebugMode(enabled) {
         _originalStrokeJoinFunc.call(this, join);
       } else {
         _originalStrokeJoinFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
+   * Overrides p5.js push() function to save embroidery state.
+   * @private
+   */
+  let _originalPushFunc;
+  function overridePushFunction() {
+    _originalPushFunc = window.push;
+
+    window.push = function () {
+      if (_recording) {
+        // Save current embroidery transformation state
+        _transformStack.push({
+          matrix: [..._currentTransform.matrix],
+          strokeSettings: { ..._strokeSettings },
+          fillSettings: { ..._fillSettings },
+          strokeThreadIndex: _strokeThreadIndex,
+          fillThreadIndex: _fillThreadIndex,
+          doStroke: _doStroke,
+          doFill: _doFill,
+          drawMode: _drawMode,
+          strokeMode: _currentStrokeMode,
+          fillMode: _currentFillMode,
+        });
+
+        if (_DEBUG) {
+          console.log("Embroidery push - saved state", {
+            stackSize: _transformStack.length,
+            matrix: _currentTransform.matrix,
+          });
+        }
+      }
+
+      // Always call original p5.js push for visual modes
+      _originalPushFunc.apply(this, arguments);
+    };
+  }
+
+  /**
+   * Overrides p5.js pop() function to restore embroidery state.
+   * @private
+   */
+  let _originalPopFunc;
+  function overridePopFunction() {
+    _originalPopFunc = window.pop;
+
+    window.pop = function () {
+      if (_recording) {
+        if (_transformStack.length === 0) {
+          console.warn("🪡 p5.embroider says: pop() called without matching push()");
+          return;
+        }
+
+        // Restore embroidery transformation state
+        const state = _transformStack.pop();
+        _currentTransform.matrix = state.matrix;
+        _strokeSettings = state.strokeSettings;
+        _fillSettings = state.fillSettings;
+        _strokeThreadIndex = state.strokeThreadIndex;
+        _fillThreadIndex = state.fillThreadIndex;
+        _doStroke = state.doStroke;
+        _doFill = state.doFill;
+        _drawMode = state.drawMode;
+        _currentStrokeMode = state.strokeMode;
+        _currentFillMode = state.fillMode;
+
+        if (_DEBUG) {
+          console.log("Embroidery pop - restored state", {
+            stackSize: _transformStack.length,
+            matrix: _currentTransform.matrix,
+          });
+        }
+      }
+
+      // Always call original p5.js pop for visual modes
+      _originalPopFunc.apply(this, arguments);
+    };
+  }
+
+  /**
+   * Overrides p5.js translate() function to apply embroidery transformations.
+   * @private
+   */
+  let _originalTranslateFunc;
+  function overrideTranslateFunction() {
+    _originalTranslateFunc = window.translate;
+
+    window.translate = function (x, y, z) {
+      if (_recording) {
+        // Apply translation to current transformation matrix
+        const translationMatrix = createTranslationMatrix(x, y || 0);
+        _currentTransform.matrix = multiplyMatrix(_currentTransform.matrix, translationMatrix);
+
+        if (_DEBUG) {
+          console.log("Embroidery translate", { x, y, matrix: _currentTransform.matrix });
+        }
+      }
+
+      // Call original p5.js translate for visual modes  
+      if (_drawMode === "p5" || !_recording) {
+        _originalTranslateFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
+   * Overrides p5.js rotate() function to apply embroidery transformations.
+   * @private
+   */
+  let _originalRotateFunc;
+  function overrideRotateFunction() {
+    _originalRotateFunc = window.rotate;
+
+    window.rotate = function (angle, axis) {
+      if (_recording) {
+        // Convert angle to radians if needed (p5.js handles this internally)
+        const radians = _p5Instance._angleMode === _p5Instance.DEGREES ? angle * (Math.PI / 180) : angle;
+        
+        // Apply rotation to current transformation matrix
+        const rotationMatrix = createRotationMatrix(radians);
+        _currentTransform.matrix = multiplyMatrix(_currentTransform.matrix, rotationMatrix);
+
+        if (_DEBUG) {
+          console.log("Embroidery rotate", { angle, radians, matrix: _currentTransform.matrix });
+        }
+      }
+
+      // Call original p5.js rotate for visual modes
+      if (_drawMode === "p5" || !_recording) {
+        _originalRotateFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
+   * Overrides p5.js scale() function to apply embroidery transformations.
+   * @private
+   */
+  let _originalScaleFunc;
+  function overrideScaleFunction() {
+    _originalScaleFunc = window.scale;
+
+    window.scale = function (x, y, z) {
+      if (_recording) {
+        // Handle different parameter formats like p5.js
+        let sx = x, sy = y;
+        
+        if (x instanceof p5.Vector) {
+          sx = x.x;
+          sy = x.y;
+        } else if (Array.isArray(x)) {
+          sx = x[0];
+          sy = x[1] || x[0];
+        } else {
+          if (y === undefined) sy = sx;
+        }
+
+        // Apply scale to current transformation matrix
+        const scaleMatrix = createScaleMatrix(sx, sy);
+        _currentTransform.matrix = multiplyMatrix(_currentTransform.matrix, scaleMatrix);
+
+        if (_DEBUG) {
+          console.log("Embroidery scale", { sx, sy, matrix: _currentTransform.matrix });
+        }
+      }
+
+      // Call original p5.js scale for visual modes
+      if (_drawMode === "p5" || !_recording) {
+        _originalScaleFunc.apply(this, arguments);
       }
     };
   }
