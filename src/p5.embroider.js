@@ -206,6 +206,30 @@ function setDebugMode(enabled) {
   }
 
   /**
+   * Helper function to apply current transformation to coordinates if recording
+   * Only applies transformation in stitch/realistic modes, not in p5 mode
+   * @private
+   */
+  function applyCurrentTransform(x, y) {
+    if (_recording && _drawMode !== "p5") {
+      return transformPoint({ x, y }, _currentTransform.matrix);
+    }
+    return { x, y };
+  }
+
+  /**
+   * Helper function to apply current transformation to an array of coordinates
+   * Only applies transformation in stitch/realistic modes, not in p5 mode
+   * @private
+   */
+  function applyCurrentTransformToPoints(points) {
+    if (_recording && _drawMode !== "p5") {
+      return transformPoints(points, _currentTransform.matrix);
+    }
+    return points;
+  }
+
+  /**
    * Sets the stroke mode for embroidery stitches.
    * @method setStrokeMode
    * @for p5
@@ -882,7 +906,11 @@ function setDebugMode(enabled) {
     window.line = function (x1, y1, x2, y2) {
       if (_recording) {
         if (_doStroke) {
-          let stitches = convertLineToStitches(x1, y1, x2, y2, _strokeSettings);
+          // Apply current transformation to coordinates
+          const p1 = applyCurrentTransform(x1, y1);
+          const p2 = applyCurrentTransform(x2, y2);
+          
+          let stitches = convertLineToStitches(p1.x, p1.y, p2.x, p2.y, _strokeSettings);
           _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
 
           if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -908,8 +936,14 @@ function setDebugMode(enabled) {
     window.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         if (_doStroke) {
-          // Generate curve points using Catmull-Rom spline
-          const curvePoints = generateCurvePoints(x1, y1, x2, y2, x3, y3, x4, y4);
+          // Apply current transformation to control points
+          const p1 = applyCurrentTransform(x1, y1);
+          const p2 = applyCurrentTransform(x2, y2);
+          const p3 = applyCurrentTransform(x3, y3);
+          const p4 = applyCurrentTransform(x4, y4);
+          
+          // Generate curve points using Catmull-Rom spline with transformed coordinates
+          const curvePoints = generateCurvePoints(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
           let stitches = p5embroidery.convertVerticesToStitches(
             curvePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
@@ -949,8 +983,14 @@ function setDebugMode(enabled) {
     window.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         if (_doStroke) {
-          // Generate bezier curve points
-          const bezierPoints = generateBezierPoints(x1, y1, x2, y2, x3, y3, x4, y4);
+          // Apply current transformation to control points
+          const p1 = applyCurrentTransform(x1, y1);
+          const p2 = applyCurrentTransform(x2, y2);
+          const p3 = applyCurrentTransform(x3, y3);
+          const p4 = applyCurrentTransform(x4, y4);
+          
+          // Generate bezier curve points with transformed coordinates
+          const bezierPoints = generateBezierPoints(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
           let stitches = p5embroidery.convertVerticesToStitches(
             bezierPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
@@ -1350,10 +1390,12 @@ function setDebugMode(enabled) {
         if (_DEBUG) {
           console.log("Embroidery translate", { x, y, matrix: _currentTransform.matrix });
         }
+        if(_drawMode == "p5"){
+          _originalTranslateFunc.call(this, mmToPixel(x), mmToPixel(y));
+        }
       }
-
-      // Call original p5.js translate for visual modes  
-      if (_drawMode === "p5" || !_recording) {
+      else {
+        console.log("translate in p5 mode", arguments);
         _originalTranslateFunc.apply(this, arguments);
       }
     };
@@ -1463,11 +1505,14 @@ function setDebugMode(enabled) {
           y: pathPoints[0].y,
         });
 
+        // Apply current transformation to all pathPoints
+        const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
+
         // Record the stitches if we're recording
         if (_recording) {
           if (_doFill) {
             // Convert vertices to pathPoints format for the fill function
-            const fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+            const fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
             _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
 
             // Draw fill stitches in visual modes
@@ -1485,8 +1530,8 @@ function setDebugMode(enabled) {
           ) {
             // If there are no runs or the last run is empty, use the first point on the ellipse
             // (at 0 degrees) as the starting point, not the center
-            currentX = pathPoints[0].x;
-            currentY = pathPoints[0].y;
+            currentX = transformedPathPoints[0].x;
+            currentY = transformedPathPoints[0].y;
           } else {
             // Otherwise, use the last stitch position (already in mm)
             let lastRun =
@@ -1498,7 +1543,7 @@ function setDebugMode(enabled) {
 
           // Add a jump stitch to the first point of the ellipse if needed
           if (
-            Math.sqrt(Math.pow(pathPoints[0].x - currentX, 2) + Math.pow(pathPoints[0].y - currentY, 2)) >
+            Math.sqrt(Math.pow(transformedPathPoints[0].x - currentX, 2) + Math.pow(transformedPathPoints[0].y - currentY, 2)) >
             _embroiderySettings.jumpThreshold
           ) {
             _stitchData.threads[_strokeThreadIndex].runs.push([
@@ -1508,8 +1553,8 @@ function setDebugMode(enabled) {
                 command: "jump",
               },
               {
-                x: pathPoints[0].x,
-                y: pathPoints[0].y,
+                x: transformedPathPoints[0].x,
+                y: transformedPathPoints[0].y,
               },
             ]);
           }
@@ -1519,20 +1564,20 @@ function setDebugMode(enabled) {
           if (_strokeSettings.strokeWeight > 0) {
             switch (_strokeSettings.strokeMode) {
               case STROKE_MODE.ZIGZAG:
-                stitches = zigzagStitchFromPath(pathPoints, _strokeSettings);
+                stitches = zigzagStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
               case STROKE_MODE.LINES:
-                stitches = multiLineStitchFromPath(pathPoints, _strokeSettings);
+                stitches = multiLineStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
               case STROKE_MODE.SASHIKO:
-                stitches = sashikoStitchFromPath(pathPoints, _strokeSettings);
+                stitches = sashikoStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
               default:
-                stitches = straightLineStitchFromPath(pathPoints, _strokeSettings);
+                stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
             }
           } else {
             // If no stroke weight specified, use straight line stitching
-            stitches = straightLineStitchFromPath(pathPoints, _strokeSettings);
+            stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
           }
 
           // Add the ellipse stitches
@@ -1577,11 +1622,14 @@ function setDebugMode(enabled) {
     _originalPointFunc = window.point;
     window.point = function (x, y) {
       if (_recording) {
+        // Apply current transformation to coordinates
+        const p = applyCurrentTransform(x, y);
+        
         // For point, we just add a single stitch
         let stitches = [
           {
-            x: x,
-            y: y,
+            x: p.x,
+            y: p.y,
           },
         ];
         _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
@@ -1712,16 +1760,19 @@ function setDebugMode(enabled) {
           }
         }
 
+        // Apply current transformation to all pathPoints
+        const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
+
         if (_doFill) {
           let fillStitches = [];
 
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
               break;
             // Add other fill modes here as they are implemented
             default:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
 
           if (fillStitches && fillStitches.length > 0) {
@@ -1738,7 +1789,7 @@ function setDebugMode(enabled) {
         if (_doStroke) {
           // Use the path-based stroke approach for consistency
           const strokeStitches = p5embroidery.convertVerticesToStitches(
-            pathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
+            transformedPathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
           );
 
@@ -1802,15 +1853,19 @@ function setDebugMode(enabled) {
           { x: x3, y: y3 },
           { x: x1, y: y1 }, // close
         ];
+        
+        // Apply current transformation to all pathPoints
+        const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
+        
         // Fill
         if (_doFill) {
           let fillStitches = [];
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
               break;
             default:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
           if (fillStitches && fillStitches.length > 0) {
             _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
@@ -1822,7 +1877,7 @@ function setDebugMode(enabled) {
         // Stroke
         if (_doStroke) {
           const strokeStitches = p5embroidery.convertVerticesToStitches(
-            pathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
+            transformedPathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
           );
           if (strokeStitches && strokeStitches.length > 0) {
@@ -1865,15 +1920,19 @@ function setDebugMode(enabled) {
           { x: x4, y: y4 },
           { x: x1, y: y1 }, // close
         ];
+        
+        // Apply current transformation to all pathPoints
+        const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
+        
         // Fill
         if (_doFill) {
           let fillStitches = [];
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
               break;
             default:
-              fillStitches = createTatamiFillFromPath(pathPoints, _fillSettings);
+              fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
           if (fillStitches && fillStitches.length > 0) {
             _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
@@ -1885,7 +1944,7 @@ function setDebugMode(enabled) {
         // Stroke
         if (_doStroke) {
           const strokeStitches = p5embroidery.convertVerticesToStitches(
-            pathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
+            transformedPathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
           );
           if (strokeStitches && strokeStitches.length > 0) {
@@ -1952,23 +2011,28 @@ function setDebugMode(enabled) {
           console.log("Generated arc points:", pathPoints.length);
         }
 
+        // Apply current transformation to all pathPoints
+        const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
+        // Also transform the center point
+        const transformedCenter = applyCurrentTransform(x, y);
+
         // Fill - handle all modes, not just PIE and CHORD
         if (_doFill) {
-          let fillPathPoints = [...pathPoints];
+          let fillPathPoints = [...transformedPathPoints];
 
           if (mode === window.PIE || mode === "pie") {
             // PIE mode: close to center and back to start
-            fillPathPoints.push({ x, y });
-            fillPathPoints.push(pathPoints[0]);
+            fillPathPoints.push({ x: transformedCenter.x, y: transformedCenter.y });
+            fillPathPoints.push(transformedPathPoints[0]);
           } else if (mode === window.CHORD || mode === "chord") {
             // CHORD mode: close with straight line from end to start
-            if (pathPoints.length > 1) {
-              fillPathPoints.push(pathPoints[0]); // Close the path
+            if (transformedPathPoints.length > 1) {
+              fillPathPoints.push(transformedPathPoints[0]); // Close the path
             }
           } else {
             // For OPEN mode or undefined, create a pie-like fill (common expectation)
-            fillPathPoints.push({ x, y });
-            fillPathPoints.push(pathPoints[0]);
+            fillPathPoints.push({ x: transformedCenter.x, y: transformedCenter.y });
+            fillPathPoints.push(transformedPathPoints[0]);
           }
 
           if (_DEBUG) {
@@ -2003,25 +2067,25 @@ function setDebugMode(enabled) {
           }
         }
 
-        // Stroke (uses original arc points, not closed fill path)
+        // Stroke (uses transformed arc points, not closed fill path)
         if (_doStroke) {
-          let strokePathPoints = pathPoints;
+          let strokePathPoints = transformedPathPoints;
 
           // For PIE mode, include lines to center for stroke
           if (mode === window.PIE || mode === "pie") {
             strokePathPoints = [
-              { x, y }, // Start at center
-              ...pathPoints, // Arc points
-              { x, y }, // Back to center
+              { x: transformedCenter.x, y: transformedCenter.y }, // Start at center
+              ...transformedPathPoints, // Arc points
+              { x: transformedCenter.x, y: transformedCenter.y }, // Back to center
             ];
           } else if (mode === window.CHORD || mode === "chord") {
             // For CHORD mode, add the chord line
             strokePathPoints = [
-              ...pathPoints,
-              pathPoints[0], // Close with chord
+              ...transformedPathPoints,
+              transformedPathPoints[0], // Close with chord
             ];
           }
-          // For OPEN mode, use pathPoints as-is
+          // For OPEN mode, use transformedPathPoints as-is
 
           const strokeStitches = p5embroidery.convertVerticesToStitches(
             strokePathPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
@@ -2114,6 +2178,14 @@ function setDebugMode(enabled) {
    * @private
    */
   function overrideP5Functions() {
+    // Transformation functions
+    overridePushFunction();
+    overridePopFunction();
+    overrideTranslateFunction();
+    overrideRotateFunction();
+    overrideScaleFunction();
+    
+    // Drawing functions
     overrideLineFunction();
     overrideCurveFunction();
     overrideBezierFunction();
@@ -2131,6 +2203,8 @@ function setDebugMode(enabled) {
     overrideTriangleFunction();
     overrideQuadFunction();
     overrideArcFunction();
+    
+    // Shape vertex functions
     overrideVertexFunction();
     overrideBezierVertexFunction();
     overrideQuadraticVertexFunction();
@@ -2139,7 +2213,6 @@ function setDebugMode(enabled) {
     overrideEndShapeFunction();
     overrideBeginContourFunction();
     overrideEndContourFunction();
-    // Add more overrides as needed
   }
 
   /**
@@ -2147,6 +2220,14 @@ function setDebugMode(enabled) {
    * @private
    */
   function restoreP5Functions() {
+    // Restore transformation functions
+    window.push = _originalPushFunc;
+    window.pop = _originalPopFunc;
+    window.translate = _originalTranslateFunc;
+    window.rotate = _originalRotateFunc;
+    window.scale = _originalScaleFunc;
+    
+    // Restore drawing functions
     window.line = _originalLineFunc;
     window.curve = _originalCurveFunc;
     window.bezier = _originalBezierFunc;
@@ -2163,6 +2244,8 @@ function setDebugMode(enabled) {
     window.triangle = _originalTriangleFunc;
     window.quad = _originalQuadFunc;
     window.arc = _originalArcFunc;
+    
+    // Restore shape vertex functions
     window.vertex = _originalVertexFunc;
     window.bezierVertex = _originalBezierVertexFunc;
     window.quadraticVertex = _originalQuadraticVertexFunc;
@@ -2171,7 +2254,6 @@ function setDebugMode(enabled) {
     window.endShape = _originalEndShapeFunc;
     window.beginContour = _originalBeginContourFunc;
     window.endContour = _originalEndContourFunc;
-    // Restore other functions as needed
   }
 
   /**
