@@ -609,6 +609,11 @@ function setDebugMode(enabled) {
 
     window.bezierVertex = function (x2, y2, x3, y3, x4, y4) {
       if (_recording) {
+        // Apply current transformation to control points
+        const cp1 = transformPoint({ x: x2, y: y2 }, _currentTransform.matrix);
+        const cp2 = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
+        const endPoint = transformPoint({ x: x4, y: y4 }, _currentTransform.matrix);
+
         // Get the last vertex as the starting point - check both main vertices and current contour
         let lastVertex;
         if (_isContour) {
@@ -627,8 +632,8 @@ function setDebugMode(enabled) {
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
 
-        // Generate bezier curve points
-        const bezierPoints = generateBezierPoints(x1, y1, x2, y2, x3, y3, x4, y4);
+        // Generate bezier curve points using transformed control points
+        const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPoint.x, endPoint.y);
 
         // Add all points except the first one (which is the last vertex)
         for (let i = 1; i < bezierPoints.length; i++) {
@@ -650,15 +655,15 @@ function setDebugMode(enabled) {
 
           if (_drawMode === "p5") {
             if (i === 1) {
-              // Call bezierVertex with p5 for the first segment
+              // Call bezierVertex with p5 for the first segment using transformed coordinates
               _originalBezierVertexFunc.call(
                 _p5Instance,
-                mmToPixel(x2),
-                mmToPixel(y2),
-                mmToPixel(x3),
-                mmToPixel(y3),
-                mmToPixel(x4),
-                mmToPixel(y4),
+                mmToPixel(cp1.x),
+                mmToPixel(cp1.y),
+                mmToPixel(cp2.x),
+                mmToPixel(cp2.y),
+                mmToPixel(endPoint.x),
+                mmToPixel(endPoint.y),
               );
             }
           }
@@ -682,6 +687,10 @@ function setDebugMode(enabled) {
 
     window.quadraticVertex = function (cx, cy, x3, y3) {
       if (_recording) {
+        // Apply current transformation to control points
+        const controlPoint = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
+        const endPoint = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
+
         // Get the last vertex as the starting point - check both main vertices and current contour
         let lastVertex;
         if (_isContour) {
@@ -700,8 +709,8 @@ function setDebugMode(enabled) {
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
 
-        // Generate quadratic bezier curve points (convert to cubic bezier)
-        const quadraticPoints = generateQuadraticPoints(x1, y1, cx, cy, x3, y3);
+        // Generate quadratic bezier curve points using transformed control points
+        const quadraticPoints = generateQuadraticPoints(x1, y1, controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
 
         // Add all points except the first one (which is the last vertex)
         for (let i = 1; i < quadraticPoints.length; i++) {
@@ -723,13 +732,13 @@ function setDebugMode(enabled) {
 
           if (_drawMode === "p5") {
             if (i === 1) {
-              // Call quadraticVertex with p5 for the first segment
+              // Call quadraticVertex with p5 for the first segment using transformed coordinates
               _originalQuadraticVertexFunc.call(
                 _p5Instance,
-                mmToPixel(cx),
-                mmToPixel(cy),
-                mmToPixel(x3),
-                mmToPixel(y3),
+                mmToPixel(controlPoint.x),
+                mmToPixel(controlPoint.y),
+                mmToPixel(endPoint.x),
+                mmToPixel(endPoint.y),
               );
             }
           }
@@ -753,8 +762,11 @@ function setDebugMode(enabled) {
 
     window.curveVertex = function (x, y) {
       if (_recording) {
-        // Add to contour vertices for curve calculation
-        _contourVertices.push({ x, y });
+        // Apply current transformation to the curve vertex
+        const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
+        
+        // Add to contour vertices for curve calculation using transformed coordinates
+        _contourVertices.push({ x: transformedPoint.x, y: transformedPoint.y });
 
         // For curve vertices, we need at least 4 points to generate a curve segment
         if (_contourVertices.length >= 4) {
@@ -796,7 +808,7 @@ function setDebugMode(enabled) {
         }
 
         if (_drawMode === "p5") {
-          _originalCurveVertexFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y));
+          _originalCurveVertexFunc.call(_p5Instance, mmToPixel(transformedPoint.x), mmToPixel(transformedPoint.y));
         }
 
         _isCurve = true;
@@ -1395,7 +1407,7 @@ function setDebugMode(enabled) {
         }
       }
       else {
-        console.log("translate in p5 mode", arguments);
+
         _originalTranslateFunc.apply(this, arguments);
       }
     };
