@@ -1,0 +1,18 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+canvas {
+  display: block;
+}
+select {
+  font-size: 12px;
+  padding: 2px;
+  margin: 2px;
+}
+button {
+  font-size: 12px;
+  padding: 4px 8px;
+  margin: 2px;
+} 

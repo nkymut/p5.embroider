@@ -1,5 +1,6 @@
 import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
+import { SVGWriter } from "./io/p5-svg-writer.js";
 
 let _DEBUG = false;
 
@@ -672,7 +673,8 @@ function setDebugMode(enabled) {
         _isBezier = true;
         if (_DEBUG) console.log("bezierVertex added points:", bezierPoints.length - 1);
       } else {
-        _originalBezierVertexFunc.apply(this, arguments);
+        let args = [mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3), mmToPixel(x4), mmToPixel(y4)];
+        _originalBezierVertexFunc.apply(this, args);
       }
     };
   }
@@ -747,7 +749,8 @@ function setDebugMode(enabled) {
         _isQuadratic = true;
         if (_DEBUG) console.log("quadraticVertex added points:", quadraticPoints.length - 1);
       } else {
-        _originalQuadraticVertexFunc.apply(this, arguments);
+        let args = [mmToPixel(cx), mmToPixel(cy), mmToPixel(x3), mmToPixel(y3)];
+        _originalQuadraticVertexFunc.apply(this, args);
       }
     };
   }
@@ -3397,6 +3400,12 @@ function setDebugMode(enabled) {
       case "dst":
         p5embroidery.exportDST(filename);
         break;
+      case "svg":
+        p5embroidery.exportSVG(filename);
+        break;
+      case "png":
+        p5embroidery.exportPNG(filename);
+        break;
       default:
         console.error(`Unsupported embroidery format: ${extension}`);
         break;
@@ -3444,6 +3453,102 @@ function setDebugMode(enabled) {
       }
     }
     gcodeWriter.saveGcode(points, "EmbroideryPattern", filename);
+  };
+
+  /**
+   * Exports embroidery pattern as SVG for printing templates.
+   * @method exportSVG
+   * @for p5
+   * @param {string} filename - Output filename
+   * @param {Object} [options={}] - Export options
+   * @param {string} [options.paperSize='A4'] - Paper size (A4, A3, A2, A1)
+   * @param {number} [options.dpi=300] - Print resolution in DPI
+   * @param {Object} [options.hoopSize] - Hoop size in mm {width, height}
+   * @param {Object} [options.margins] - Margins in mm {top, right, bottom, left}
+   * @param {boolean} [options.showGuides=true] - Show hoop guides and center marks
+   * @param {boolean} [options.lifeSize=true] - Export at life-size scale
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   circle(50, 50, 20);
+   *   endRecord();
+   *   exportSVG('my-pattern.svg', {
+   *     paperSize: 'A4',
+   *     hoopSize: {width: 100, height: 100}
+   *   });
+   * }
+   */
+  p5embroidery.exportSVG = function(filename = "embroidery-pattern.svg", options = {}) {
+    if (!_stitchData || !_stitchData.threads) {
+      console.warn("🪡 p5.embroider says: No embroidery data to export");
+      return;
+    }
+
+    try {
+      // Create SVG writer instance
+      const svgWriter = new SVGWriter();
+      svgWriter.setOptions(options);
+      svgWriter.validateOptions();
+      
+      // Generate title from filename or use default
+      const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
+      
+      // Save SVG using the writer
+      svgWriter.saveSVG(_stitchData, title, filename);
+      
+    } catch (error) {
+      console.error("🪡 p5.embroider says: Error exporting SVG:", error);
+    }
+  };
+
+  /**
+   * Exports embroidery pattern as PNG for printing templates.
+   * @method exportPNG
+   * @for p5
+   * @param {string} filename - Output filename
+   * @param {Object} [options={}] - Export options
+   * @param {string} [options.paperSize='A4'] - Paper size (A4, A3, A2, A1)
+   * @param {number} [options.dpi=300] - Print resolution in DPI
+   * @param {Object} [options.hoopSize] - Hoop size in mm {width, height}
+   * @param {Object} [options.margins] - Margins in mm {top, right, bottom, left}
+   * @param {boolean} [options.showGuides=true] - Show hoop guides and center marks
+   * @param {boolean} [options.lifeSize=true] - Export at life-size scale
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   circle(50, 50, 20);
+   *   endRecord();
+   *   exportPNG('my-pattern.png', {
+   *     paperSize: 'A4',
+   *     hoopSize: {width: 100, height: 100}
+   *   });
+   * }
+   */
+  p5embroidery.exportPNG = function(filename = "embroidery-pattern.png", options = {}) {
+    if (!_stitchData || !_stitchData.threads) {
+      console.warn("🪡 p5.embroider says: No embroidery data to export");
+      return;
+    }
+
+    try {
+      // Create SVG writer instance
+      const svgWriter = new SVGWriter();
+      svgWriter.setOptions(options);
+      svgWriter.validateOptions();
+      
+      // Generate title from filename or use default
+      const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
+      
+      // Generate PNG using the writer
+      svgWriter.generatePNG(_stitchData, title, filename);
+      
+    } catch (error) {
+      console.error("🪡 p5.embroider says: Error exporting PNG:", error);
+    }
   };
 
   /**
@@ -4455,7 +4560,10 @@ function setDebugMode(enabled) {
   global.exportEmbroidery = p5embroidery.exportEmbroidery;
   global.exportDST = p5embroidery.exportDST;
   global.exportGcode = p5embroidery.exportGcode;
+  global.exportSVG = p5embroidery.exportSVG;
+  global.exportPNG = p5embroidery.exportPNG;
   global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
+  global.embroideryOutline = p5embroidery.embroideryOutline;
   global.setStitch = p5embroidery.setStitch;
   global.setDrawMode = p5embroidery.setDrawMode;
   global.drawStitches = p5embroidery.drawStitches;
@@ -4494,6 +4602,257 @@ function setDebugMode(enabled) {
         return window.endContour.apply(this, arguments);
       }
     };
+
+  /**
+   * Adds an outline around the embroidery at a specified offset distance.
+   * @method embroideryOutline
+   * @for p5
+   * @param {number} offsetDistance - Distance in mm to offset the outline from the embroidery
+   * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)
+   * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding')
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   circle(50, 50, 20);
+   *   embroideryOutline(5); // Add 5mm outline around the embroidery
+   *   endRecord();
+   * }
+   */
+  global.embroideryOutline = function(offsetDistance, threadIndex = _strokeThreadIndex, outlineType = 'convex') {
+    if (!_recording) {
+      console.warn("🪡 p5.embroider says: embroideryOutline() can only be called while recording");
+      return;
+    }
+
+    if (!_stitchData.threads || _stitchData.threads.length === 0) {
+      console.warn("🪡 p5.embroider says: No embroidery data found to create outline");
+      return;
+    }
+
+    // Collect all stitch points from all threads and runs
+    const allPoints = [];
+    for (const thread of _stitchData.threads) {
+      for (const run of thread.runs) {
+        for (const stitch of run) {
+          // Skip invalid points and special commands
+          if (stitch.x != null && stitch.y != null && isFinite(stitch.x) && isFinite(stitch.y) && !stitch.command) {
+            allPoints.push({ x: stitch.x, y: stitch.y });
+          }
+        }
+      }
+    }
+
+    if (allPoints.length === 0) {
+      console.warn("🪡 p5.embroider says: No valid stitch points found to create outline");
+      return;
+    }
+
+    if (_DEBUG) {
+      console.log("Creating outline from", allPoints.length, "stitch points");
+      console.log("Offset distance:", offsetDistance, "mm");
+      console.log("Outline type:", outlineType);
+    }
+
+    let outlinePoints = [];
+
+         // Create outline based on type
+     switch (outlineType) {
+       case 'bounding':
+         outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
+         break;
+       case 'convex':
+       default:
+         outlinePoints = createConvexHullOutline(allPoints, offsetDistance);
+         break;
+     }
+
+    if (outlinePoints.length === 0) {
+      console.warn("🪡 p5.embroider says: Failed to create outline");
+      return;
+    }
+
+    // Apply current transformation to outline points
+    const transformedOutlinePoints = applyCurrentTransformToPoints(outlinePoints);
+
+    // Convert outline to stitches
+    const outlineStitches = p5embroidery.convertVerticesToStitches(
+      transformedOutlinePoints.map(p => ({ x: p.x, y: p.y, isVert: true })),
+      _strokeSettings
+    );
+
+    if (outlineStitches.length > 0) {
+      // Ensure we have a valid thread
+      if (threadIndex >= _stitchData.threads.length) {
+        threadIndex = _strokeThreadIndex;
+      }
+
+      // Add outline stitches to the specified thread
+      _stitchData.threads[threadIndex].runs.push(outlineStitches);
+
+      // Draw outline if in visual modes
+      if (_drawMode === "stitch" || _drawMode === "realistic") {
+        drawStitches(outlineStitches, threadIndex);
+      }
+
+      if (_DEBUG) {
+        console.log("Added outline with", outlineStitches.length, "stitches to thread", threadIndex);
+      }
+    }
+  };
+
+  /**
+   * Creates a convex hull outline around the given points.
+   * @private
+   */
+  function createConvexHullOutline(points, offsetDistance) {
+    // Find convex hull of all points
+    const hullPoints = getConvexHull(points);
+    
+    if (hullPoints.length < 3) {
+      console.warn("Insufficient points for convex hull, falling back to bounding box");
+      return createBoundingBoxOutline(points, offsetDistance);
+    }
+
+    // Reverse the hull points to ensure clockwise ordering for outward expansion
+    const reversedHull = [...hullPoints].reverse();
+
+    // Expand the hull outward by the offset distance
+    const expandedHull = expandPolygon(reversedHull, offsetDistance);
+    
+    // Close the polygon
+    if (expandedHull.length > 0) {
+      expandedHull.push({ x: expandedHull[0].x, y: expandedHull[0].y });
+    }
+
+    return expandedHull;
+  }
+
+  /**
+   * Creates a bounding box outline around the given points.
+   * @private
+   */
+  function createBoundingBoxOutline(points, offsetDistance) {
+    const bounds = getPathBounds(points);
+    
+    // Expand bounds by offset distance
+    const expandedBounds = {
+      x: bounds.x - offsetDistance,
+      y: bounds.y - offsetDistance,
+      w: bounds.w + 2 * offsetDistance,
+      h: bounds.h + 2 * offsetDistance
+    };
+
+    // Create rectangle points (clockwise)
+    return [
+      { x: expandedBounds.x, y: expandedBounds.y },
+      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y },
+      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y + expandedBounds.h },
+      { x: expandedBounds.x, y: expandedBounds.y + expandedBounds.h },
+      { x: expandedBounds.x, y: expandedBounds.y } // Close the rectangle
+    ];
+  }
+
+
+
+  /**
+   * Computes the convex hull of a set of 2D points using Graham scan algorithm.
+   * @private
+   */
+  function getConvexHull(points) {
+    if (points.length < 3) return points;
+
+    // Remove duplicate points
+    const uniquePoints = [];
+    const seen = new Set();
+    for (const point of points) {
+      const key = `${Math.round(point.x * 1000)},${Math.round(point.y * 1000)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniquePoints.push(point);
+      }
+    }
+
+    if (uniquePoints.length < 3) return uniquePoints;
+
+    // Find the bottom-most point (and left-most if tie)
+    let bottom = uniquePoints[0];
+    for (let i = 1; i < uniquePoints.length; i++) {
+      if (uniquePoints[i].y < bottom.y || 
+          (uniquePoints[i].y === bottom.y && uniquePoints[i].x < bottom.x)) {
+        bottom = uniquePoints[i];
+      }
+    }
+
+    // Sort points by polar angle with respect to bottom point
+    const sortedPoints = uniquePoints.filter(p => p !== bottom);
+    sortedPoints.sort((a, b) => {
+      // Use p5.Vector for angle calculations
+      const vA = createVector(a.x - bottom.x, a.y - bottom.y);
+      const vB = createVector(b.x - bottom.x, b.y - bottom.y);
+      
+      const angleA = vA.heading();
+      const angleB = vB.heading();
+      
+      if (angleA !== angleB) {
+        return angleA - angleB;
+      }
+      
+      // If angles are equal, sort by distance using p5.Vector
+      const distA = vA.magSq(); // magSq() is faster than mag() for comparisons
+      const distB = vB.magSq();
+      return distA - distB;
+    });
+
+    // Build convex hull using Graham scan
+    const hull = [bottom];
+    
+    for (const point of sortedPoints) {
+      // Remove points that would create a clockwise turn
+      while (hull.length > 1 && 
+             crossProduct(hull[hull.length - 2], hull[hull.length - 1], point) <= 0) {
+        hull.pop();
+      }
+      hull.push(point);
+    }
+
+    return hull;
+  }
+
+  /**
+   * Computes the cross product to determine turn direction using p5.Vector.
+   * @private
+   */
+  function crossProduct(O, A, B) {
+    const v1 = createVector(A.x - O.x, A.y - O.y);
+    const v2 = createVector(B.x - O.x, B.y - O.y);
+    // Use p5.Vector.cross(v1, v2).z to get the z-component of the cross product
+    return p5.Vector.cross(v1, v2).z;
+  }
+
+  /**
+   * Expands a polygon outward by a specified distance.
+   * @private
+   */
+  function expandPolygon(polygon, distance) {
+    if (polygon.length < 3) return polygon;
+
+    const expandedPoints = [];
+
+    for (let i = 0; i < polygon.length; i++) {
+      const prev = polygon[(i - 1 + polygon.length) % polygon.length];
+      const curr = polygon[i];
+      const next = polygon[(i + 1) % polygon.length];
+
+      // Calculate the offset point - use true for isLeft to expand outward
+      // (works with clockwise-ordered polygons)
+      const offsetPoint = calculateOffsetCorner(prev, curr, next, distance, true);
+      expandedPoints.push(offsetPoint);
+    }
+
+    return expandedPoints;
+  }
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
 /**
