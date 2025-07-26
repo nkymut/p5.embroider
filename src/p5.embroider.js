@@ -1,6 +1,7 @@
 import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
+import { JSONWriter } from "./io/p5-json-writer.js";
 
 let _DEBUG = false;
 
@@ -3377,9 +3378,10 @@ function setDebugMode(enabled) {
 
   /**
    * Exports the recorded embroidery data as a file.
+   * Supported formats: DST (.dst), SVG (.svg), PNG (.png), JSON (.json)
    * @method exportEmbroidery
    * @for p5
-   * @param {String} filename - Output filename with extension
+   * @param {String} filename - Output filename with extension (dst, svg, png, or json)
    * @example
    *
    *
@@ -3387,8 +3389,10 @@ function setDebugMode(enabled) {
    *   createCanvas(400, 400);
    *   beginRecord(this);
    *   // Draw embroidery patterns here
+   *   circle(50, 50, 20);
+   *   line(10, 10, 90, 90);
    *   endRecord();
-   *   exportEmbroidery('pattern.dst');
+   *   exportEmbroidery('pattern.dst');  // or .svg, .png, .json
    * }
    *
    *
@@ -3405,6 +3409,9 @@ function setDebugMode(enabled) {
         break;
       case "png":
         p5embroidery.exportPNG(filename);
+        break;
+      case "json":
+        p5embroidery.exportJSON(filename);
         break;
       default:
         console.error(`Unsupported embroidery format: ${extension}`);
@@ -3689,6 +3696,55 @@ function setDebugMode(enabled) {
     }
 
     dstWriter.saveDST(points, "EmbroideryPattern", filename);
+  };
+
+  /**
+   * Exports the recorded embroidery data as a JSON file with detailed stitch information organized by thread ID.
+   * @method exportJSON
+   * @for p5
+   * @param {string} [filename='embroidery-pattern.json'] - Output filename
+   * @param {Object} [options={}] - Export options
+   * @param {boolean} [options.includeBounds=true] - Include pattern bounds information
+   * @param {boolean} [options.includeMetadata=true] - Include metadata and statistics
+   * @param {number} [options.precision=2] - Decimal precision for coordinates
+   * @param {boolean} [options.compactOutput=false] - Export in compact JSON format
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   circle(50, 50, 20);
+   *   line(10, 10, 90, 90);
+   *   endRecord();
+   *   exportJSON('my-pattern.json', {
+   *     precision: 3,
+   *     includeMetadata: true
+   *   });
+   * }
+   */
+  p5embroidery.exportJSON = function(filename = "embroidery-pattern.json", options = {}) {
+    if (!_stitchData || !_stitchData.threads) {
+      console.warn("🪡 p5.embroider says: No embroidery data to export");
+      return null;
+    }
+
+    try {
+      // Create JSON writer instance
+      const jsonWriter = new JSONWriter();
+      jsonWriter.setOptions(options);
+      
+      // Generate title from filename or use default
+      const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
+      
+      // Save JSON using the writer and return the content
+      const jsonContent = jsonWriter.saveJSON(_stitchData, title, filename);
+      
+      return JSON.parse(jsonContent); // Return parsed JSON object for potential use
+      
+    } catch (error) {
+      console.error("🪡 p5.embroider says: Error exporting JSON:", error);
+      return null;
+    }
   };
 
   /**
