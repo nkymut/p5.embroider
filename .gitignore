@@ -6,6 +6,7 @@ docs/devdoc/*
 .vscode/*
 CLAUDE.md
 _Claude/*
+_WIP/*
 
 # macOS
 .DS_Store
