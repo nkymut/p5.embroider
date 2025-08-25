@@ -9,30 +9,30 @@ export class SVGWriter {
     this.minY = Infinity;
     this.maxY = -Infinity;
     this.options = {
-      paperSize: 'A4',
+      paperSize: "A4",
       dpi: 300,
       hoopSize: { width: 100, height: 100 },
       margins: { top: 15, right: 15, bottom: 15, left: 15 },
       showGuides: true,
-      lifeSize: true
+      lifeSize: true,
     };
   }
 
   // Paper size definitions (in mm)
   static PAPER_SIZES = {
-    'A4': { width: 210, height: 297 },
-    'A3': { width: 297, height: 420 },
-    'A2': { width: 420, height: 594 },
-    'A1': { width: 594, height: 841 }
+    A4: { width: 210, height: 297 },
+    A3: { width: 297, height: 420 },
+    A2: { width: 420, height: 594 },
+    A1: { width: 594, height: 841 },
   };
 
   // Hoop size presets (in mm)
   static HOOP_PRESETS = {
-    '4x4': { width: 100, height: 100 },
-    '5x7': { width: 130, height: 180 },
-    '6x10': { width: 160, height: 250 },
-    '8x8': { width: 200, height: 200 },
-    '8x10': { width: 200, height: 250 }
+    "4x4": { width: 100, height: 100 },
+    "5x7": { width: 130, height: 180 },
+    "6x10": { width: 160, height: 250 },
+    "8x8": { width: 200, height: 200 },
+    "8x10": { width: 200, height: 250 },
   };
 
   setOptions(options = {}) {
@@ -92,10 +92,10 @@ export class SVGWriter {
     this.drawEmbroideryPatterns(stitchData);
 
     // Close groups
-    this.data.push('</g>');
-    this.data.push('</svg>');
+    this.data.push("</g>");
+    this.data.push("</svg>");
 
-    return this.data.join('\n');
+    return this.data.join("\n");
   }
 
   drawGuides() {
@@ -103,28 +103,28 @@ export class SVGWriter {
     const centerX = hoop.width / 2;
     const centerY = hoop.height / 2;
     const radius = Math.min(hoop.width, hoop.height) / 2;
-    
+
     // Draw circular hoop outline
     this.data.push(`<circle cx="${centerX}" cy="${centerY}" r="${radius}" 
       fill="none" stroke="#666666" stroke-width="0.5" opacity="0.5"/>`);
-    
+
     // Draw center cross marks
     this.data.push(`<line x1="${centerX}" y1="${centerY - radius}" x2="${centerX}" y2="${centerY + radius}" 
       stroke="#cccccc" stroke-width="0.2" opacity="0.5"/>`);
     this.data.push(`<line x1="${centerX - radius}" y1="${centerY}" x2="${centerX + radius}" y2="${centerY}" 
       stroke="#cccccc" stroke-width="0.2" opacity="0.5"/>`);
-    
+
     // Draw punch needle points around the circle
     const numPoints = 12; // Number of punch needle points
     for (let i = 0; i < numPoints; i++) {
       const angle = (i * 2 * Math.PI) / numPoints;
       const x = centerX + radius * Math.cos(angle);
       const y = centerY + radius * Math.sin(angle);
-      
+
       // Draw punch needle point (small circle)
       this.data.push(`<circle cx="${x}" cy="${y}" r="1" 
         fill="#666666" stroke="none" opacity="0.8"/>`);
-      
+
       // Draw small line extending outward from the point
       const outerRadius = radius + 3;
       const outerX = centerX + outerRadius * Math.cos(angle);
@@ -132,17 +132,29 @@ export class SVGWriter {
       this.data.push(`<line x1="${x}" y1="${y}" x2="${outerX}" y2="${outerY}" 
         stroke="#666666" stroke-width="0.3" opacity="0.6"/>`);
     }
-    
+
     // Draw corner marks for rectangular reference
     const markSize = 5;
     this.data.push(`<line x1="0" y1="0" x2="${markSize}" y2="0" stroke="#666666" stroke-width="0.2"/>`);
     this.data.push(`<line x1="0" y1="0" x2="0" y2="${markSize}" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="${hoop.width}" y1="0" x2="${hoop.width - markSize}" y2="0" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="${hoop.width}" y1="0" x2="${hoop.width}" y2="${markSize}" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="0" y1="${hoop.height}" x2="${markSize}" y2="${hoop.height}" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="0" y1="${hoop.height}" x2="0" y2="${hoop.height - markSize}" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="${hoop.width}" y1="${hoop.height}" x2="${hoop.width - markSize}" y2="${hoop.height}" stroke="#666666" stroke-width="0.2"/>`);
-    this.data.push(`<line x1="${hoop.width}" y1="${hoop.height}" x2="${hoop.width}" y2="${hoop.height - markSize}" stroke="#666666" stroke-width="0.2"/>`);
+    this.data.push(
+      `<line x1="${hoop.width}" y1="0" x2="${hoop.width - markSize}" y2="0" stroke="#666666" stroke-width="0.2"/>`,
+    );
+    this.data.push(
+      `<line x1="${hoop.width}" y1="0" x2="${hoop.width}" y2="${markSize}" stroke="#666666" stroke-width="0.2"/>`,
+    );
+    this.data.push(
+      `<line x1="0" y1="${hoop.height}" x2="${markSize}" y2="${hoop.height}" stroke="#666666" stroke-width="0.2"/>`,
+    );
+    this.data.push(
+      `<line x1="0" y1="${hoop.height}" x2="0" y2="${hoop.height - markSize}" stroke="#666666" stroke-width="0.2"/>`,
+    );
+    this.data.push(
+      `<line x1="${hoop.width}" y1="${hoop.height}" x2="${hoop.width - markSize}" y2="${hoop.height}" stroke="#666666" stroke-width="0.2"/>`,
+    );
+    this.data.push(
+      `<line x1="${hoop.width}" y1="${hoop.height}" x2="${hoop.width}" y2="${hoop.height - markSize}" stroke="#666666" stroke-width="0.2"/>`,
+    );
   }
 
   drawEmbroideryPatterns(stitchData) {
@@ -153,21 +165,23 @@ export class SVGWriter {
 
     for (let threadIndex = 0; threadIndex < stitchData.threads.length; threadIndex++) {
       const thread = stitchData.threads[threadIndex];
-      
+
       // Set thread color
       const color = this.getThreadColor(thread.color);
-      
+
       for (const run of thread.runs) {
         if (run.length < 2) continue;
-        
+
         // Create path for stitch run
         let pathData = `M ${run[0].x} ${run[0].y}`;
         for (let i = 1; i < run.length; i++) {
           pathData += ` L ${run[i].x} ${run[i].y}`;
         }
-        
-        this.data.push(`<path d="${pathData}" fill="none" stroke="${color}" stroke-width="0.1" stroke-linecap="round"/>`);
-        
+
+        this.data.push(
+          `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="0.1" stroke-linecap="round"/>`,
+        );
+
         // Draw red dots for each stitch point
         for (const stitch of run) {
           this.data.push(`<circle cx="${stitch.x}" cy="${stitch.y}" r="0.3" 
@@ -181,25 +195,25 @@ export class SVGWriter {
     if (threadColor && threadColor.r !== undefined && threadColor.g !== undefined && threadColor.b !== undefined) {
       return `rgb(${threadColor.r}, ${threadColor.g}, ${threadColor.b})`;
     }
-    return '#000000'; // Default black
+    return "#000000"; // Default black
   }
 
   saveSVG(stitchData, title, filename) {
     try {
       const svgContent = this.generateSVG(stitchData, title);
-      const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-      const link = document.createElement('a');
+      const blob = new Blob([svgContent], { type: "image/svg+xml" });
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = filename || 'embroidery-pattern.svg';
+      link.download = filename || "embroidery-pattern.svg";
       link.click();
       setTimeout(() => {
         URL.revokeObjectURL(link.href);
         document.body.removeChild(link);
       }, 100);
-      
+
       console.log(`🪡 p5.embroider says: SVG exported successfully: ${filename}`);
     } catch (error) {
-      console.error('🪡 p5.embroider says: Error exporting SVG:', error);
+      console.error("🪡 p5.embroider says: Error exporting SVG:", error);
       throw error;
     }
   }
@@ -208,44 +222,44 @@ export class SVGWriter {
   async generatePNG(stitchData, title, filename) {
     try {
       const svgContent = this.generateSVG(stitchData, title);
-      
+
       // Create canvas to convert SVG to PNG
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
       // Set canvas size based on paper size
       const paper = SVGWriter.PAPER_SIZES[this.options.paperSize];
       const mmToUnits = this.options.dpi / 25.4;
       canvas.width = paper.width * mmToUnits;
       canvas.height = paper.height * mmToUnits;
-      
+
       // Create image from SVG
-      const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+      const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
       const url = URL.createObjectURL(svgBlob);
       const img = new Image();
-      
+
       return new Promise((resolve, reject) => {
         img.onload = () => {
           ctx.drawImage(img, 0, 0);
           canvas.toBlob((blob) => {
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = filename || 'embroidery-pattern.png';
+            link.download = filename || "embroidery-pattern.png";
             link.click();
             setTimeout(() => {
               URL.revokeObjectURL(link.href);
               document.body.removeChild(link);
             }, 100);
-            
+
             console.log(`🪡 p5.embroider says: PNG exported successfully: ${filename}`);
             resolve();
-          }, 'image/png');
+          }, "image/png");
         };
         img.onerror = reject;
         img.src = url;
       });
     } catch (error) {
-      console.error('🪡 p5.embroider says: Error exporting PNG:', error);
+      console.error("🪡 p5.embroider says: Error exporting PNG:", error);
       throw error;
     }
   }
@@ -256,8 +270,10 @@ export class SVGWriter {
       return { x: 0, y: 0, width: 0, height: 0 };
     }
 
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
 
     for (const thread of stitchData.threads) {
       for (const run of thread.runs) {
@@ -274,7 +290,7 @@ export class SVGWriter {
       x: minX,
       y: minY,
       width: maxX - minX,
-      height: maxY - minY
+      height: maxY - minY,
     };
   }
 
@@ -296,11 +312,12 @@ export class SVGWriter {
     // Check if hoop fits on paper
     const hoopArea = this.options.hoopSize.width * this.options.hoopSize.height;
     const paperArea = paper.width * paper.height;
-    const marginArea = (this.options.margins.top + this.options.margins.bottom) * 
-                      (this.options.margins.left + this.options.margins.right);
-    
-    if (hoopArea > (paperArea - marginArea)) {
+    const marginArea =
+      (this.options.margins.top + this.options.margins.bottom) *
+      (this.options.margins.left + this.options.margins.right);
+
+    if (hoopArea > paperArea - marginArea) {
       console.warn(`🪡 p5.embroider says: Hoop size may be too large for selected paper size`);
     }
   }
-} 
+}

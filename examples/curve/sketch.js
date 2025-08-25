@@ -6,7 +6,7 @@ let currentSettings = {
   minStitchLength: 0.5,
   resampleNoise: 0.2,
   curveDetail: 20,
-  bezierDetail: 20
+  bezierDetail: 20,
 };
 
 let currentStrokeMode = "straight";
@@ -15,64 +15,64 @@ let showCurveType = "all"; // "line", "bezier", "curve", "vertex", "all"
 function createLabeledSlider(label, min, max, value, step, yOffset) {
   let container = createDiv();
   container.position(width + 10, yOffset);
-  container.style('width', '300px');
-  container.style('height', '30px');
-  container.style('margin-bottom', '10px');
-  
-  let labelElem = createSpan(label + ': ');
+  container.style("width", "300px");
+  container.style("height", "30px");
+  container.style("margin-bottom", "10px");
+
+  let labelElem = createSpan(label + ": ");
   labelElem.parent(container);
-  labelElem.style('display', 'inline-block');
-  labelElem.style('width', '140px');
-  
+  labelElem.style("display", "inline-block");
+  labelElem.style("width", "140px");
+
   let slider = createSlider(min, max, value, step);
   slider.parent(container);
-  slider.style('width', '100px');
-  slider.style('display', 'inline-block');
-  slider.style('vertical-align', 'middle');
-  
+  slider.style("width", "100px");
+  slider.style("display", "inline-block");
+  slider.style("vertical-align", "middle");
+
   let valueDisplay = createSpan(value);
   valueDisplay.parent(container);
-  valueDisplay.style('margin-left', '10px');
-  valueDisplay.style('display', 'inline-block');
-  valueDisplay.style('width', '40px');
-  valueDisplay.style('text-align', 'right');
-  
+  valueDisplay.style("margin-left", "10px");
+  valueDisplay.style("display", "inline-block");
+  valueDisplay.style("width", "40px");
+  valueDisplay.style("text-align", "right");
+
   return { slider, valueDisplay };
 }
 
 function createLabeledDropdown(label, options, defaultValue, yOffset) {
   let container = createDiv();
   container.position(width + 10, yOffset);
-  container.style('width', '300px');
-  container.style('height', '30px');
-  container.style('margin-bottom', '10px');
-  
-  let labelElem = createSpan(label + ': ');
+  container.style("width", "300px");
+  container.style("height", "30px");
+  container.style("margin-bottom", "10px");
+
+  let labelElem = createSpan(label + ": ");
   labelElem.parent(container);
-  labelElem.style('display', 'inline-block');
-  labelElem.style('width', '140px');
-  
+  labelElem.style("display", "inline-block");
+  labelElem.style("width", "140px");
+
   let dropdown = createSelect();
   dropdown.parent(container);
-  dropdown.style('width', '100px');
-  dropdown.style('display', 'inline-block');
-  
+  dropdown.style("width", "100px");
+  dropdown.style("display", "inline-block");
+
   for (let option of options) {
     dropdown.option(option);
   }
   dropdown.selected(defaultValue);
-  
+
   return dropdown;
 }
 
 function setup() {
   createCanvas(mmToPixel(120), mmToPixel(120));
-  
+
   // Create mode buttons
   let buttonContainer = createDiv();
   buttonContainer.position(width + 10, 10);
-  buttonContainer.style('width', '300px');
-  buttonContainer.style('margin-bottom', '20px');
+  buttonContainer.style("width", "300px");
+  buttonContainer.style("margin-bottom", "20px");
 
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.parent(buttonContainer);
@@ -96,12 +96,12 @@ function setup() {
   });
 
   // Style the buttons
-  let buttons = buttonContainer.elt.getElementsByTagName('button');
-  for(let button of buttons) {
-    button.style.marginRight = '10px';
-    button.style.marginBottom = '10px';
-    button.style.fontSize = '12px';
-    button.style.padding = '5px 8px';
+  let buttons = buttonContainer.elt.getElementsByTagName("button");
+  for (let button of buttons) {
+    button.style.marginRight = "10px";
+    button.style.marginBottom = "10px";
+    button.style.fontSize = "12px";
+    button.style.padding = "5px 8px";
   }
 
   // Create dropdowns and sliders for curve settings
@@ -110,10 +110,10 @@ function setup() {
 
   // Stroke mode dropdown
   let strokeModeDropdown = createLabeledDropdown(
-    'Stroke Mode', 
-    ['straight', 'zigzag', 'lines', 'sashiko'], 
-    currentStrokeMode, 
-    yStart
+    "Stroke Mode",
+    ["straight", "zigzag", "lines", "sashiko"],
+    currentStrokeMode,
+    yStart,
   );
   strokeModeDropdown.changed(() => {
     currentStrokeMode = strokeModeDropdown.value();
@@ -122,10 +122,10 @@ function setup() {
 
   // Curve type dropdown
   let curveTypeDropdown = createLabeledDropdown(
-    'Show Curves', 
-    ['all', 'line', 'bezier', 'curve', 'vertex'], 
-    showCurveType, 
-    yStart + ySpacing * 0.5
+    "Show Curves",
+    ["all", "line", "bezier", "curve", "vertex"],
+    showCurveType,
+    yStart + ySpacing * 0.5,
   );
   curveTypeDropdown.changed(() => {
     showCurveType = curveTypeDropdown.value();
@@ -133,7 +133,14 @@ function setup() {
   });
 
   // Stroke weight slider
-  let strokeWeightControl = createLabeledSlider('Stroke Weight (mm)', 0.5, 10, currentSettings.strokeWeight, 0.1, yStart + ySpacing);
+  let strokeWeightControl = createLabeledSlider(
+    "Stroke Weight (mm)",
+    0.5,
+    10,
+    currentSettings.strokeWeight,
+    0.1,
+    yStart + ySpacing,
+  );
   strokeWeightControl.slider.input(() => {
     currentSettings.strokeWeight = strokeWeightControl.slider.value();
     strokeWeightControl.valueDisplay.html(currentSettings.strokeWeight.toFixed(1));
@@ -141,7 +148,14 @@ function setup() {
   });
 
   // Stitch length slider
-  let stitchLengthControl = createLabeledSlider('Stitch Length (mm)', 0.5, 10, currentSettings.stitchLength, 0.1, yStart + ySpacing * 2);
+  let stitchLengthControl = createLabeledSlider(
+    "Stitch Length (mm)",
+    0.5,
+    10,
+    currentSettings.stitchLength,
+    0.1,
+    yStart + ySpacing * 2,
+  );
   stitchLengthControl.slider.input(() => {
     currentSettings.stitchLength = stitchLengthControl.slider.value();
     stitchLengthControl.valueDisplay.html(currentSettings.stitchLength.toFixed(1));
@@ -149,7 +163,14 @@ function setup() {
   });
 
   // Stitch width slider
-  let stitchWidthControl = createLabeledSlider('Stitch Width (mm)', 0.1, 2, currentSettings.stitchWidth, 0.1, yStart + ySpacing * 3);
+  let stitchWidthControl = createLabeledSlider(
+    "Stitch Width (mm)",
+    0.1,
+    2,
+    currentSettings.stitchWidth,
+    0.1,
+    yStart + ySpacing * 3,
+  );
   stitchWidthControl.slider.input(() => {
     currentSettings.stitchWidth = stitchWidthControl.slider.value();
     stitchWidthControl.valueDisplay.html(currentSettings.stitchWidth.toFixed(1));
@@ -157,7 +178,14 @@ function setup() {
   });
 
   // Curve detail slider
-  let curveDetailControl = createLabeledSlider('Curve Detail', 5, 50, currentSettings.curveDetail, 1, yStart + ySpacing * 4);
+  let curveDetailControl = createLabeledSlider(
+    "Curve Detail",
+    5,
+    50,
+    currentSettings.curveDetail,
+    1,
+    yStart + ySpacing * 4,
+  );
   curveDetailControl.slider.input(() => {
     currentSettings.curveDetail = curveDetailControl.slider.value();
     curveDetailControl.valueDisplay.html(currentSettings.curveDetail);
@@ -165,7 +193,14 @@ function setup() {
   });
 
   // Bezier detail slider
-  let bezierDetailControl = createLabeledSlider('Bezier Detail', 5, 50, currentSettings.bezierDetail, 1, yStart + ySpacing * 5);
+  let bezierDetailControl = createLabeledSlider(
+    "Bezier Detail",
+    5,
+    50,
+    currentSettings.bezierDetail,
+    1,
+    yStart + ySpacing * 5,
+  );
   bezierDetailControl.slider.input(() => {
     currentSettings.bezierDetail = bezierDetailControl.slider.value();
     bezierDetailControl.valueDisplay.html(currentSettings.bezierDetail);
@@ -173,7 +208,14 @@ function setup() {
   });
 
   // Random variation slider
-  let resampleNoiseControl = createLabeledSlider('Random Variation', 0, 1, currentSettings.resampleNoise, 0.05, yStart + ySpacing * 6);
+  let resampleNoiseControl = createLabeledSlider(
+    "Random Variation",
+    0,
+    1,
+    currentSettings.resampleNoise,
+    0.05,
+    yStart + ySpacing * 6,
+  );
   resampleNoiseControl.slider.input(() => {
     currentSettings.resampleNoise = resampleNoiseControl.slider.value();
     resampleNoiseControl.valueDisplay.html(currentSettings.resampleNoise.toFixed(2));
@@ -183,8 +225,8 @@ function setup() {
   // Create export buttons container at the bottom
   let exportContainer = createDiv();
   exportContainer.position(width + 10, yStart + ySpacing * 7);
-  exportContainer.style('width', '300px');
-  exportContainer.style('margin-top', '20px');
+  exportContainer.style("width", "300px");
+  exportContainer.style("margin-top", "20px");
 
   let exportDstButton = createButton("Export DST");
   exportDstButton.parent(exportContainer);
@@ -197,7 +239,7 @@ function setup() {
   exportGcodeButton.mousePressed(() => {
     exportGcode("curve_test.gcode");
   });
-  exportGcodeButton.style('margin-left', '10px');
+  exportGcodeButton.style("margin-left", "10px");
 
   noLoop(); // Stop the draw loop, only redraw when settings change
 }
@@ -210,17 +252,17 @@ function updateStrokeSettings() {
     minStitchLength: currentSettings.minStitchLength,
     resampleNoise: currentSettings.resampleNoise,
     strokeWeight: currentSettings.strokeWeight,
-    strokeMode: currentStrokeMode
+    strokeMode: currentStrokeMode,
   });
   redraw();
 }
 
 function updateCurveSettings() {
   // Update p5.js curve detail settings if they exist
-  if (typeof curveDetail === 'function') {
+  if (typeof curveDetail === "function") {
     curveDetail(currentSettings.curveDetail);
   }
-  if (typeof bezierDetail === 'function') {
+  if (typeof bezierDetail === "function") {
     bezierDetail(currentSettings.bezierDetail);
   }
   redraw();
@@ -228,10 +270,10 @@ function updateCurveSettings() {
 
 function draw() {
   background("#FFF5DC");
-  
+
   setDrawMode(drawMode);
   beginRecord(this);
-  
+
   updateStrokeSettings();
   updateCurveSettings();
 
@@ -241,8 +283,6 @@ function draw() {
   if (showCurveType === "all" || showCurveType === "line") {
     stroke(255, 0, 0); // red
     line(10, 15, 50, 15);
-    
-
   }
 
   // Test bezier curve

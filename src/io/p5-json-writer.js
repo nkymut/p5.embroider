@@ -5,7 +5,7 @@ export class JSONWriter {
       includeBounds: true,
       includeMetadata: true,
       precision: 2,
-      compactOutput: false
+      compactOutput: false,
     };
   }
 
@@ -13,16 +13,16 @@ export class JSONWriter {
     this.options = { ...this.options, ...options };
   }
 
-  generateJSON(stitchData, title = 'Untitled Pattern') {
+  generateJSON(stitchData, title = "Untitled Pattern") {
     if (!stitchData || !stitchData.threads) {
-      throw new Error('Invalid stitch data: threads array is required');
+      throw new Error("Invalid stitch data: threads array is required");
     }
 
     const jsonData = {
-      format: 'p5.embroider',
-      version: '1.0',
+      format: "p5.embroider",
+      version: "1.0",
       title: title,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
 
     // Add metadata if enabled
@@ -41,9 +41,7 @@ export class JSONWriter {
     // Add statistics
     jsonData.statistics = this.calculateStatistics(stitchData);
 
-    return this.options.compactOutput ? 
-      JSON.stringify(jsonData) : 
-      JSON.stringify(jsonData, null, 2);
+    return this.options.compactOutput ? JSON.stringify(jsonData) : JSON.stringify(jsonData, null, 2);
   }
 
   generateMetadata(stitchData) {
@@ -51,9 +49,9 @@ export class JSONWriter {
       totalThreads: stitchData.threads ? stitchData.threads.length : 0,
       totalStitches: this.getTotalStitchCount(stitchData),
       totalRuns: this.getTotalRunCount(stitchData),
-      createdBy: 'p5.embroider',
-      units: 'pixels',
-      coordinateSystem: 'cartesian'
+      createdBy: "p5.embroider",
+      units: "pixels",
+      coordinateSystem: "cartesian",
     };
   }
 
@@ -67,8 +65,8 @@ export class JSONWriter {
         statistics: {
           totalStitches: 0,
           totalRuns: thread.runs ? thread.runs.length : 0,
-          totalDistance: 0
-        }
+          totalDistance: 0,
+        },
       };
 
       if (thread.runs) {
@@ -78,13 +76,13 @@ export class JSONWriter {
             stitches: this.processStitches(run),
             statistics: {
               stitchCount: run.length,
-              distance: this.calculateRunDistance(run)
-            }
+              distance: this.calculateRunDistance(run),
+            },
           };
-          
+
           threadData.statistics.totalStitches += run.length;
           threadData.statistics.totalDistance += runData.statistics.distance;
-          
+
           return runData;
         });
       }
@@ -95,10 +93,10 @@ export class JSONWriter {
 
   processColor(color) {
     if (!color) {
-      return { r: 0, g: 0, b: 0, hex: '#000000' };
+      return { r: 0, g: 0, b: 0, hex: "#000000" };
     }
 
-    if (typeof color === 'string') {
+    if (typeof color === "string") {
       return { hex: color };
     }
 
@@ -107,11 +105,11 @@ export class JSONWriter {
         r: Math.round(color.r),
         g: Math.round(color.g),
         b: Math.round(color.b),
-        hex: this.rgbToHex(color.r, color.g, color.b)
+        hex: this.rgbToHex(color.r, color.g, color.b),
       };
     }
 
-    return { r: 0, g: 0, b: 0, hex: '#000000' };
+    return { r: 0, g: 0, b: 0, hex: "#000000" };
   }
 
   processStitches(run) {
@@ -123,7 +121,7 @@ export class JSONWriter {
       index: index,
       x: this.roundToPrecision(stitch.x),
       y: this.roundToPrecision(stitch.y),
-      type: stitch.type || 'normal'
+      type: stitch.type || "normal",
     }));
   }
 
@@ -132,8 +130,10 @@ export class JSONWriter {
       return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
     }
 
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity;
+    let maxX = -Infinity,
+      maxY = -Infinity;
 
     for (const thread of stitchData.threads) {
       if (thread.runs) {
@@ -154,7 +154,7 @@ export class JSONWriter {
       maxX: this.roundToPrecision(maxX),
       maxY: this.roundToPrecision(maxY),
       width: this.roundToPrecision(maxX - minX),
-      height: this.roundToPrecision(maxY - minY)
+      height: this.roundToPrecision(maxY - minY),
     };
   }
 
@@ -165,7 +165,7 @@ export class JSONWriter {
       totalStitches: 0,
       totalDistance: 0,
       averageStitchLength: 0,
-      colorPalette: []
+      colorPalette: [],
     };
 
     if (!stitchData.threads) {
@@ -183,7 +183,7 @@ export class JSONWriter {
 
       if (thread.runs) {
         stats.totalRuns += thread.runs.length;
-        
+
         for (const run of thread.runs) {
           stats.totalStitches += run.length;
           stats.totalDistance += this.calculateRunDistance(run);
@@ -192,8 +192,10 @@ export class JSONWriter {
     }
 
     stats.colorPalette = Array.from(colors);
-    stats.averageStitchLength = stats.totalStitches > 1 ? 
-      this.roundToPrecision(stats.totalDistance / (stats.totalStitches - stats.totalRuns)) : 0;
+    stats.averageStitchLength =
+      stats.totalStitches > 1
+        ? this.roundToPrecision(stats.totalDistance / (stats.totalStitches - stats.totalRuns))
+        : 0;
     stats.totalDistance = this.roundToPrecision(stats.totalDistance);
 
     return stats;
@@ -216,7 +218,7 @@ export class JSONWriter {
 
   getTotalStitchCount(stitchData) {
     if (!stitchData.threads) return 0;
-    
+
     return stitchData.threads.reduce((total, thread) => {
       if (!thread.runs) return total;
       return total + thread.runs.reduce((threadTotal, run) => threadTotal + run.length, 0);
@@ -225,7 +227,7 @@ export class JSONWriter {
 
   getTotalRunCount(stitchData) {
     if (!stitchData.threads) return 0;
-    
+
     return stitchData.threads.reduce((total, thread) => {
       return total + (thread.runs ? thread.runs.length : 0);
     }, 0);
@@ -239,7 +241,7 @@ export class JSONWriter {
   rgbToHex(r, g, b) {
     const toHex = (c) => {
       const hex = Math.round(Math.max(0, Math.min(255, c))).toString(16);
-      return hex.length === 1 ? '0' + hex : hex;
+      return hex.length === 1 ? "0" + hex : hex;
     };
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   }
@@ -247,22 +249,22 @@ export class JSONWriter {
   saveJSON(stitchData, title, filename) {
     try {
       const jsonContent = this.generateJSON(stitchData, title);
-      const blob = new Blob([jsonContent], { type: 'application/json' });
-      const link = document.createElement('a');
+      const blob = new Blob([jsonContent], { type: "application/json" });
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = filename || 'embroidery-pattern.json';
+      link.download = filename || "embroidery-pattern.json";
       document.body.appendChild(link);
       link.click();
-      
+
       setTimeout(() => {
         URL.revokeObjectURL(link.href);
         document.body.removeChild(link);
       }, 100);
-      
+
       console.log(`🪡 p5.embroider says: JSON exported successfully: ${filename}`);
       return jsonContent;
     } catch (error) {
-      console.error('🪡 p5.embroider says: Error exporting JSON:', error);
+      console.error("🪡 p5.embroider says: Error exporting JSON:", error);
       throw error;
     }
   }
@@ -271,32 +273,36 @@ export class JSONWriter {
   parseJSON(jsonString) {
     try {
       const data = JSON.parse(jsonString);
-      
-      if (data.format !== 'p5.embroider') {
-        console.warn('🪡 p5.embroider says: JSON format may not be compatible');
+
+      if (data.format !== "p5.embroider") {
+        console.warn("🪡 p5.embroider says: JSON format may not be compatible");
       }
 
       const stitchData = {
-        threads: []
+        threads: [],
       };
 
       if (data.threads && Array.isArray(data.threads)) {
-        stitchData.threads = data.threads.map(thread => ({
+        stitchData.threads = data.threads.map((thread) => ({
           color: thread.color,
           weight: thread.weight || 0.2,
-          runs: thread.runs ? thread.runs.map(run => 
-            run.stitches ? run.stitches.map(stitch => ({ 
-              x: stitch.x, 
-              y: stitch.y,
-              type: stitch.type 
-            })) : []
-          ) : []
+          runs: thread.runs
+            ? thread.runs.map((run) =>
+                run.stitches
+                  ? run.stitches.map((stitch) => ({
+                      x: stitch.x,
+                      y: stitch.y,
+                      type: stitch.type,
+                    }))
+                  : [],
+              )
+            : [],
         }));
       }
 
       return stitchData;
     } catch (error) {
-      console.error('🪡 p5.embroider says: Error parsing JSON:', error);
+      console.error("🪡 p5.embroider says: Error parsing JSON:", error);
       throw error;
     }
   }
@@ -305,13 +311,13 @@ export class JSONWriter {
   validateJSON(jsonData) {
     const errors = [];
 
-    if (typeof jsonData !== 'object') {
-      errors.push('Root must be an object');
+    if (typeof jsonData !== "object") {
+      errors.push("Root must be an object");
       return errors;
     }
 
     if (!jsonData.threads || !Array.isArray(jsonData.threads)) {
-      errors.push('Missing or invalid threads array');
+      errors.push("Missing or invalid threads array");
     }
 
     if (jsonData.threads) {
@@ -328,7 +334,7 @@ export class JSONWriter {
 
             if (run.stitches) {
               run.stitches.forEach((stitch, stitchIndex) => {
-                if (typeof stitch.x !== 'number' || typeof stitch.y !== 'number') {
+                if (typeof stitch.x !== "number" || typeof stitch.y !== "number") {
                   errors.push(`Thread ${threadIndex}, Run ${runIndex}, Stitch ${stitchIndex}: Invalid coordinates`);
                 }
               });
@@ -340,4 +346,4 @@ export class JSONWriter {
 
     return errors;
   }
-} 
+}
