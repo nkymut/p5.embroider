@@ -12,7 +12,7 @@ Version 0.1.5, June 24, 2025 • by Yuta Nakayama ([nkymut](https://github.com/n
 
 
 ## Installation
-To use p5.sensor in your project, include the library in your HTML file:
+To use p5.embroider in your project, include the library in your HTML file:
 
 ### CDNs
 
