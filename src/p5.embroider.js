@@ -80,6 +80,8 @@ function setDebugMode(enabled) {
   const STROKE_MODE = {
     STRAIGHT: "straight",
     ZIGZAG: "zigzag",
+    RAMP: "ramp",
+    SQUARE: "square",
     LINES: "lines",
     SASHIKO: "sashiko",
   };
@@ -149,19 +151,19 @@ function setDebugMode(enabled) {
    */
   function multiplyMatrix(a, b) {
     const result = new Array(9);
-    
+
     result[0] = a[0] * b[0] + a[3] * b[1] + a[6] * b[2];
     result[1] = a[1] * b[0] + a[4] * b[1] + a[7] * b[2];
     result[2] = a[2] * b[0] + a[5] * b[1] + a[8] * b[2];
-    
+
     result[3] = a[0] * b[3] + a[3] * b[4] + a[6] * b[5];
     result[4] = a[1] * b[3] + a[4] * b[4] + a[7] * b[5];
     result[5] = a[2] * b[3] + a[5] * b[4] + a[8] * b[5];
-    
+
     result[6] = a[0] * b[6] + a[3] * b[7] + a[6] * b[8];
     result[7] = a[1] * b[6] + a[4] * b[7] + a[7] * b[8];
     result[8] = a[2] * b[6] + a[5] * b[7] + a[8] * b[8];
-    
+
     return result;
   }
 
@@ -206,7 +208,7 @@ function setDebugMode(enabled) {
    * @private
    */
   function transformPoints(points, matrix) {
-    return points.map(point => transformPoint(point, matrix));
+    return points.map((point) => transformPoint(point, matrix));
   }
 
   /**
@@ -303,7 +305,7 @@ function setDebugMode(enabled) {
    * @param {string} entry - The entry direction to use ('right' or 'left')
    * @param {string} exit - The exit direction to use ('right' or 'left')
    */
-  p5embroidery.setStrokeEntryExit = function (entry="right", exit="left") {
+  p5embroidery.setStrokeEntryExit = function (entry = "right", exit = "left") {
     if (entry === "right" || entry === "left" || entry === "middle") {
       _strokeSettings.strokeEntry = entry;
     } else {
@@ -590,7 +592,7 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Apply current transformation to the vertex coordinates
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
-        
+
         // Create a vertex object with named properties instead of an array
         const vert = {
           x: transformedPoint.x,
@@ -605,7 +607,14 @@ function setDebugMode(enabled) {
         }
 
         if (_drawMode === "p5") {
-          _originalVertexFunc.call(_p5Instance, mmToPixel(transformedPoint.x), mmToPixel(transformedPoint.y), moveTo, u, v);
+          _originalVertexFunc.call(
+            _p5Instance,
+            mmToPixel(transformedPoint.x),
+            mmToPixel(transformedPoint.y),
+            moveTo,
+            u,
+            v,
+          );
         }
 
         // Add to appropriate container based on contour state
@@ -790,7 +799,7 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Apply current transformation to the curve vertex
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
-        
+
         // Add to contour vertices for curve calculation using transformed coordinates
         _contourVertices.push({ x: transformedPoint.x, y: transformedPoint.y });
 
@@ -947,7 +956,7 @@ function setDebugMode(enabled) {
           // Apply current transformation to coordinates
           const p1 = applyCurrentTransform(x1, y1);
           const p2 = applyCurrentTransform(x2, y2);
-          
+
           let stitches = convertLineToStitches(p1.x, p1.y, p2.x, p2.y, _strokeSettings);
           _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
 
@@ -979,7 +988,7 @@ function setDebugMode(enabled) {
           const p2 = applyCurrentTransform(x2, y2);
           const p3 = applyCurrentTransform(x3, y3);
           const p4 = applyCurrentTransform(x4, y4);
-          
+
           // Generate curve points using Catmull-Rom spline with transformed coordinates
           const curvePoints = generateCurvePoints(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
           let stitches = p5embroidery.convertVerticesToStitches(
@@ -1026,7 +1035,7 @@ function setDebugMode(enabled) {
           const p2 = applyCurrentTransform(x2, y2);
           const p3 = applyCurrentTransform(x3, y3);
           const p4 = applyCurrentTransform(x4, y4);
-          
+
           // Generate bezier curve points with transformed coordinates
           const bezierPoints = generateBezierPoints(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
           let stitches = p5embroidery.convertVerticesToStitches(
@@ -1428,12 +1437,10 @@ function setDebugMode(enabled) {
         if (_DEBUG) {
           console.log("Embroidery translate", { x, y, matrix: _currentTransform.matrix });
         }
-        if(_drawMode == "p5"){
+        if (_drawMode == "p5") {
           _originalTranslateFunc.call(this, mmToPixel(x), mmToPixel(y));
         }
-      }
-      else {
-
+      } else {
         _originalTranslateFunc.apply(this, arguments);
       }
     };
@@ -1451,7 +1458,7 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Convert angle to radians if needed (p5.js handles this internally)
         const radians = _p5Instance._angleMode === _p5Instance.DEGREES ? angle * (Math.PI / 180) : angle;
-        
+
         // Apply rotation to current transformation matrix
         const rotationMatrix = createRotationMatrix(radians);
         _currentTransform.matrix = multiplyMatrix(_currentTransform.matrix, rotationMatrix);
@@ -1479,8 +1486,9 @@ function setDebugMode(enabled) {
     window.scale = function (x, y, z) {
       if (_recording) {
         // Handle different parameter formats like p5.js
-        let sx = x, sy = y;
-        
+        let sx = x,
+          sy = y;
+
         if (x instanceof p5.Vector) {
           sx = x.x;
           sy = x.y;
@@ -1581,8 +1589,9 @@ function setDebugMode(enabled) {
 
           // Add a jump stitch to the first point of the ellipse if needed
           if (
-            Math.sqrt(Math.pow(transformedPathPoints[0].x - currentX, 2) + Math.pow(transformedPathPoints[0].y - currentY, 2)) >
-            _embroiderySettings.jumpThreshold
+            Math.sqrt(
+              Math.pow(transformedPathPoints[0].x - currentX, 2) + Math.pow(transformedPathPoints[0].y - currentY, 2),
+            ) > _embroiderySettings.jumpThreshold
           ) {
             _stitchData.threads[_strokeThreadIndex].runs.push([
               {
@@ -1662,7 +1671,7 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Apply current transformation to coordinates
         const p = applyCurrentTransform(x, y);
-        
+
         // For point, we just add a single stitch
         let stitches = [
           {
@@ -1891,10 +1900,10 @@ function setDebugMode(enabled) {
           { x: x3, y: y3 },
           { x: x1, y: y1 }, // close
         ];
-        
+
         // Apply current transformation to all pathPoints
         const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
-        
+
         // Fill
         if (_doFill) {
           let fillStitches = [];
@@ -1958,10 +1967,10 @@ function setDebugMode(enabled) {
           { x: x4, y: y4 },
           { x: x1, y: y1 }, // close
         ];
-        
+
         // Apply current transformation to all pathPoints
         const transformedPathPoints = applyCurrentTransformToPoints(pathPoints);
-        
+
         // Fill
         if (_doFill) {
           let fillStitches = [];
@@ -2222,7 +2231,7 @@ function setDebugMode(enabled) {
     overrideTranslateFunction();
     overrideRotateFunction();
     overrideScaleFunction();
-    
+
     // Drawing functions
     overrideLineFunction();
     overrideCurveFunction();
@@ -2241,7 +2250,7 @@ function setDebugMode(enabled) {
     overrideTriangleFunction();
     overrideQuadFunction();
     overrideArcFunction();
-    
+
     // Shape vertex functions
     overrideVertexFunction();
     overrideBezierVertexFunction();
@@ -2264,7 +2273,7 @@ function setDebugMode(enabled) {
     window.translate = _originalTranslateFunc;
     window.rotate = _originalRotateFunc;
     window.scale = _originalScaleFunc;
-    
+
     // Restore drawing functions
     window.line = _originalLineFunc;
     window.curve = _originalCurveFunc;
@@ -2282,7 +2291,7 @@ function setDebugMode(enabled) {
     window.triangle = _originalTriangleFunc;
     window.quad = _originalQuadFunc;
     window.arc = _originalArcFunc;
-    
+
     // Restore shape vertex functions
     window.vertex = _originalVertexFunc;
     window.bezierVertex = _originalBezierVertexFunc;
@@ -2411,6 +2420,10 @@ function setDebugMode(enabled) {
           return straightLineStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.ZIGZAG:
           return zigzagStitch(x1, y1, x2, y2, stitchSettings);
+        case STROKE_MODE.RAMP:
+          return rampStitch(x1, y1, x2, y2, stitchSettings);
+        case STROKE_MODE.SQUARE:
+          return squareStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.LINES:
           return multiLineStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SASHIKO:
@@ -2804,6 +2817,10 @@ function setDebugMode(enabled) {
           return straightLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.ZIGZAG:
           return zigzagStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.RAMP:
+          return rampStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.SQUARE:
+          return squareStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.LINES:
           return multiLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SASHIKO:
@@ -3068,9 +3085,9 @@ function setDebugMode(enabled) {
     let entry = stitchSettings.strokeEntry;
     let exit = stitchSettings.strokeExit;
     let side = 1;
-    
+
     if (entry === "right") {
-        side = -1;
+      side = -1;
     } else if (entry === "left") {
       side = 1;
     } else if (entry === "middle") {
@@ -3086,17 +3103,17 @@ function setDebugMode(enabled) {
     // Add zigzag points
     for (let i = 1; i <= numZigzags; i++) {
       let t = i / numZigzags;
-      if(side == 0) {
+      if (side == 0) {
         side = 1;
       } else {
         side = -side; // Alternate sides
       }
-      if(i == numZigzags) {
-        if(exit == "right") {
+      if (i == numZigzags) {
+        if (exit == "right") {
           side = -1;
-        } else if(exit == "left") {
+        } else if (exit == "left") {
           side = 1;
-        } else if(exit == "middle") {
+        } else if (exit == "middle") {
           side = 0;
         }
       }
@@ -3110,8 +3127,194 @@ function setDebugMode(enabled) {
       });
     }
 
-
     if (_DEBUG) console.log("Generated zigzag stitches:", stitches);
+    return stitches;
+  }
+
+  /**
+   * Creates ramp stitches (sawtooth wave pattern).
+   * @method rampStitch
+   * @private
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function rampStitch(x1, y1, x2, y2, stitchSettings) {
+    let stitches = [];
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check for zero distance to prevent division by zero
+    if (distance === 0 || distance < 0.001) {
+      if (_DEBUG) console.log("Zero distance detected in rampStitch, returning single point");
+      return [{ x: x1, y: y1 }];
+    }
+
+    // Calculate perpendicular vector for ramp
+    let perpX = -dy / distance;
+    let perpY = dx / distance;
+
+    // Use strokeWeight for the width of the ramp
+    let width = stitchSettings.strokeWeight > 0 ? stitchSettings.strokeWeight : 2;
+    let halfWidth = width / 2;
+
+    // Calculate number of ramp segments
+    let rampDistance = stitchSettings.stitchLength;
+    let numRamps = Math.max(2, Math.floor(distance / rampDistance));
+
+    let entry = stitchSettings.strokeEntry;
+    let exit = stitchSettings.strokeExit;
+    let currentSide = 1;
+
+    if (entry === "right") {
+      currentSide = 1;
+    } else if (entry === "left") {
+      currentSide = -1;
+    }
+
+    // Add first point
+    stitches.push({
+      x: x1 + perpX * halfWidth * currentSide,
+      y: y1 + perpY * halfWidth * currentSide,
+    });
+
+    // Create ramp pattern - sawtooth wave (gradual rise, sharp drop)
+    for (let i = 1; i <= numRamps; i++) {
+      let t = i / numRamps;
+
+      if (i % 1 === 0) {
+        currentSide = -currentSide;
+      }
+      let pointX = x1 + dx * t + perpX * halfWidth * currentSide;
+      let pointY = y1 + dy * t + perpY * halfWidth * currentSide;
+      let pointX1 = x1 + dx * t + perpX * halfWidth * -currentSide;
+      let pointY1 = y1 + dy * t + perpY * halfWidth * -currentSide;
+
+      stitches.push({
+        x: pointX,
+        y: pointY,
+      });
+
+      if (entry === "right") {
+        if (currentSide === -1) {
+          stitches.push({
+            x: pointX1,
+            y: pointY1,
+          });
+        }
+      } else if (entry === "left") {
+        if (currentSide === 1) {
+          stitches.push({
+            x: pointX1,
+            y: pointY1,
+          });
+
+          //ellipse(pointX1, pointY1, 5, 5)
+        }
+      }
+    }
+
+    if (_DEBUG) console.log("Generated ramp stitches:", stitches);
+    return stitches;
+  }
+
+  /**
+   * Creates square stitches (square wave pattern).
+   * @method squareStitch
+   * @private
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function squareStitch(x1, y1, x2, y2, stitchSettings) {
+    let stitches = [];
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    let distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Check for zero distance to prevent division by zero
+    if (distance === 0 || distance < 0.001) {
+      if (_DEBUG) console.log("Zero distance detected in squareStitch, returning single point");
+      return [{ x: x1, y: y1 }];
+    }
+
+    // Calculate perpendicular vector for square wave
+    let perpX = -dy / distance;
+    let perpY = dx / distance;
+
+    // Use strokeWeight for the width of the square wave
+    let width = stitchSettings.strokeWeight > 0 ? stitchSettings.strokeWeight : 2;
+    let halfWidth = width / 2;
+
+    // Calculate number of square wave segments
+    let squareDistance = stitchSettings.stitchLength;
+    let numSquares = Math.max(2, Math.floor(distance / squareDistance));
+
+    let entry = stitchSettings.strokeEntry;
+    let exit = stitchSettings.strokeExit;
+    let currentSide = 1;
+
+    if (entry === "right") {
+      currentSide = -1;
+    } else if (entry === "left") {
+      currentSide = 1;
+    } else if (entry === "middle") {
+      currentSide = 0;
+    }
+
+    // Add first point
+    stitches.push({
+      x: x1 + perpX * halfWidth * currentSide,
+      y: y1 + perpY * halfWidth * currentSide,
+    });
+    stitches.push({
+      x: x1 + perpX * halfWidth * -currentSide,
+      y: y1 + perpY * halfWidth * -currentSide,
+    });
+
+    // Create square wave pattern - abrupt transitions between high and low states
+    for (let i = 1; i <= numSquares; i++) {
+      let t = i / numSquares;
+
+      // Square wave: stay at current level for half the period, then jump to opposite
+      if (i % 1 === 0) {
+        currentSide = -currentSide; // Abrupt transition
+      }
+
+      let pointX = x1 + dx * t + perpX * halfWidth * currentSide;
+      let pointY = y1 + dy * t + perpY * halfWidth * currentSide;
+      let pointX1 = x1 + dx * t + perpX * halfWidth * -currentSide;
+      let pointY1 = y1 + dy * t + perpY * halfWidth * -currentSide;
+
+      stitches.push({
+        x: pointX,
+        y: pointY,
+      });
+      stitches.push({
+        x: pointX1,
+        y: pointY1,
+      });
+
+      if (i === numSquares && currentSide !== 0) {
+        // Handle exit condition
+        if (exit === "right") {
+          currentSide = -1;
+        } else if (exit === "left") {
+          currentSide = 1;
+        } else if (exit === "middle") {
+          currentSide = 0;
+        }
+      }
+    }
+
+    if (_DEBUG) console.log("Generated square stitches:", stitches);
     return stitches;
   }
 
@@ -3202,6 +3405,62 @@ function setDebugMode(enabled) {
 
       // Get zigzag stitches for this segment
       const segmentStitches = zigzagStitch(p1.x, p1.y, p2.x, p2.y, stitchSettings);
+      result.push(...segmentStitches);
+    }
+
+    return result;
+  }
+
+  /**
+   * Creates ramp stitches from a path (sawtooth wave pattern).
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function rampStitchFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create ramp stitching from insufficient path points");
+      return [];
+    }
+
+    const result = [];
+
+    // Process each segment between consecutive points
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+
+      // Get ramp stitches for this segment
+      const segmentStitches = rampStitch(p1.x, p1.y, p2.x, p2.y, stitchSettings);
+      result.push(...segmentStitches);
+    }
+
+    return result;
+  }
+
+  /**
+   * Creates square stitches from a path (square wave pattern).
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function squareStitchFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      console.warn("Cannot create square stitching from insufficient path points");
+      return [];
+    }
+
+    const result = [];
+
+    // Process each segment between consecutive points
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+
+      // Get square stitches for this segment
+      const segmentStitches = squareStitch(p1.x, p1.y, p2.x, p2.y, stitchSettings);
       result.push(...segmentStitches);
     }
 
@@ -3524,7 +3783,7 @@ function setDebugMode(enabled) {
    *   });
    * }
    */
-  p5embroidery.exportSVG = function(filename = "embroidery-pattern.svg", options = {}) {
+  p5embroidery.exportSVG = function (filename = "embroidery-pattern.svg", options = {}) {
     if (!_stitchData || !_stitchData.threads) {
       console.warn("🪡 p5.embroider says: No embroidery data to export");
       return;
@@ -3535,13 +3794,12 @@ function setDebugMode(enabled) {
       const svgWriter = new SVGWriter();
       svgWriter.setOptions(options);
       svgWriter.validateOptions();
-      
+
       // Generate title from filename or use default
       const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
-      
+
       // Save SVG using the writer
       svgWriter.saveSVG(_stitchData, title, filename);
-      
     } catch (error) {
       console.error("🪡 p5.embroider says: Error exporting SVG:", error);
     }
@@ -3572,7 +3830,7 @@ function setDebugMode(enabled) {
    *   });
    * }
    */
-  p5embroidery.exportPNG = function(filename = "embroidery-pattern.png", options = {}) {
+  p5embroidery.exportPNG = function (filename = "embroidery-pattern.png", options = {}) {
     if (!_stitchData || !_stitchData.threads) {
       console.warn("🪡 p5.embroider says: No embroidery data to export");
       return;
@@ -3583,13 +3841,12 @@ function setDebugMode(enabled) {
       const svgWriter = new SVGWriter();
       svgWriter.setOptions(options);
       svgWriter.validateOptions();
-      
+
       // Generate title from filename or use default
       const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
-      
+
       // Generate PNG using the writer
       svgWriter.generatePNG(_stitchData, title, filename);
-      
     } catch (error) {
       console.error("🪡 p5.embroider says: Error exporting PNG:", error);
     }
@@ -3759,7 +4016,7 @@ function setDebugMode(enabled) {
    *   });
    * }
    */
-  p5embroidery.exportJSON = function(filename = "embroidery-pattern.json", options = {}) {
+  p5embroidery.exportJSON = function (filename = "embroidery-pattern.json", options = {}) {
     if (!_stitchData || !_stitchData.threads) {
       console.warn("🪡 p5.embroider says: No embroidery data to export");
       return null;
@@ -3769,15 +4026,14 @@ function setDebugMode(enabled) {
       // Create JSON writer instance
       const jsonWriter = new JSONWriter();
       jsonWriter.setOptions(options);
-      
+
       // Generate title from filename or use default
       const title = filename ? filename.replace(/\.[^/.]+$/, "") : "Embroidery Pattern";
-      
+
       // Save JSON using the writer and return the content
       const jsonContent = jsonWriter.saveJSON(_stitchData, title, filename);
-      
+
       return JSON.parse(jsonContent); // Return parsed JSON object for potential use
-      
     } catch (error) {
       console.error("🪡 p5.embroider says: Error exporting JSON:", error);
       return null;
@@ -4677,6 +4933,8 @@ function setDebugMode(enabled) {
   global.multiLineStitchingFromPath = multiLineStitchFromPath;
   global.sashikoStitchingFromPath = sashikoStitchFromPath;
   global.zigzagStitchFromPath = zigzagStitchFromPath;
+  global.rampStitchFromPath = rampStitchFromPath;
+  global.squareStitchFromPath = squareStitchFromPath;
 
   // Expose debug function
   global.setDebugMode = setDebugMode;
@@ -4714,7 +4972,7 @@ function setDebugMode(enabled) {
    *   endRecord();
    * }
    */
-  global.embroideryOutline = function(offsetDistance, threadIndex = _strokeThreadIndex, outlineType = 'convex') {
+  global.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex") {
     if (!_recording) {
       console.warn("🪡 p5.embroider says: embroideryOutline() can only be called while recording");
       return;
@@ -4751,16 +5009,16 @@ function setDebugMode(enabled) {
 
     let outlinePoints = [];
 
-         // Create outline based on type
-     switch (outlineType) {
-       case 'bounding':
-         outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
-         break;
-       case 'convex':
-       default:
-         outlinePoints = createConvexHullOutline(allPoints, offsetDistance);
-         break;
-     }
+    // Create outline based on type
+    switch (outlineType) {
+      case "bounding":
+        outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
+        break;
+      case "convex":
+      default:
+        outlinePoints = createConvexHullOutline(allPoints, offsetDistance);
+        break;
+    }
 
     if (outlinePoints.length === 0) {
       console.warn("🪡 p5.embroider says: Failed to create outline");
@@ -4772,8 +5030,8 @@ function setDebugMode(enabled) {
 
     // Convert outline to stitches
     const outlineStitches = p5embroidery.convertVerticesToStitches(
-      transformedOutlinePoints.map(p => ({ x: p.x, y: p.y, isVert: true })),
-      _strokeSettings
+      transformedOutlinePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
+      _strokeSettings,
     );
 
     if (outlineStitches.length > 0) {
@@ -4803,7 +5061,7 @@ function setDebugMode(enabled) {
   function createConvexHullOutline(points, offsetDistance) {
     // Find convex hull of all points
     const hullPoints = getConvexHull(points);
-    
+
     if (hullPoints.length < 3) {
       console.warn("Insufficient points for convex hull, falling back to bounding box");
       return createBoundingBoxOutline(points, offsetDistance);
@@ -4814,7 +5072,7 @@ function setDebugMode(enabled) {
 
     // Expand the hull outward by the offset distance
     const expandedHull = expandPolygon(reversedHull, offsetDistance);
-    
+
     // Close the polygon
     if (expandedHull.length > 0) {
       expandedHull.push({ x: expandedHull[0].x, y: expandedHull[0].y });
@@ -4829,13 +5087,13 @@ function setDebugMode(enabled) {
    */
   function createBoundingBoxOutline(points, offsetDistance) {
     const bounds = getPathBounds(points);
-    
+
     // Expand bounds by offset distance
     const expandedBounds = {
       x: bounds.x - offsetDistance,
       y: bounds.y - offsetDistance,
       w: bounds.w + 2 * offsetDistance,
-      h: bounds.h + 2 * offsetDistance
+      h: bounds.h + 2 * offsetDistance,
     };
 
     // Create rectangle points (clockwise)
@@ -4844,11 +5102,9 @@ function setDebugMode(enabled) {
       { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y },
       { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y + expandedBounds.h },
       { x: expandedBounds.x, y: expandedBounds.y + expandedBounds.h },
-      { x: expandedBounds.x, y: expandedBounds.y } // Close the rectangle
+      { x: expandedBounds.x, y: expandedBounds.y }, // Close the rectangle
     ];
   }
-
-
 
   /**
    * Computes the convex hull of a set of 2D points using Graham scan algorithm.
@@ -4873,26 +5129,25 @@ function setDebugMode(enabled) {
     // Find the bottom-most point (and left-most if tie)
     let bottom = uniquePoints[0];
     for (let i = 1; i < uniquePoints.length; i++) {
-      if (uniquePoints[i].y < bottom.y || 
-          (uniquePoints[i].y === bottom.y && uniquePoints[i].x < bottom.x)) {
+      if (uniquePoints[i].y < bottom.y || (uniquePoints[i].y === bottom.y && uniquePoints[i].x < bottom.x)) {
         bottom = uniquePoints[i];
       }
     }
 
     // Sort points by polar angle with respect to bottom point
-    const sortedPoints = uniquePoints.filter(p => p !== bottom);
+    const sortedPoints = uniquePoints.filter((p) => p !== bottom);
     sortedPoints.sort((a, b) => {
       // Use p5.Vector for angle calculations
       const vA = createVector(a.x - bottom.x, a.y - bottom.y);
       const vB = createVector(b.x - bottom.x, b.y - bottom.y);
-      
+
       const angleA = vA.heading();
       const angleB = vB.heading();
-      
+
       if (angleA !== angleB) {
         return angleA - angleB;
       }
-      
+
       // If angles are equal, sort by distance using p5.Vector
       const distA = vA.magSq(); // magSq() is faster than mag() for comparisons
       const distB = vB.magSq();
@@ -4901,11 +5156,10 @@ function setDebugMode(enabled) {
 
     // Build convex hull using Graham scan
     const hull = [bottom];
-    
+
     for (const point of sortedPoints) {
       // Remove points that would create a clockwise turn
-      while (hull.length > 1 && 
-             crossProduct(hull[hull.length - 2], hull[hull.length - 1], point) <= 0) {
+      while (hull.length > 1 && crossProduct(hull[hull.length - 2], hull[hull.length - 1], point) <= 0) {
         hull.pop();
       }
       hull.push(point);
