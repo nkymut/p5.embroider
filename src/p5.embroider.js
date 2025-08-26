@@ -3270,49 +3270,110 @@ function setDebugMode(enabled) {
     }
 
     // Add first point
-    stitches.push({
-      x: x1 + perpX * halfWidth * currentSide,
-      y: y1 + perpY * halfWidth * currentSide,
-    });
-    stitches.push({
-      x: x1 + perpX * halfWidth * -currentSide,
-      y: y1 + perpY * halfWidth * -currentSide,
-    });
+    if(entry === "middle"){
+      stitches.push({
+        x: x1 + perpX * halfWidth * currentSide,
+        y: y1 + perpY * halfWidth * currentSide,
+      });
+    } else {
+      stitches.push({
+        x: x1 + perpX * halfWidth * currentSide,
+        y: y1 + perpY * halfWidth * currentSide,
+      });
+      stitches.push({
+        x: x1 + perpX * halfWidth * -currentSide,
+        y: y1 + perpY * halfWidth * -currentSide,
+      });
+    }
 
     // Create square wave pattern - abrupt transitions between high and low states
-    for (let i = 1; i <= numSquares; i++) {
+    for (let i = 1; i <= numSquares - 1; i++) {
       let t = i / numSquares;
+      let pointX;
+      let pointY;
+      let pointX1;
+      let pointY1;
 
       // Square wave: stay at current level for half the period, then jump to opposite
       if (i % 1 === 0) {
         currentSide = -currentSide; // Abrupt transition
       }
 
-      let pointX = x1 + dx * t + perpX * halfWidth * currentSide;
-      let pointY = y1 + dy * t + perpY * halfWidth * currentSide;
-      let pointX1 = x1 + dx * t + perpX * halfWidth * -currentSide;
-      let pointY1 = y1 + dy * t + perpY * halfWidth * -currentSide;
+      if(entry === "middle"){
+        if(i === 1) currentSide = 0;
+        if(i === 2) currentSide = -1;
 
-      stitches.push({
-        x: pointX,
-        y: pointY,
-      });
-      stitches.push({
-        x: pointX1,
-        y: pointY1,
-      });
-
-      if (i === numSquares && currentSide !== 0) {
-        // Handle exit condition
-        if (exit === "right") {
-          currentSide = -1;
-        } else if (exit === "left") {
-          currentSide = 1;
-        } else if (exit === "middle") {
-          currentSide = 0;
-        }
       }
+
+     
+      pointX = x1 + dx * t + perpX * halfWidth * currentSide;
+      pointY = y1 + dy * t + perpY * halfWidth * currentSide;
+      pointX1 = x1 + dx * t + perpX * halfWidth * -currentSide;
+      pointY1 = y1 + dy * t + perpY * halfWidth * -currentSide;
+
+
+      if(exit === "middle" ){
+       
+        if(i == 1){
+        currentSide = -1;
+        pointX = x1 + dx * t;
+        pointY = y1 + dy * t;
+        pointX1 = x1 + dx * t + perpX * halfWidth * currentSide;
+        pointY1 = y1 + dy * t + perpY * halfWidth * currentSide;
+
+        }else if(i == numSquares - 1){
+          pointX = x1 + dx * t + perpX * halfWidth * currentSide;
+          pointY = y1 + dy * t + perpY * halfWidth * currentSide;
+          pointX1 = x1 + dx * t;
+          pointY1 = y1 + dy * t;
+        }
+
+        stitches.push({
+          x: pointX,
+          y: pointY,
+        });
+        stitches.push({
+          x: pointX1,
+          y: pointY1,
+        });
+      
+      }else{
+        stitches.push({
+          x: pointX,
+          y: pointY,
+        });
+        stitches.push({
+          x: pointX1,
+          y: pointY1,
+        });
+
+      }
+
     }
+
+    
+
+      // Add last point
+      if(exit === "middle"){
+        stitches.push({
+          x: x2 ,
+          y: y2 ,
+        });
+
+        }else{
+
+        currentSide = -currentSide;
+        stitches.push({
+          x: x2 + perpX * halfWidth * currentSide,
+          y: y2 + perpY * halfWidth * currentSide,
+        });
+        stitches.push({
+          x: x2 + perpX * halfWidth * -currentSide,
+          y: y2 + perpY * halfWidth * -currentSide,
+        });
+    
+        }
+
 
     if (_DEBUG) console.log("Generated square stitches:", stitches);
     return stitches;
