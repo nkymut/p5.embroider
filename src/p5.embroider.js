@@ -3270,7 +3270,7 @@ function setDebugMode(enabled) {
     }
 
     // Add first point
-    if(entry === "middle"){
+    if (entry === "middle") {
       stitches.push({
         x: x1 + perpX * halfWidth * currentSide,
         y: y1 + perpY * halfWidth * currentSide,
@@ -3299,29 +3299,24 @@ function setDebugMode(enabled) {
         currentSide = -currentSide; // Abrupt transition
       }
 
-      if(entry === "middle"){
-        if(i === 1) currentSide = 0;
-        if(i === 2) currentSide = -1;
-
+      if (entry === "middle") {
+        if (i === 1) currentSide = 0;
+        if (i === 2) currentSide = -1;
       }
 
-     
       pointX = x1 + dx * t + perpX * halfWidth * currentSide;
       pointY = y1 + dy * t + perpY * halfWidth * currentSide;
       pointX1 = x1 + dx * t + perpX * halfWidth * -currentSide;
       pointY1 = y1 + dy * t + perpY * halfWidth * -currentSide;
 
-
-      if(exit === "middle" ){
-       
-        if(i == 1){
-        currentSide = -1;
-        pointX = x1 + dx * t;
-        pointY = y1 + dy * t;
-        pointX1 = x1 + dx * t + perpX * halfWidth * currentSide;
-        pointY1 = y1 + dy * t + perpY * halfWidth * currentSide;
-
-        }else if(i == numSquares - 1){
+      if (exit === "middle") {
+        if (i == 1) {
+          currentSide = -1;
+          pointX = x1 + dx * t;
+          pointY = y1 + dy * t;
+          pointX1 = x1 + dx * t + perpX * halfWidth * currentSide;
+          pointY1 = y1 + dy * t + perpY * halfWidth * currentSide;
+        } else if (i == numSquares - 1) {
           pointX = x1 + dx * t + perpX * halfWidth * currentSide;
           pointY = y1 + dy * t + perpY * halfWidth * currentSide;
           pointX1 = x1 + dx * t;
@@ -3336,8 +3331,7 @@ function setDebugMode(enabled) {
           x: pointX1,
           y: pointY1,
         });
-      
-      }else{
+      } else {
         stitches.push({
           x: pointX,
           y: pointY,
@@ -3346,34 +3340,26 @@ function setDebugMode(enabled) {
           x: pointX1,
           y: pointY1,
         });
-
       }
-
     }
 
-    
-
-      // Add last point
-      if(exit === "middle"){
-        stitches.push({
-          x: x2 ,
-          y: y2 ,
-        });
-
-        }else{
-
-        currentSide = -currentSide;
-        stitches.push({
-          x: x2 + perpX * halfWidth * currentSide,
-          y: y2 + perpY * halfWidth * currentSide,
-        });
-        stitches.push({
-          x: x2 + perpX * halfWidth * -currentSide,
-          y: y2 + perpY * halfWidth * -currentSide,
-        });
-    
-        }
-
+    // Add last point
+    if (exit === "middle") {
+      stitches.push({
+        x: x2,
+        y: y2,
+      });
+    } else {
+      currentSide = -currentSide;
+      stitches.push({
+        x: x2 + perpX * halfWidth * currentSide,
+        y: y2 + perpY * halfWidth * currentSide,
+      });
+      stitches.push({
+        x: x2 + perpX * halfWidth * -currentSide,
+        y: y2 + perpY * halfWidth * -currentSide,
+      });
+    }
 
     if (_DEBUG) console.log("Generated square stitches:", stitches);
     return stitches;

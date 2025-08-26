@@ -37,29 +37,21 @@ function draw() {
   translate(mmToPixel(10), mmToPixel(10));
 
   setDrawMode(drawMode);
-  noFill();
+  strokeCap(SQUARE);
+
   beginRecord(this);
   // Draw a 100mm square
   setStitch(0.1, 0.2, 0);
   setStrokeSettings({
-    stitchLength: 0.8,
+    stitchLength: 0.5,
     stitchWidth: 5,
     noise: 0.0,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
   setStrokeMode("zigzag");
-
-  line(80, 0, 80, 80); // right
-  trimThread();
-
-  line(0, 80, 0, 0); // left
-  trimThread();
-
-  line(-2.8, 0, 80 + 2.8, 0); // top
-  trimThread();
-
-  line(80 + 2.8, 80, -2.8, 80); // bottom
+  noFill();
+  rect(0, 0, 80, 80);
   trimThread();
 
   // Draw a 200px circle

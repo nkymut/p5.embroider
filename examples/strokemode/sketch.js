@@ -2,7 +2,7 @@ let drawMode = "stitch";
 
 function setup() {
   createCanvas(mmToPixel(120), mmToPixel(150));
-  
+
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -34,21 +34,21 @@ function setup() {
   createSliderLabel("Stitch Length:", 0, height + 60);
   stitchLengthSlider = createSlider(0.5, 5, 2.5, 0.1);
   stitchLengthSlider.position(0, height + 80);
-  stitchLengthSlider.style('width', '120px');
-  
+  stitchLengthSlider.style("width", "120px");
+
   createSliderLabel("Stroke Weight:", 0, height + 110);
   strokeWeightSlider = createSlider(1, 10, 4, 0.5);
   strokeWeightSlider.position(0, height + 130);
-  strokeWeightSlider.style('width', '120px');
+  strokeWeightSlider.style("width", "120px");
 }
 
 // Helper function to create slider labels
 function createSliderLabel(text, x, y) {
   let label = createDiv(text);
   label.position(x, y);
-  label.style('color', 'white');
-  label.style('font-size', '12px');
-  label.style('font-family', 'Arial, sans-serif');
+  label.style("color", "white");
+  label.style("font-size", "12px");
+  label.style("font-family", "Arial, sans-serif");
 }
 
 // Base settings for all patterns
@@ -80,13 +80,13 @@ function draw() {
   setStrokeMode("zigzag");
   line(0, 10, 90, 10);
   trimThread();
-  
+
   // Zigzag - Middle entry/exit
   setStrokeEntryExit("middle", "middle");
   stroke(200, 255, 200);
   line(0, 20, 90, 20);
   trimThread();
-  
+
   // Zigzag - Right entry/exit
   setStrokeEntryExit("right", "right");
   stroke(200, 200, 255);
@@ -102,13 +102,13 @@ function draw() {
   setStrokeMode("ramp");
   line(0, 45, 90, 45);
   trimThread();
-  
+
   // Ramp - Middle entry/exit
   setStrokeEntryExit("middle", "middle");
   stroke(200, 255, 200);
   line(0, 55, 90, 55);
   trimThread();
-  
+
   // Ramp - Right entry/exit
   setStrokeEntryExit("right", "right");
   stroke(200, 200, 255);
@@ -124,13 +124,13 @@ function draw() {
   setStrokeMode("square");
   line(0, 80, 90, 80);
   trimThread();
-  
+
   // Square - Middle entry/exit
   setStrokeEntryExit("middle", "middle");
   stroke(200, 255, 200);
   line(0, 90, 90, 90);
   trimThread();
-  
+
   // Square - Right entry/exit
   setStrokeEntryExit("right", "right");
   stroke(200, 200, 255);

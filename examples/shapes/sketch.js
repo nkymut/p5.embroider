@@ -1,7 +1,7 @@
 let drawMode = "stitch";
 
 function setup() {
-  createCanvas(mmToPixel(250), mmToPixel(200));
+  createCanvas(mmToPixel(180), mmToPixel(140));
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -34,44 +34,46 @@ function setup() {
 
 function draw() {
   background("#FFF5DC");
-  translate(mmToPixel(10), mmToPixel(10));
 
   strokeCap(SQUARE);
   setDrawMode(drawMode);
-  noFill();
+  // noFill();
   beginRecord(this);
-  // Draw a 100mm square
+  fill(0, 200, 0);
+  setFillSettings({
+    noise: 0.4,
+  });
+
   setStitch(0.5, 0.2, 0);
   setStrokeSettings({
     strokeLength: 0.4,
     stitchWidth: 1.8,
-    noise: 0.0,
+    noise: 0.2,
   });
+
   stroke(0, 0, 200);
   strokeWeight(5);
   setStrokeMode("zigzag");
 
-  strokeJoin(MITER);
-  strokeWeight(5);
-  fill(0,200,0)
-  ellipse(25, 25, 50, 50);
+  strokeJoin(BEVEL);
+  strokeWeight(3);
+
+  ellipse(40, 40, 40, 40);
   trimThread();
-  circle(25, 25, 25);
+  circle(40, 40, 20);
   trimThread();
   rectMode(CENTER);
-  rect(100, 25, 50, 50);
+  rect(90, 40, 40, 40, 2);
   trimThread();
-  square(175, 25, 50);
-  trimThread();
-
-  triangle(25, 75, 50, 125, 5, 125);
-  trimThread();
-  arc(100, 75, 50, 100, 0, PI);
-  trimThread();
-  quad(175, 75, 200, 100, 175, 125, 150, 100);
+  square(140, 40, 40);
   trimThread();
 
-
+  triangle(40, 80, 60, 110, 20, 110);
+  trimThread();
+  arc(90, 80, 40, 60, 0, PI);
+  trimThread();
+  quad(140, 80, 155, 95, 140, 110, 125, 95);
+  trimThread();
 
   // Stop recording and export as DST
   endRecord();
