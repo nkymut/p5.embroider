@@ -360,11 +360,7 @@ function draw() {
   setFillMode(currentSettings.fillMode); // "tatami", "satin", "spiral"
 
   // Set embroidery stitch parameters (uses numeric args)
-  setStitch(
-    currentSettings.minStitchLength,
-    currentSettings.stitchLength,
-    currentSettings.resampleNoise,
-  );
+  setStitch(currentSettings.minStitchLength, currentSettings.stitchLength, currentSettings.resampleNoise);
 
   // Set stroke and fill
   if (currentSettings.strokeEnabled) {

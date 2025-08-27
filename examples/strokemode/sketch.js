@@ -3,17 +3,17 @@ let drawMode = "stitch";
 function setup() {
   createCanvas(mmToPixel(120), mmToPixel(140));
 
-   // Create sliders for interactive control
-   createSliderLabel("Stitch Length:", 0, height + 60);
-   stitchLengthSlider = createSlider(0.5, 5, 2.5, 0.1);
-   let offset = mmToPixel(10);
-   stitchLengthSlider.position(offset, height - 80);
-   stitchLengthSlider.size(width - offset*3);
- 
-   createSliderLabel("Stroke Weight:", 0, height + 110);
-   strokeWeightSlider = createSlider(1, 10, 4, 0.5);
-   strokeWeightSlider.position(offset, height - 40);
-   strokeWeightSlider.size(width - offset*3);
+  // Create sliders for interactive control
+  createSliderLabel("Stitch Length:", 0, height + 60);
+  stitchLengthSlider = createSlider(0.5, 5, 2.5, 0.1);
+  let offset = mmToPixel(10);
+  stitchLengthSlider.position(offset, height - 80);
+  stitchLengthSlider.size(width - offset * 3);
+
+  createSliderLabel("Stroke Weight:", 0, height + 110);
+  strokeWeightSlider = createSlider(1, 10, 4, 0.5);
+  strokeWeightSlider.position(offset, height - 40);
+  strokeWeightSlider.size(width - offset * 3);
 
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
@@ -41,8 +41,6 @@ function setup() {
     exportGcode("strokemode.gcode");
   });
   exportGcodeButton.position(90, height + 30);
-
- 
 }
 
 // Helper function to create slider labels
