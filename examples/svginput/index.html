@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG to Embroidery - p5.embroider</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+    <script src="../../lib/p5.embroider.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="canvas-container">
+            <div class="canvas-card">
+                <div class="canvas-header">
+                    <h3>Preview</h3>
+                    <div id="mode-buttons" class="button-group">
+                        <!-- Display mode buttons will be inserted here -->
+                    </div>
+                </div>
+                <div class="canvas-content">
+                    <div id="canvas-wrapper">
+                        <>
+                    </div>
+                    <div class="canvas-sidebar">
+                        <div class="control-section">
+                            <h4>Embroidery Settings</h4>
+                            <div id="embroidery-controls">
+                                <!-- Embroidery controls will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-container">
+            <div class="controls-panel">
+                <div class="control-section">
+                    <h3>SVG Input</h3>
+                    <div id="svg-presets" class="button-group">
+                        <!-- SVG preset buttons will be inserted here -->
+                    </div>
+                    <div id="svg-input-container">
+                        <!-- SVG textarea will be inserted here -->
+                    </div>
+                    <div id="svg-buttons" class="button-group">
+                        <!-- Load SVG and Clear buttons will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Generated p5.js Code</h3>
+                    <div id="code-output-container">
+                        <!-- Code output will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <h3>Export</h3>
+                    <div id="dimension-controls">
+                        <!-- Output dimension controls will be inserted here -->
+                    </div>
+                    <div id="export-buttons" class="button-group">
+                        <!-- Export buttons will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="sketch.js"></script>
+</body>
+</html>
