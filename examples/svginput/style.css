@@ -565,6 +565,26 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+/* Section Header Component */
+.section-header {
+  margin: var(--space-4) 0 var(--space-3) 0;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.section-header:first-child {
+  margin-top: 0;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .app-container {
