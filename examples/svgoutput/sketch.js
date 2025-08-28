@@ -2,9 +2,20 @@ let drawMode = "stitch";
 let selectedPaperSize = "A4";
 let selectedHoopSize = "4x4";
 let selectedDPI = 300;
+let showHoopInExport = false;
+let showGuidesInExport = false;
+
+// Paper size definitions (in mm)
+const PAPER_SIZES = {
+  A4: { width: 210, height: 297 },
+  A3: { width: 297, height: 420 },
+  A2: { width: 420, height: 594 },
+  A1: { width: 594, height: 841 },
+};
 
 function setup() {
-  createCanvas(mmToPixel(120), mmToPixel(120));
+  // Create canvas based on selected paper size
+  updateCanvasSize();
 
   // Draw mode buttons
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
@@ -36,6 +47,8 @@ function setup() {
   paperSizeSelect.selected("A4");
   paperSizeSelect.changed(() => {
     selectedPaperSize = paperSizeSelect.value();
+    updateCanvasSize();
+    updateUIPositions();
   });
   paperSizeSelect.position(0, height + 80);
 
@@ -74,6 +87,24 @@ function setup() {
     selectedDPI = parseInt(dpiSelect.value());
   });
   dpiSelect.position(240, height + 80);
+
+  // Export options checkboxes
+  let exportOptionsLabel = createDiv("Export Options:");
+  exportOptionsLabel.position(360, height + 60);
+  exportOptionsLabel.style("font-size", "12px");
+  exportOptionsLabel.style("color", "#333");
+
+  let showHoopCheckbox = createCheckbox("Show Hoop in Export", showHoopInExport);
+  showHoopCheckbox.position(360, height + 80);
+  showHoopCheckbox.changed(() => {
+    showHoopInExport = showHoopCheckbox.checked();
+  });
+
+  let showGuidesCheckbox = createCheckbox("Show Guides in Export", showGuidesInExport);
+  showGuidesCheckbox.position(360, height + 100);
+  showGuidesCheckbox.changed(() => {
+    showGuidesInExport = showGuidesCheckbox.checked();
+  });
 
   // Export buttons
   let exportDstButton = createButton("Export DST");
@@ -118,15 +149,168 @@ function getSVGExportOptions() {
   return {
     paperSize: selectedPaperSize,
     hoopSize: hoopSize,
-    showGuides: true,
+    showGuides: showGuidesInExport,  // Use checkbox value
+    showHoop: showHoopInExport,      // Use checkbox value
     lifeSize: true,
     dpi: selectedDPI,
   };
 }
 
+// Update canvas size based on selected paper size
+function updateCanvasSize() {
+  const paper = PAPER_SIZES[selectedPaperSize];
+  if (!paper) return;
+  
+  // Use actual paper size in mm - p5.embroider will handle the mm to pixel conversion
+  // Scale down for reasonable screen display
+  const displayScale = 0.5; // Use 0.5 for better visibility
+  const canvasWidthMm = paper.width * displayScale;
+  const canvasHeightMm = paper.height * displayScale;
+  
+  // Convert to pixels using p5.embroider's mmToPixel function
+  const canvasWidth = mmToPixel(canvasWidthMm);
+  const canvasHeight = mmToPixel(canvasHeightMm);
+  
+  if (typeof createCanvas === 'function') {
+    createCanvas(canvasWidth, canvasHeight);
+  } else {
+    // If canvas already exists, resize it
+    resizeCanvas(canvasWidth, canvasHeight);
+  }
+}
+
+// Update UI element positions when canvas size changes
+function updateUIPositions() {
+  // Note: In p5.js, we need to store references to UI elements to reposition them
+  // For now, this is a placeholder - in a full implementation, you'd store element references
+  console.log("Canvas resized - UI elements may need repositioning");
+}
+
+// Get current hoop size for canvas display
+function getCurrentHoopSize() {
+  const hoopPresets = {
+    "4x4": { width: 100, height: 100 },
+    "5x7": { width: 130, height: 180 },
+    "6x10": { width: 160, height: 250 },
+    "8x8": { width: 200, height: 200 },
+    "8x10": { width: 200, height: 250 },
+  };
+  return hoopPresets[selectedHoopSize] || hoopPresets["4x4"];
+}
+
+// Draw paper background
+function drawPaper() {
+  const paper = PAPER_SIZES[selectedPaperSize];
+  if (!paper) return;
+  
+  const displayScale = 0.5; // Same scale as canvas
+  const paperWidthMm = paper.width * displayScale;
+  const paperHeightMm = paper.height * displayScale;
+  const paperWidth = mmToPixel(paperWidthMm);
+  const paperHeight = mmToPixel(paperHeightMm);
+  
+  // Draw paper background
+  fill(255, 255, 255); // White paper
+  stroke(200, 200, 200); // Light gray border
+  strokeWeight(2);
+  rect(0, 0, paperWidth, paperHeight);
+  
+  // Draw paper size label
+  fill(150, 150, 150);
+  noStroke();
+  textAlign(RIGHT, BOTTOM);
+  textSize(12);
+  text(`${selectedPaperSize} (${paper.width}×${paper.height}mm)`, paperWidth - 10, paperHeight - 10);
+  
+  return { paperWidthMm, paperHeightMm, displayScale };
+}
+
+// Draw embroidery hoop visualization on canvas
+function drawHoop(paperInfo) {
+  const hoop = getCurrentHoopSize();
+  const displayScale = paperInfo.displayScale;
+  
+  // Hoop dimensions in mm (scaled for display)
+  const hoopWidthMm = hoop.width * displayScale;
+  const hoopHeightMm = hoop.height * displayScale;
+  const hoopPixelWidth = mmToPixel(hoopWidthMm);
+  const hoopPixelHeight = mmToPixel(hoopHeightMm);
+  
+  // Position hoop with margin from paper edge (in mm)
+  const marginMm = 15 * displayScale; // 15mm margin scaled
+  const marginX = mmToPixel(marginMm);
+  const marginY = mmToPixel(marginMm);
+  
+  const hoopX = marginX;
+  const hoopY = marginY;
+  const centerX = hoopX + hoopPixelWidth / 2;
+  const centerY = hoopY + hoopPixelHeight / 2;
+  
+  // Draw outer hoop ring (wood/plastic)
+  const outerRadius = Math.min(hoopPixelWidth, hoopPixelHeight) / 2;
+  const innerRadius = outerRadius - mmToPixel(3 * displayScale); // 3mm thick hoop ring
+  
+  // Outer ring
+  fill(139, 69, 19, 200); // Brown wood color with transparency
+  stroke(101, 67, 33);
+  strokeWeight(2);
+  ellipse(centerX, centerY, outerRadius * 2, outerRadius * 2);
+  
+  // Inner ring (working area)
+  fill(245, 245, 220, 230); // Beige fabric color
+  stroke(210, 180, 140);
+  strokeWeight(1);
+  ellipse(centerX, centerY, innerRadius * 2, innerRadius * 2);
+  
+  // Add hoop tension screws
+  const numScrews = 4;
+  for (let i = 0; i < numScrews; i++) {
+    const angle = (i * TWO_PI) / numScrews + PI / 4; // Offset by 45 degrees
+    const screwRadius = outerRadius + mmToPixel(2 * displayScale);
+    const screwX = centerX + screwRadius * cos(angle);
+    const screwY = centerY + screwRadius * sin(angle);
+    
+    // Screw head
+    fill(192, 192, 192); // Silver
+    stroke(128, 128, 128);
+    strokeWeight(1);
+    ellipse(screwX, screwY, mmToPixel(3 * displayScale), mmToPixel(3 * displayScale));
+    
+    // Screw slot
+    stroke(64, 64, 64);
+    strokeWeight(2);
+    line(screwX - mmToPixel(1 * displayScale), screwY, screwX + mmToPixel(1 * displayScale), screwY);
+  }
+  
+  // Add center marks for alignment
+  stroke(153, 153, 153, 150);
+  strokeWeight(1);
+  line(centerX - mmToPixel(2 * displayScale), centerY, centerX + mmToPixel(2 * displayScale), centerY);
+  line(centerX, centerY - mmToPixel(2 * displayScale), centerX, centerY + mmToPixel(2 * displayScale));
+  
+  // Return hoop position for pattern centering (in mm coordinates)
+  return { 
+    centerX: pixelToMm(centerX), 
+    centerY: pixelToMm(centerY), 
+    displayScale 
+  };
+}
+
 function draw() {
-  background("#FFF5DC");
-  translate(mmToPixel(10), mmToPixel(10));
+  background("#F0F0F0"); // Light gray background
+  
+  // Draw the paper background and get paper info
+  const paperInfo = drawPaper();
+
+  // Draw the embroidery hoop and get its position
+  const hoopInfo = drawHoop(paperInfo);
+
+  // Center the embroidery pattern in the hoop
+  push();
+  // In p5.embroider, coordinates are in mm, so we translate to the hoop center in mm
+  // The pattern is about 100mm wide, so we offset by 50mm to center it
+  translate(hoopInfo.centerX - 50, hoopInfo.centerY - 50); // Center the pattern (in mm coordinates)
+  // No need to scale here - p5.embroider handles the mm to pixel conversion automatically
 
   setDrawMode(drawMode);
 
@@ -180,6 +364,8 @@ function draw() {
 
   // Stop recording
   endRecord();
+  
+  pop();
 }
 
 function keyPressed() {

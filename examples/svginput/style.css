@@ -75,7 +75,7 @@
   /* Layout */
   --controls-width: 320px;
   --canvas-min-width: 500px;
-  --canvas-sidebar-width: 180px;
+  --canvas-sidebar-width: 360px;
 }
 
 /* Reset and Base Styles */
@@ -176,8 +176,6 @@ html, body {
 
 /* Make canvas fill the wrapper */
 #canvas-wrapper canvas {
-  width: 100% !important; */
-  height: 100% !important; */
   max-width: 100%;
   max-height: 100%;
   border-radius: var(--radius-md);
@@ -208,6 +206,124 @@ html, body {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
+}
+
+/* Tab System */
+.tab-container {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.tab-header {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.tab-button {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.tab-button.active {
+  background: var(--bg-secondary);
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+.tab-content {
+  min-height: 200px;
+}
+
+.tab-pane {
+  display: none;
+  padding: var(--space-3);
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Info Table Styling */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-2);
+}
+
+.info-table th,
+.info-table td {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-table th {
+  background: var(--bg-tertiary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  position: sticky;
+  top: 0;
+}
+
+.info-table td {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+
+.info-table tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.info-table .part-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.info-table .color-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.info-table .color-swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
+/* Sidebar Two-Column Layout */
+.sidebar-columns {
+  display: flex;
+  gap: var(--space-3);
+  height: 100%;
+}
+
+.sidebar-column {
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
+}
+
+.sidebar-column .control-section {
+  margin-bottom: var(--space-4);
+  padding: 0;
+  border-bottom: none;
 }
 
 /* Controls Panel */
@@ -515,6 +631,22 @@ input[type="checkbox"] {
   font-family: var(--font-family-mono);
 }
 
+.slider-container .value-input {
+  width: 48px;
+  padding: var(--space-1);
+  font-size: var(--font-size-xs);
+  text-align: center;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  margin: 0 var(--space-1);
+}
+
+.slider-container .unit-label {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  min-width: 20px;
+}
+
 /* Color Control Component */
 .color-control {
   display: flex;
@@ -614,6 +746,11 @@ input[type="checkbox"] {
     border-left: none;
     border-top: 1px solid var(--border-light);
   }
+  
+  .sidebar-columns {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
 }
 
 @media (max-width: 768px) {
@@ -667,6 +804,25 @@ input[type="checkbox"] {
     height: 150px;
     padding: var(--space-2);
   }
+  
+  .sidebar-columns {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  /* Mobile-responsive info table */
+  .info-table {
+    font-size: var(--font-size-xs);
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  .info-table th,
+  .info-table td {
+    padding: var(--space-1);
+    font-size: var(--font-size-xs);
+  }
 }
 
 /* Focus Visible for Accessibility */
@@ -709,6 +865,7 @@ input[type="checkbox"] {
     transform: translateY(0);
   }
 }
+
 
 /* Dark Mode Support (Optional) */
 @media (prefers-color-scheme: dark) {

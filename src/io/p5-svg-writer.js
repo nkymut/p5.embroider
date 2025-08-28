@@ -14,6 +14,7 @@ export class SVGWriter {
       hoopSize: { width: 100, height: 100 },
       margins: { top: 15, right: 15, bottom: 15, left: 15 },
       showGuides: true,
+      showHoop: true,
       lifeSize: true,
     };
   }
@@ -82,6 +83,11 @@ export class SVGWriter {
 
     // Add coordinate system transformation
     this.data.push(`<g transform="translate(${marginLeft}, ${marginTop}) scale(${mmToUnits}, ${mmToUnits})">`);
+
+    // Draw embroidery hoop if enabled
+    if (this.options.showHoop) {
+      this.drawHoop();
+    }
 
     // Draw guides if enabled
     if (this.options.showGuides) {
@@ -157,11 +163,47 @@ export class SVGWriter {
     );
   }
 
+  drawHoop() {
+    const hoop = this.options.hoopSize;
+    const centerX = hoop.width / 2;
+    const centerY = hoop.height / 2;
+    
+    // Draw outer hoop ring (wood/plastic)
+    const outerRadius = Math.min(hoop.width, hoop.height) / 2;
+    const innerRadius = outerRadius - 3; // 3mm thick hoop ring
+    
+    // Outer ring
+    this.data.push(`<circle cx="${centerX}" cy="${centerY}" r="${outerRadius}" 
+      fill="#8B4513" stroke="#654321" stroke-width="0.5" opacity="0.8"/>`);
+    
+    // Inner ring (working area)
+    this.data.push(`<circle cx="${centerX}" cy="${centerY}" r="${innerRadius}" 
+      fill="#F5F5DC" stroke="#D2B48C" stroke-width="0.3" opacity="0.9"/>`);
+    
+    // Add center marks for alignment
+    this.data.push(`<line x1="${centerX - 2}" y1="${centerY}" x2="${centerX + 2}" y2="${centerY}" 
+      stroke="#999999" stroke-width="0.2" opacity="0.6"/>`);
+    this.data.push(`<line x1="${centerX}" y1="${centerY - 2}" x2="${centerX}" y2="${centerY + 2}" 
+      stroke="#999999" stroke-width="0.2" opacity="0.6"/>`);
+  }
+
   drawEmbroideryPatterns(stitchData) {
     if (!stitchData || !stitchData.threads) {
       this.addComment("No embroidery data to draw");
       return;
     }
+
+    // Get pattern bounds to center it in the hoop
+    const bounds = this.getPatternBounds(stitchData);
+    const hoop = this.options.hoopSize;
+    const hoopCenterX = hoop.width / 2;
+    const hoopCenterY = hoop.height / 2;
+    const patternCenterX = bounds.x + bounds.width / 2;
+    const patternCenterY = bounds.y + bounds.height / 2;
+    
+    // Calculate offset to center pattern in hoop
+    const offsetX = hoopCenterX - patternCenterX;
+    const offsetY = hoopCenterY - patternCenterY;
 
     for (let threadIndex = 0; threadIndex < stitchData.threads.length; threadIndex++) {
       const thread = stitchData.threads[threadIndex];
@@ -172,19 +214,19 @@ export class SVGWriter {
       for (const run of thread.runs) {
         if (run.length < 2) continue;
 
-        // Create path for stitch run
-        let pathData = `M ${run[0].x} ${run[0].y}`;
+        // Create path for stitch run with centering offset
+        let pathData = `M ${run[0].x + offsetX} ${run[0].y + offsetY}`;
         for (let i = 1; i < run.length; i++) {
-          pathData += ` L ${run[i].x} ${run[i].y}`;
+          pathData += ` L ${run[i].x + offsetX} ${run[i].y + offsetY}`;
         }
 
         this.data.push(
           `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="0.1" stroke-linecap="round"/>`,
         );
 
-        // Draw red dots for each stitch point
+        // Draw red dots for each stitch point with centering offset
         for (const stitch of run) {
-          this.data.push(`<circle cx="${stitch.x}" cy="${stitch.y}" r="0.3" 
+          this.data.push(`<circle cx="${stitch.x + offsetX}" cy="${stitch.y + offsetY}" r="0.3" 
             fill="#ff0000" stroke="none" opacity="0.8"/>`);
         }
       }
