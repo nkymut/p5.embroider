@@ -262,7 +262,13 @@ function draw() {
     // Apply individual part settings
     applyPartSettings(part);
     
-    // Draw the part
+    // Draw the part using p5.js primitives when possible
+    if (part.shapeParams && usePrimitiveShape(part, scaleFactor, offsetX, offsetY)) {
+      // Primitive shape was drawn, continue to next part
+      continue;
+    }
+    
+    // Fall back to vertex-based drawing for complex paths
     const points = getPathPoints(part.pathData);
     if (points.length >= 2) {
       beginShape();
@@ -281,6 +287,53 @@ function draw() {
 
   pop();
   endRecord();
+}
+
+function usePrimitiveShape(part, scaleFactor, offsetX, offsetY) {
+  const params = part.shapeParams;
+  if (!params) return false;
+
+  switch (part.elementType) {
+    case "circle":
+      const circleX = offsetX + params.cx * scaleFactor;
+      const circleY = offsetY + params.cy * scaleFactor;
+      const circleR = params.r * scaleFactor;
+      circle(circleX, circleY, circleR * 2); // p5.js circle uses diameter
+      return true;
+
+    case "rect":
+      const rectX = offsetX + params.x * scaleFactor;
+      const rectY = offsetY + params.y * scaleFactor;
+      const rectW = params.w * scaleFactor;
+      const rectH = params.h * scaleFactor;
+      rect(rectX, rectY, rectW, rectH);
+      return true;
+
+    case "ellipse":
+      const ellipseX = offsetX + params.cx * scaleFactor;
+      const ellipseY = offsetY + params.cy * scaleFactor;
+      const ellipseW = params.rx * scaleFactor * 2;
+      const ellipseH = params.ry * scaleFactor * 2;
+      ellipse(ellipseX, ellipseY, ellipseW, ellipseH);
+      return true;
+
+    case "line":
+      const lineX1 = offsetX + params.x1 * scaleFactor;
+      const lineY1 = offsetY + params.y1 * scaleFactor;
+      const lineX2 = offsetX + params.x2 * scaleFactor;
+      const lineY2 = offsetY + params.y2 * scaleFactor;
+      line(lineX1, lineY1, lineX2, lineY2);
+      return true;
+
+    case "polygon":
+    case "polyline":
+      // For simple polygons/polylines, we could use p5.js shapes, but vertex approach works better for embroidery
+      // Fall back to vertex method
+      return false;
+
+    default:
+      return false;
+  }
 }
 
 function applyPartSettings(part) {
@@ -360,9 +413,10 @@ function loadSVGFromTextArea() {
 
 function createSVGPartObject(element, index) {
   let pathData = "";
+  let shapeParams = null;
   const tagName = element.tagName.toLowerCase();
 
-  // Convert various SVG elements to path data
+  // Store original shape parameters and convert to path data
   switch (tagName) {
     case "path":
       pathData = element.getAttribute("d");
@@ -372,6 +426,7 @@ function createSVGPartObject(element, index) {
       const cy = parseFloat(element.getAttribute("cy") || 0);
       const r = parseFloat(element.getAttribute("r") || 0);
       if (r > 0) {
+        shapeParams = { cx, cy, r };
         pathData = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
       }
       break;
@@ -381,7 +436,18 @@ function createSVGPartObject(element, index) {
       const w = parseFloat(element.getAttribute("width") || 0);
       const h = parseFloat(element.getAttribute("height") || 0);
       if (w > 0 && h > 0) {
+        shapeParams = { x, y, w, h };
         pathData = `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+      }
+      break;
+    case "ellipse":
+      const ex = parseFloat(element.getAttribute("cx") || 0);
+      const ey = parseFloat(element.getAttribute("cy") || 0);
+      const rx = parseFloat(element.getAttribute("rx") || 0);
+      const ry = parseFloat(element.getAttribute("ry") || 0);
+      if (rx > 0 && ry > 0) {
+        shapeParams = { cx: ex, cy: ey, rx, ry };
+        pathData = `M ${ex - rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex + rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex - rx} ${ey} Z`;
       }
       break;
     case "line":
@@ -389,6 +455,7 @@ function createSVGPartObject(element, index) {
       const y1 = parseFloat(element.getAttribute("y1") || 0);
       const x2 = parseFloat(element.getAttribute("x2") || 0);
       const y2 = parseFloat(element.getAttribute("y2") || 0);
+      shapeParams = { x1, y1, x2, y2 };
       pathData = `M ${x1} ${y1} L ${x2} ${y2}`;
       break;
     case "polygon":
@@ -396,6 +463,7 @@ function createSVGPartObject(element, index) {
       const points = element.getAttribute("points") || "";
       const coords = points.trim().split(/[\s,]+/).map(parseFloat);
       if (coords.length >= 4) {
+        shapeParams = { coords, closed: tagName === "polygon" };
         pathData = `M ${coords[0]} ${coords[1]}`;
         for (let i = 2; i < coords.length; i += 2) {
           pathData += ` L ${coords[i]} ${coords[i + 1]}`;
@@ -420,6 +488,7 @@ function createSVGPartObject(element, index) {
     name: `${tagName.charAt(0).toUpperCase() + tagName.slice(1)} ${index + 1}`,
     elementType: tagName,
     pathData: pathData,
+    shapeParams: shapeParams,
     originalAttributes: {
       stroke: stroke,
       fill: fill,
@@ -430,7 +499,7 @@ function createSVGPartObject(element, index) {
       color: parseColor(stroke) || [0, 0, 0],
       weight: strokeWidth,
       mode: "straight",
-      stitchLength: 3,
+      stitchLength: 2,
       minStitchLength: 0.5,
       resampleNoise: 0.2,
     },
@@ -676,13 +745,6 @@ function updatePartSettings(part) {
       updateObjectDisplay();
       redraw();
     });
-
-    createSliderControl(container, "Stroke Weight", 0.5, 10, part.strokeSettings.weight, 0.5, (value) => {
-      part.strokeSettings.weight = value;
-      updateObjectDisplay();
-      redraw();
-    });
-
     createSelectControl(container, "Stroke Mode", {
       straight: "straight",
       zigzag: "zigzag", 
@@ -690,6 +752,20 @@ function updatePartSettings(part) {
       sashiko: "sashiko"
     }, part.strokeSettings.mode, (value) => {
       part.strokeSettings.mode = value;
+      updateObjectDisplay();
+      redraw();
+    });
+
+    createSliderControl(container, "Stroke Weight", 0.5, 10, part.strokeSettings.weight, 0.5, (value) => {
+      part.strokeSettings.weight = value;
+      updateObjectDisplay();
+      redraw();
+    });
+
+ 
+
+    createSliderControl(container, "Stroke Stitch Length", 0.1, 10, part.strokeSettings.stitchLength, 0.1, (value) => {
+      part.strokeSettings.stitchLength = value;
       updateObjectDisplay();
       redraw();
     });
@@ -716,6 +792,12 @@ function updatePartSettings(part) {
       spiral: "Spiral"
     }, part.fillSettings.mode, (value) => {
       part.fillSettings.mode = value;
+      updateObjectDisplay();
+      redraw();
+    });
+
+    createSliderControl(container, "Fill Stitch Length", 0.5, 10, part.fillSettings.stitchLength, 0.1, (value) => {
+      part.fillSettings.stitchLength = value;
       updateObjectDisplay();
       redraw();
     });
@@ -795,16 +877,70 @@ function setup() {
     : "noFill();"
   }
   
-  beginShape();`;
+  `;
 
-    const points = getPathPoints(part.pathData);
-    points.forEach(point => {
-      const scaledX = ((point.x - boundingBox.minX) / boundingBox.width) * globalSettings.outputWidth;
-      const scaledY = ((point.y - boundingBox.minY) / boundingBox.height) * globalSettings.outputHeight;
-      code += `\n  vertex(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)});`;
-    });
+    // Use p5.js primitives when possible
+    if (part.shapeParams) {
+      const params = part.shapeParams;
+      const scaleX = globalSettings.outputWidth / boundingBox.width;
+      const scaleY = globalSettings.outputHeight / boundingBox.height;
+      const scaleFactor = Math.min(scaleX, scaleY);
+      
+      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
 
-    code += `\n  endShape${part.pathData.toLowerCase().includes("z") ? "(CLOSE)" : "()"};\n`;
+      switch (part.elementType) {
+        case "circle":
+          const circleX = (offsetX + params.cx * scaleFactor).toFixed(1);
+          const circleY = (offsetY + params.cy * scaleFactor).toFixed(1);
+          const circleD = (params.r * scaleFactor * 2).toFixed(1);
+          code += `circle(${circleX}, ${circleY}, ${circleD});`;
+          break;
+        case "rect":
+          const rectX = (offsetX + params.x * scaleFactor).toFixed(1);
+          const rectY = (offsetY + params.y * scaleFactor).toFixed(1);
+          const rectW = (params.w * scaleFactor).toFixed(1);
+          const rectH = (params.h * scaleFactor).toFixed(1);
+          code += `rect(${rectX}, ${rectY}, ${rectW}, ${rectH});`;
+          break;
+        case "ellipse":
+          const ellipseX = (offsetX + params.cx * scaleFactor).toFixed(1);
+          const ellipseY = (offsetY + params.cy * scaleFactor).toFixed(1);
+          const ellipseW = (params.rx * scaleFactor * 2).toFixed(1);
+          const ellipseH = (params.ry * scaleFactor * 2).toFixed(1);
+          code += `ellipse(${ellipseX}, ${ellipseY}, ${ellipseW}, ${ellipseH});`;
+          break;
+        case "line":
+          const lineX1 = (offsetX + params.x1 * scaleFactor).toFixed(1);
+          const lineY1 = (offsetY + params.y1 * scaleFactor).toFixed(1);
+          const lineX2 = (offsetX + params.x2 * scaleFactor).toFixed(1);
+          const lineY2 = (offsetY + params.y2 * scaleFactor).toFixed(1);
+          code += `line(${lineX1}, ${lineY1}, ${lineX2}, ${lineY2});`;
+          break;
+        default:
+          // Fall back to vertex method for complex shapes
+          code += `beginShape();`;
+          const points = getPathPoints(part.pathData);
+          points.forEach(point => {
+            const scaledX = ((point.x - boundingBox.minX) / boundingBox.width) * globalSettings.outputWidth;
+            const scaledY = ((point.y - boundingBox.minY) / boundingBox.height) * globalSettings.outputHeight;
+            code += `\n  vertex(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)});`;
+          });
+          code += `\n  endShape${part.pathData.toLowerCase().includes("z") ? "(CLOSE)" : "()"}`;
+      }
+    } else {
+      // Fall back to vertex method for paths without shape parameters
+      code += `beginShape();`;
+      const points = getPathPoints(part.pathData);
+      points.forEach(point => {
+        const scaledX = ((point.x - boundingBox.minX) / boundingBox.width) * globalSettings.outputWidth;
+        const scaledY = ((point.y - boundingBox.minY) / boundingBox.height) * globalSettings.outputHeight;
+        code += `\n  vertex(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)});`;
+      });
+      code += `\n  endShape${part.pathData.toLowerCase().includes("z") ? "(CLOSE)" : "()"}`;
+    }
+    
+    code += `\n`;
   });
 
   code += `  
