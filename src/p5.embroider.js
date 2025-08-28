@@ -609,8 +609,8 @@ function setDebugMode(enabled) {
         if (_drawMode === "p5") {
           _originalVertexFunc.call(
             _p5Instance,
-            mmToPixel(transformedPoint.x),
-            mmToPixel(transformedPoint.y),
+            mmToPixel(x),
+            mmToPixel(y),
             moveTo,
             u,
             v,
@@ -1439,6 +1439,8 @@ function setDebugMode(enabled) {
         }
         if (_drawMode == "p5") {
           _originalTranslateFunc.call(this, mmToPixel(x), mmToPixel(y));
+          //_originalTranslateFunc.call(this, x, y);
+          
         }
       } else {
         _originalTranslateFunc.apply(this, arguments);
