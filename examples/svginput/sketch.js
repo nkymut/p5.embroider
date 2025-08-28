@@ -1213,15 +1213,6 @@ function updateMultiPartSettings() {
   container.html(""); // Clear existing content
   
   if (selectedPartIndices.length === 0) return;
-  
-  // Multi-selection header
-  const nameDiv = createDiv(`Editing: ${selectedPartIndices.length} parts selected`);
-  nameDiv.parent(container);
-  nameDiv.style("font-weight", "bold");
-  nameDiv.style("margin-bottom", "12px");
-  nameDiv.style("padding-bottom", "8px");
-  nameDiv.style("border-bottom", "1px solid #ddd");
-  nameDiv.style("color", "#0066cc");
 
   // Get common values for controls
   const selectedParts = selectedPartIndices.map(i => svgParts[i]);
@@ -1233,6 +1224,14 @@ function updateMultiPartSettings() {
   // Common fill enable state  
   const allFillEnabled = selectedParts.every(part => part.fillSettings.enabled);
   const someFillEnabled = selectedParts.some(part => part.fillSettings.enabled);
+
+  // Stroke settings section header
+  const strokeHeader = createDiv("Stroke Settings");
+  strokeHeader.parent(container);
+  strokeHeader.style("font-weight", "600");
+  strokeHeader.style("margin", "16px 0 8px 0");
+  strokeHeader.style("padding-bottom", "8px");
+  strokeHeader.style("border-bottom", "1px solid #ddd");
 
   // Stroke settings
   createCheckboxControl(container, "Enable Stroke", allStrokeEnabled, (enabled) => {
@@ -1330,6 +1329,14 @@ function updateMultiPartSettings() {
     });
   }
 
+  // Fill settings section header
+  const fillHeader = createDiv("Fill Settings");
+  fillHeader.parent(container);
+  fillHeader.style("font-weight", "600");
+  fillHeader.style("margin", "16px 0 8px 0");
+  fillHeader.style("padding-bottom", "8px");
+  fillHeader.style("border-bottom", "1px solid #ddd");
+
   // Fill settings
   createCheckboxControl(container, "Enable Fill", allFillEnabled, (enabled) => {
     selectedParts.forEach(part => {
@@ -1424,6 +1431,35 @@ function updateMultiPartSettings() {
       redraw();
     });
   }
+
+  // Outline settings for multi-selection
+  const outlineHeader = createDiv("Outline Settings");
+  outlineHeader.parent(container);
+  outlineHeader.style("font-weight", "600");
+  outlineHeader.style("margin", "16px 0 8px 0");
+  outlineHeader.style("padding-bottom", "8px");
+  outlineHeader.style("border-bottom", "1px solid #ddd");
+
+  // Common outline enable state
+  const allOutlineEnabled = selectedParts.every(part => part.addToOutline);
+  const someOutlineEnabled = selectedParts.some(part => part.addToOutline);
+
+  // Add to outline control for multiple parts
+  createCheckboxControl(container, "Add to Outline", allOutlineEnabled, (addToOutline) => {
+    selectedParts.forEach(part => {
+      part.addToOutline = addToOutline;
+      togglePartOutline(part, addToOutline);
+    });
+    updateSVGPartsList();
+    updateInfoTable();
+    redraw();
+  });
+
+  // Outline offset control with automatic outline updates
+  createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
+    globalSettings.outlineOffset = value;
+    updateOutlinesForOffset(); // Auto-update all outlines when offset changes
+  });
 }
 
 function updatePartSettings(part) {
@@ -1448,25 +1484,13 @@ function updatePartSettings(part) {
   nameDiv.style("padding-bottom", "8px");
   nameDiv.style("border-bottom", "1px solid #ddd");
 
- // Add to outline control with automatic outline creation/removal
- createCheckboxControl(container, "Add to Outline", part.addToOutline, (addToOutline) => {
-  part.addToOutline = addToOutline;
-  togglePartOutline(part, addToOutline);
-});
-
-  // Outline controls section
-  const outlineHeader = createDiv("Outline Settings");
-  outlineHeader.parent(container);
-  outlineHeader.style("font-weight", "600");
-  outlineHeader.style("margin", "16px 0 8px 0");
-  outlineHeader.style("padding-bottom", "8px");
-  outlineHeader.style("border-bottom", "1px solid #ddd");
-  
-  // Outline offset control with automatic outline updates
-  createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
-    globalSettings.outlineOffset = value;
-    updateOutlinesForOffset(); // Auto-update all outlines when offset changes
-  });
+  // Stroke settings section header
+  const strokeHeader = createDiv("Stroke Settings");
+  strokeHeader.parent(container);
+  strokeHeader.style("font-weight", "600");
+  strokeHeader.style("margin", "16px 0 8px 0");
+  strokeHeader.style("padding-bottom", "8px");
+  strokeHeader.style("border-bottom", "1px solid #ddd");
 
   // Stroke settings
   createCheckboxControl(container, "Enable Stroke", part.strokeSettings.enabled, (enabled) => {
@@ -1541,6 +1565,14 @@ function updatePartSettings(part) {
     strokeControlsDiv.style("display", "none");
   }
 
+  // Fill settings section header
+  const fillHeader = createDiv("Fill Settings");
+  fillHeader.parent(container);
+  fillHeader.style("font-weight", "600");
+  fillHeader.style("margin", "16px 0 8px 0");
+  fillHeader.style("padding-bottom", "8px");
+  fillHeader.style("border-bottom", "1px solid #ddd");
+
   // Fill settings
   createCheckboxControl(container, "Enable Fill", part.fillSettings.enabled, (enabled) => {
     part.fillSettings.enabled = enabled;
@@ -1602,6 +1634,26 @@ function updatePartSettings(part) {
   } else {
     fillControlsDiv.style("display", "none");
   }
+
+
+  // Outline controls section
+  const outlineHeader = createDiv("Outline Settings");
+  outlineHeader.parent(container);
+  outlineHeader.style("font-weight", "600");
+  outlineHeader.style("margin", "16px 0 8px 0");
+  outlineHeader.style("padding-bottom", "8px");
+  outlineHeader.style("border-bottom", "1px solid #ddd");
+   // Add to outline control with automatic outline creation/removal
+ createCheckboxControl(container, "Add to Outline", part.addToOutline, (addToOutline) => {
+  part.addToOutline = addToOutline;
+  togglePartOutline(part, addToOutline);
+});
+
+  // Outline offset control with automatic outline updates
+  createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
+    globalSettings.outlineOffset = value;
+    updateOutlinesForOffset(); // Auto-update all outlines when offset changes
+  });
 }
 
 function updateInfoTable() {
