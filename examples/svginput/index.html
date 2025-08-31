@@ -14,34 +14,64 @@
         <div class="canvas-container">
             <div class="canvas-card">
                 <div class="canvas-header">
-                    <h3 id="canvas-title">SVG Preview</h3>
-                    <div id="mode-buttons" class="button-group">
-                        <!-- Display mode buttons will be inserted here -->
+                    <h3 id="canvas-title">SVG2Embroider</h3>
+                    <div class="header-controls">
+                  
+                    
+                        <div id="main-action-buttons" class="button-group">
+                            <!-- Import and Export buttons will be inserted here -->
+                        </div>
                     </div>
                 </div>
                 <div class="canvas-content">
-                    <div id="canvas-wrapper">
-                    </div>
-                    <div class="canvas-sidebar">
-                        <div class="sidebar-columns">
-                            <div class="sidebar-column">
-                                <div class="control-section">
-                                    <h4>SVG Parts</h4>
-                                    <div id="parts-controls" class="button-group">
-                                        <!-- Parts control buttons will be inserted here -->
-                                    </div>
-                                    <div id="svg-parts-list">
-                                        <!-- SVG parts list will be inserted here -->
-                                    </div>
-                                </div>
+                    <div class="canvas-left-sidebar">
+                        <div class="control-section">
+                            <h3>SVG Input</h3>
+                            <div id="svg-presets" class="button-group">
+                                <!-- SVG preset buttons will be inserted here -->
                             </div>
-                            <div class="sidebar-column">
-                                <div class="control-section">
-                                    <h4>Selected Part Settings</h4>
-                                    <div id="part-settings">
-                                        <!-- Part-specific settings will be inserted here -->
-                                    </div>
-                                </div>
+                            <div id="svg-input-container">
+                                <!-- SVG textarea will be inserted here -->
+                            </div>
+                            <div id="svg-buttons" class="button-group">
+                                <!-- Load SVG and Clear buttons will be inserted here -->
+                            </div>
+                        </div>
+             
+                    </div>
+                    <div class="canvas-main">
+                        <div id="mode-buttons" class="button-group mode-buttons-overlay">
+                            <!-- Display mode buttons will be inserted here -->
+                        </div>
+                        <div id="canvas-wrapper">
+                        </div>
+                        <div class="control-section">
+                            <!-- <h4>SVG Parts</h4> -->
+                            <div id="parts-controls" class="button-group">
+                                <!-- Parts control buttons will be inserted here -->
+                            </div>
+                            <div id="svg-parts-list">
+                                <!-- SVG parts list will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="canvas-right-sidebar">
+                        <!-- <div class="control-section">
+                            <h4>Info</h4>
+                            <div id="info-display">
+                               
+                            </div>
+                        </div> -->
+                        <div class="control-section">
+                            <h4>Selected Part Settings</h4>
+                            <div id="part-settings">
+                                <!-- Part-specific settings will be inserted here -->
+                            </div>
+                        </div>
+                        <div class="control-section">
+                            <h3>Export Settings</h3>
+                            <div id="dimension-controls">
+                                <!-- Output dimension controls will be inserted here -->
                             </div>
                         </div>
                     </div>
@@ -49,42 +79,12 @@
             </div>
         </div>
         
-        <div class="controls-container">
+        <!-- <div class="controls-container">
             <div class="controls-panel">
-                <div class="control-section">
-                    <h3>SVG Input</h3>
-                    <div id="svg-presets" class="button-group">
-                        <!-- SVG preset buttons will be inserted here -->
-                    </div>
-                    <div id="svg-input-container">
-                        <!-- SVG textarea will be inserted here -->
-                    </div>
-                    <div id="svg-buttons" class="button-group">
-                        <!-- Load SVG and Clear buttons will be inserted here -->
-                    </div>
-                </div>
                 
-                <div class="control-section">
-                    <h3>Info</h3>
-                    <div id="info-table-container">
-                        <!-- Info table will be inserted here -->
-                    </div>
-                    <div id="export-json-container">
-                        <!-- Export JSON button will be inserted here -->
-                    </div>
-                </div>
-                
-                <div class="control-section">
-                    <h3>Export</h3>
-                    <div id="dimension-controls">
-                        <!-- Output dimension controls will be inserted here -->
-                    </div>
-                    <div id="export-buttons" class="button-group">
-                        <!-- Export buttons will be inserted here -->
-                    </div>
-                </div>
+   
             </div>
-        </div>
+        </div> -->
     </div>
     
     <script src="sketch.js"></script>

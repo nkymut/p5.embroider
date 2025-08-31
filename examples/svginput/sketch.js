@@ -4,7 +4,7 @@
 let svgInput;
 let svgParts = []; // Array of SVG part objects
 let selectedPartIndices = []; // Array of selected part indices for multiple selection
-let drawMode = "stitch";
+let drawMode = "p5";
 
 // Global default settings
 let globalSettings = {
@@ -12,6 +12,7 @@ let globalSettings = {
   outputHeight: 100,
   lockAspectRatio: true,
   outlineOffset: 2,
+  outlineType: 'convex',
 };
 
 let boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
@@ -135,8 +136,8 @@ function setup() {
 
   createUI();
   
-  // Initialize info table
-  updateInfoTable();
+  // Initialize info display
+  updateInfoDisplay();
   
   // Size canvas to fit the preview window after UI loads
   setTimeout(() => {
@@ -152,14 +153,15 @@ function resizeCanvasToPreviewWindow() {
   if (!canvasWrapper) return;
   
   const wrapperRect = canvasWrapper.getBoundingClientRect();
-  const availableWidth = wrapperRect.width - 40; // Leave some padding
-  const availableHeight = wrapperRect.height - 40; // Leave some padding
+  const availableWidth = wrapperRect.width - 0; // Leave some padding
+  const availableHeight = wrapperRect.height - 0; // Leave some padding
   
   // Use the smaller dimension to maintain a square canvas that fits
   const canvasSize = Math.min(availableWidth, availableHeight);
   const finalSize = Math.max(canvasSize, 300); // Minimum size of 300px
   
-  resizeCanvas(finalSize, finalSize);
+  //resizeCanvas(finalSize, finalSize);
+  resizeCanvas(availableWidth, availableHeight);
   redraw();
 }
 
@@ -199,13 +201,38 @@ function applyFillModeDefaults(part, mode) {
 }
 
 
+function setupMainTabs() {
+  // Get all main tab buttons and add click handlers
+  const mainTabButtons = document.querySelectorAll('.main-tab-button');
+  const mainTabPanes = document.querySelectorAll('.main-tab-pane');
+  
+  mainTabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const targetTab = button.getAttribute('data-tab');
+      
+      // Remove active class from all buttons and panes
+      mainTabButtons.forEach(btn => btn.classList.remove('active'));
+      mainTabPanes.forEach(pane => pane.classList.remove('active'));
+      
+      // Add active class to clicked button and corresponding pane
+      button.classList.add('active');
+      document.getElementById(`${targetTab}-tab`).classList.add('active');
+      
+      // Update info table when Info tab is activated
+      if (targetTab === 'info') {
+        updateInfoTable();
+      }
+    });
+  });
+}
+
 function updateCanvasTitle(filename) {
   const titleElement = document.getElementById('canvas-title');
   if (titleElement) {
     if (filename) {
-      titleElement.textContent = `SVG Preview - ${filename}`;
+      titleElement.textContent = `SVG2Embroider - ${filename}`;
     } else {
-      titleElement.textContent = 'SVG Preview';
+      titleElement.textContent = 'SVG2Embroider';
     }
   }
 }
@@ -214,15 +241,15 @@ function updateCanvasTitle(filename) {
 function createUI() {
   // Get container elements
   const modeButtonsContainer = select("#mode-buttons");
+  const mainActionButtonsContainer = select("#main-action-buttons");
   const svgPresetsContainer = select("#svg-presets");
   const svgInputContainer = select("#svg-input-container");
   const svgButtonsContainer = select("#svg-buttons");
   const partsControlsContainer = select("#parts-controls");
   const svgPartsContainer = select("#svg-parts-list");
   const partSettingsContainer = select("#part-settings");
+  const infoDisplayContainer = select("#info-display");
   const dimensionControlsContainer = select("#dimension-controls");
-  const codeOutputContainer = select("#code-output-container");
-  const exportButtonsContainer = select("#export-buttons");
 
   // Mode buttons
   const stitchButton = createButton("Stitch")
@@ -284,22 +311,10 @@ function createUI() {
     .class("small secondary")
     .mousePressed(() => loadPreset(4));
 
-  // Parts control buttons
-  createButton("Select All")
-    .parent(partsControlsContainer)
-    .class("small secondary")
-    .mousePressed(() => selectAllParts());
-  createButton("Clear")
-    .parent(partsControlsContainer)
-    .class("small secondary")
-    .mousePressed(() => clearSelection());
-
-  // SVG input
-  svgInput = createTextAreaControl(svgInputContainer, "", "Paste your SVG code here...", 80);
-
-  // SVG upload button
+  // SVG upload button (aligned with presets)
   createButton("Upload SVG")
-    .parent(svgButtonsContainer)
+    .parent(svgPresetsContainer)
+    .class("small secondary")
     .mousePressed(() => {
       // Create hidden file input
       const fileInput = document.createElement('input');
@@ -318,19 +333,33 @@ function createUI() {
       fileInput.click();
       document.body.removeChild(fileInput);
     });
+
+  // Parts control buttons
+  createButton("Select All")
+    .parent(partsControlsContainer)
+    .class("small secondary")
+    .mousePressed(() => selectAllParts());
+  createButton("Clear")
+    .parent(partsControlsContainer)
+    .class("small secondary")
+    .mousePressed(() => clearSelection());
+
+  // SVG input
+  svgInput = createTextAreaControl(svgInputContainer, "", "Paste your SVG code here...", 150);
+  
+  createButton("Load SVG")
+    .parent(svgButtonsContainer)
+    .class("primary")
+    .mousePressed(() => loadSVGFromTextArea());
+  
   
   createButton("Clear")
     .parent(svgButtonsContainer)
     .class("secondary")
     .mousePressed(() => clearCanvas());
 
-  // Export JSON button
-  const exportJsonContainer = select("#export-json-container");
-  
-  createButton("Export JSON")
-    .parent(exportJsonContainer)
-    .class("secondary")
-    .mousePressed(() => exportJSON());
+  // Initialize info display in right sidebar
+  updateInfoDisplay();
 
   // Dimension controls
   outputWidthControl = createSliderControl(
@@ -391,9 +420,32 @@ function createUI() {
     redraw();
   });
 
-  // Export buttons
+  // Main action buttons (Import/Export in header)
+  createButton("Import")
+    .parent(mainActionButtonsContainer)
+    .class("secondary")
+    .mousePressed(() => {
+      // Create hidden file input
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.svg,image/svg+xml';
+      fileInput.style.display = 'none';
+      
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleSVGFileUpload(file);
+        }
+      });
+      
+      document.body.appendChild(fileInput);
+      fileInput.click();
+      document.body.removeChild(fileInput);
+    });
+
+  // Export dropdown/menu in header
   createButton("Export DST")
-    .parent(exportButtonsContainer)
+    .parent(mainActionButtonsContainer)
     .mousePressed(() => {
       if (svgParts.length > 0) {
         exportEmbroidery("svg_objects.dst");
@@ -401,34 +453,9 @@ function createUI() {
         console.warn("No SVG loaded to export");
       }
     });
-    
-  createButton("Export p5")
-    .parent(exportButtonsContainer)
-    .class("secondary")
-    .mousePressed(() => {
-      exportP5Code();
-    });
 
-  createButton("Export SVG")
-    .parent(exportButtonsContainer)
-    .class("secondary")
-    .mousePressed(() => {
-      exportSVG();
-    });
-
-  createButton("Export Outline")
-    .parent(exportButtonsContainer)
-    .class("secondary")
-    .mousePressed(() => {
-      exportOutlineSVG();
-    });
-    
-  createButton("Export JSON")
-    .parent(exportButtonsContainer)
-    .class("secondary")
-    .mousePressed(() => {
-      exportObjectsAsJSON("svg_objects.json");
-    });
+  // No more tabs needed in the new layout
+  // setupMainTabs();
 }
 
 function draw() {
@@ -628,9 +655,56 @@ function handleSVGFileUpload(file) {
   }
 }
 
+
+
+
+function parseCSSStyles(svgDoc) {
+  const styles = {};
+  const styleElements = svgDoc.querySelectorAll("defs style, style");
+  
+  styleElements.forEach(styleElement => {
+    const cssText = styleElement.textContent || styleElement.innerHTML;
+    console.log("Found CSS style element:", cssText.substring(0, 200) + "...");
+    
+    // Use regex to find CSS rules: selector { properties }
+    const ruleRegex = /([^{]+)\{([^}]+)\}/g;
+    let match;
+    
+    while ((match = ruleRegex.exec(cssText)) !== null) {
+      const selector = match[1].trim();
+      const properties = match[2].trim();
+      
+      // Parse properties
+      const styleObj = {};
+      properties.split(';').forEach(prop => {
+        const trimmedProp = prop.trim();
+        if (trimmedProp) {
+          const colonIndex = trimmedProp.indexOf(':');
+          if (colonIndex > 0) {
+            const property = trimmedProp.substring(0, colonIndex).trim();
+            const value = trimmedProp.substring(colonIndex + 1).trim();
+            if (property && value) {
+              styleObj[property] = value;
+            }
+          }
+        }
+      });
+      
+      if (Object.keys(styleObj).length > 0) {
+        styles[selector] = styleObj;
+        console.log(`Parsed CSS rule for ${selector}:`, styleObj);
+      }
+    }
+  });
+  
+  return styles;
+}
+
 function loadSVGFromTextArea() {
   const svgText = svgInput.value().trim();
   if (!svgText) return;
+  
+  console.log("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
 
   try {
     const parser = new DOMParser();
@@ -642,11 +716,17 @@ function loadSVGFromTextArea() {
       return;
     }
 
+    // Parse CSS styles from <defs><style> section
+    const cssStyles = parseCSSStyles(svgDoc);
+    console.log("Parsed CSS styles:", cssStyles);
+
     svgParts = [];
     const allElements = svgElement.querySelectorAll("path, circle, rect, line, polyline, polygon, ellipse");
+    
+    console.log(`Found ${allElements.length} SVG elements:`, Array.from(allElements).map(el => el.tagName.toLowerCase()));
 
     allElements.forEach((element, index) => {
-      const part = createSVGPartObject(element, index);
+      const part = createSVGPartObject(element, index, cssStyles);
       if (part) {
         svgParts.push(part);
       }
@@ -654,6 +734,12 @@ function loadSVGFromTextArea() {
 
     if (svgParts.length > 0) {
       boundingBox = calculateBoundingBoxForParts(svgParts);
+      
+      // Auto-select the first part (usually Path1) to show part settings
+      selectedPartIndices = [0];
+      svgParts[0].selected = true;
+      updatePartSettings(svgParts[0]);
+      
       updateSVGPartsList();
       updateInfoTable();
       redraw();
@@ -664,10 +750,12 @@ function loadSVGFromTextArea() {
   }
 }
 
-function createSVGPartObject(element, index) {
+function createSVGPartObject(element, index, cssStyles = {}) {
   let pathData = "";
   let shapeParams = null;
   const tagName = element.tagName.toLowerCase();
+  
+  console.log(`Creating SVG part object for ${tagName} element:`, element);
 
   // Store original shape parameters and convert to path data
   switch (tagName) {
@@ -730,14 +818,69 @@ function createSVGPartObject(element, index) {
 
   if (!pathData) return null;
 
-  // Parse SVG attributes for colors
+  // Parse SVG attributes for colors with improved handling
   const stroke = element.getAttribute('stroke');
   const fill = element.getAttribute('fill');
   const strokeWidth = parseFloat(element.getAttribute('stroke-width')) || 2;
+  
+  // Also check for style attribute which might contain fill/stroke
+  const styleAttr = element.getAttribute('style');
+  let styleFill = null;
+  let styleStroke = null;
+  let styleStrokeWidth = null;
+  
+  if (styleAttr) {
+    // Parse style attribute for fill, stroke, and stroke-width
+    const styleRules = styleAttr.split(';');
+    styleRules.forEach(rule => {
+      const [property, value] = rule.split(':').map(s => s.trim());
+      if (property === 'fill') styleFill = value;
+      else if (property === 'stroke') styleStroke = value;
+      else if (property === 'stroke-width') styleStrokeWidth = parseFloat(value);
+    });
+  }
+  
+  // Check for CSS classes and apply their styles
+  let cssFill = null;
+  let cssStroke = null;
+  let cssStrokeWidth = null;
+  
+  const classAttr = element.getAttribute('class');
+  if (classAttr && cssStyles) {
+    const classes = classAttr.split(' ').map(c => c.trim()).filter(c => c);
+    classes.forEach(className => {
+      const cssRule = cssStyles[`.${className}`];
+      if (cssRule) {
+        console.log(`Applying CSS rule for class ${className}:`, cssRule);
+        if (cssRule.fill) cssFill = cssRule.fill;
+        if (cssRule.stroke) cssStroke = cssRule.stroke;
+        if (cssRule['stroke-width']) cssStrokeWidth = parseFloat(cssRule['stroke-width']);
+      }
+    });
+  }
+  
+  // Use CSS values if available, otherwise fall back to style attributes, then direct attributes
+  const finalFill = cssFill || fill || styleFill;
+  const finalStroke = cssStroke || stroke || styleStroke;
+  const finalStrokeWidth = cssStrokeWidth || strokeWidth || styleStrokeWidth || 2;
+
+  console.log(`Element ${tagName} color parsing:`, {
+    directFill: fill,
+    styleFill: styleFill,
+    cssFill: cssFill,
+    finalFill: finalFill,
+    directStroke: stroke,
+    styleStroke: styleStroke,
+    cssStroke: cssStroke,
+    finalStroke: finalStroke,
+    classes: element.getAttribute('class'),
+    hasFill: finalFill && finalFill !== 'none',
+    hasStroke: finalStroke && finalStroke !== 'none'
+  });
 
   // Determine default behavior when no colors are specified
-  const hasStroke = stroke && stroke !== 'none';
-  const hasFill = fill && fill !== 'none';
+  const hasStroke = finalStroke && finalStroke !== 'none';
+  const hasFill = finalFill && finalFill !== 'none';
   const hasNoColors = !hasStroke && !hasFill;
 
   // Determine if path should be closed (has Z command)
@@ -752,14 +895,16 @@ function createSVGPartObject(element, index) {
     shapeParams: shapeParams,
     closed: shouldClose,
     originalAttributes: {
-      stroke: stroke,
-      fill: fill,
-      'stroke-width': strokeWidth,
+      stroke: finalStroke,
+      fill: finalFill,
+      'stroke-width': finalStrokeWidth,
+      style: styleAttr,
+      class: element.getAttribute('class'),
     },
     strokeSettings: {
       enabled: hasStroke || hasNoColors, // Enable stroke if explicitly set or no colors specified
-      color: parseColor(stroke) || [128, 128, 128], // Gray default stroke
-      weight: strokeWidth,
+      color: parseColor(finalStroke) || [128, 128, 128], // Gray default stroke
+      weight: finalStrokeWidth,
       mode: "straight",
       stitchLength: 2,
       minStitchLength: 0.5,
@@ -767,7 +912,7 @@ function createSVGPartObject(element, index) {
     },
     fillSettings: {
       enabled: hasFill, // Only enable fill if explicitly set
-      color: parseColor(fill) || [0, 0, 0], // Black default fill
+      color: parseColor(finalFill) || [0, 0, 0], // Black default fill
       mode: "tatami",
       stitchLength: 3,
       minStitchLength: 0.5,
@@ -779,37 +924,61 @@ function createSVGPartObject(element, index) {
     addToOutline: false,
   };
 
+  console.log(`Created part object:`, {
+    name: partObject.name,
+    fillEnabled: partObject.fillSettings.enabled,
+    fillColor: partObject.fillSettings.color,
+    strokeEnabled: partObject.strokeSettings.enabled,
+    strokeColor: partObject.strokeSettings.color
+  });
+
   return partObject;
 }
 
 function parseColor(colorStr) {
   if (!colorStr || colorStr === 'none') return null;
   
+  console.log(`Parsing color: "${colorStr}"`);
+  
   // Handle hex colors
   if (colorStr.startsWith('#')) {
     const hex = colorStr.slice(1);
     if (hex.length === 3) {
-      return [
+      const result = [
         parseInt(hex[0] + hex[0], 16),
         parseInt(hex[1] + hex[1], 16),
         parseInt(hex[2] + hex[2], 16)
       ];
+      console.log(`Parsed 3-digit hex:`, result);
+      return result;
     } else if (hex.length === 6) {
-      return [
+      const result = [
         parseInt(hex.slice(0, 2), 16),
         parseInt(hex.slice(2, 4), 16),
         parseInt(hex.slice(4, 6), 16)
       ];
+      console.log(`Parsed 6-digit hex:`, result);
+      return result;
     }
   }
   
   // Handle RGB colors
   const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
   if (rgbMatch) {
-    return [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
+    const result = [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
+    console.log(`Parsed RGB:`, result);
+    return result;
   }
   
-  // Handle common color names
+  // Handle RGBA colors (ignore alpha for now)
+  const rgbaMatch = colorStr.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/);
+  if (rgbaMatch) {
+    const result = [parseInt(rgbaMatch[1]), parseInt(rgbaMatch[2]), parseInt(rgbaMatch[3])];
+    console.log(`Parsed RGBA:`, result);
+    return result;
+  }
+  
+  // Handle common color names with extended palette
   const colorMap = {
     'black': [0, 0, 0],
     'white': [255, 255, 255],
@@ -818,10 +987,30 @@ function parseColor(colorStr) {
     'blue': [0, 0, 255],
     'yellow': [255, 255, 0],
     'cyan': [0, 255, 255],
-    'magenta': [255, 0, 255]
+    'magenta': [255, 0, 255],
+    'orange': [255, 165, 0],
+    'purple': [128, 0, 128],
+    'pink': [255, 192, 203],
+    'brown': [165, 42, 42],
+    'gray': [128, 128, 128],
+    'grey': [128, 128, 128],
+    'lime': [0, 255, 0],
+    'navy': [0, 0, 128],
+    'teal': [0, 128, 128],
+    'olive': [128, 128, 0],
+    'maroon': [128, 0, 0],
+    'fuchsia': [255, 0, 255],
+    'aqua': [0, 255, 255]
   };
   
-  return colorMap[colorStr.toLowerCase()] || null;
+  const result = colorMap[colorStr.toLowerCase()];
+  if (result) {
+    console.log(`Parsed color name "${colorStr}":`, result);
+    return result;
+  }
+  
+  console.log(`Could not parse color: "${colorStr}"`);
+  return null;
 }
 
 function getPathPoints(pathData) {
@@ -1079,67 +1268,42 @@ function updateSVGPartsList() {
     return;
   }
 
+  // Create horizontal button layout
+  const partsContainer = createDiv();
+  partsContainer.parent(container);
+  partsContainer.class("parts-button-container");
+
   svgParts.forEach((part, index) => {
-    const partDiv = createDiv();
-    partDiv.parent(container);
-    partDiv.class("part-item");
-    partDiv.style("padding", "8px");
-    partDiv.style("margin", "4px 0");
-    partDiv.style("border", "1px solid #ddd");
-    partDiv.style("background", part.selected ? "#e3f2fd" : "#fff");
+    const partButton = createButton(part.name);
+    partButton.parent(partsContainer);
+    
+    partButton.class("part-button");
+    
     if (part.selected) {
-      partDiv.style("border-color", "#0066cc");
-      partDiv.style("border-width", "2px");
-    } else {
-      partDiv.style("border-color", "#ddd");
-      partDiv.style("border-width", "1px");
+      partButton.addClass("active");
     }
-    partDiv.style("cursor", "pointer");
-    partDiv.style("font-size", "12px");
-
-    const nameDiv = createDiv(`${part.name}`);
-    nameDiv.parent(partDiv);
-    nameDiv.style("font-weight", "bold");
-    nameDiv.style("margin-bottom", "4px");
-
-    const infoDiv = createDiv(`Type: ${part.elementType}`);
-    infoDiv.parent(partDiv);
-    infoDiv.style("color", "#666");
-
-    const colorDiv = createDiv();
-    colorDiv.parent(partDiv);
-    colorDiv.style("margin-top", "4px");
-    colorDiv.style("display", "flex");
-    colorDiv.style("gap", "8px");
-
+    
+    // Add color indicators as borders for all buttons
+    let colorIndicators = "";
     if (part.strokeSettings.enabled) {
-      const strokeBox = createDiv();
-      strokeBox.parent(colorDiv);
-      strokeBox.style("width", "12px");
-      strokeBox.style("height", "12px");
-      strokeBox.style("border", "1px solid #000");
-      strokeBox.style("background", `rgb(${part.strokeSettings.color.join(',')})`);
-      strokeBox.attribute("title", "Stroke");
+      colorIndicators += `border-left: 8px solid rgb(${part.strokeSettings.color.join(',')});`;
     }
-
     if (part.fillSettings.enabled) {
-      const fillBox = createDiv();
-      fillBox.parent(colorDiv);
-      fillBox.style("width", "12px");
-      fillBox.style("height", "12px");
-      fillBox.style("border", "1px solid #000");
-      fillBox.style("background", `rgb(${part.fillSettings.color.join(',')})`);
-      fillBox.attribute("title", "Fill");
+      colorIndicators += `border-right: 8px solid rgb(${part.fillSettings.color.join(',')});`;
     }
-
-    partDiv.mousePressed((event) => selectPart(index, event));
+    
+    if (colorIndicators) {
+      partButton.elt.style.cssText += colorIndicators;
+    }
+    
+    partButton.mousePressed((event) => selectPart(index, event));
   });
 }
 
 function selectPart(index, event) {
   if (index < 0 || index >= svgParts.length) return;
   
-  const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey);
+  const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey || event.shiftKey);
   
   if (isCtrlOrCmd) {
     // Multi-select mode: toggle selection
@@ -1455,6 +1619,20 @@ function updateMultiPartSettings() {
     redraw();
   });
 
+  // Outline type selection
+  if (!globalSettings.outlineType) {
+    globalSettings.outlineType = 'convex'; // Default to convex
+  }
+  
+  createSelectControl(container, "Outline Type", {
+    convex: "Convex Hull",
+    bounding: "Bounding Box",
+    scale: "Scaled Path"
+  }, globalSettings.outlineType, (value) => {
+    globalSettings.outlineType = value;
+    updateOutlinesForOffset(); // Auto-update all outlines when type changes
+  });
+
   // Outline offset control with automatic outline updates
   createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
     globalSettings.outlineOffset = value;
@@ -1476,13 +1654,28 @@ function updatePartSettings(part) {
     return;
   }
 
-  // Part name
-  const nameDiv = createDiv(`Editing: ${part.name}`);
-  nameDiv.parent(container);
-  nameDiv.style("font-weight", "bold");
-  nameDiv.style("margin-bottom", "12px");
-  nameDiv.style("padding-bottom", "8px");
-  nameDiv.style("border-bottom", "1px solid #ddd");
+  // Editable part name
+  const nameLabel = createDiv("Part Name");
+  nameLabel.parent(container);
+  nameLabel.style("font-weight", "600");
+  nameLabel.style("margin-bottom", "4px");
+  nameLabel.style("font-size", "12px");
+  nameLabel.style("color", "#666");
+
+  const nameInput = createInput(part.name);
+  nameInput.parent(container);
+  nameInput.style("width", "100%");
+  nameInput.style("padding", "8px");
+  nameInput.style("border", "1px solid #ddd");
+  nameInput.style("border-radius", "4px");
+  nameInput.style("font-size", "14px");
+  nameInput.style("margin-bottom", "16px");
+  
+  nameInput.changed(() => {
+    part.name = nameInput.value();
+    updateSVGPartsList(); // Update the button text
+    updateInfoTable(); // Update the info table
+  });
 
   // Stroke settings section header
   const strokeHeader = createDiv("Stroke Settings");
@@ -1649,6 +1842,20 @@ function updatePartSettings(part) {
   togglePartOutline(part, addToOutline);
 });
 
+  // Outline type selection
+  if (!globalSettings.outlineType) {
+    globalSettings.outlineType = 'convex'; // Default to convex
+  }
+  
+  createSelectControl(container, "Outline Type", {
+    convex: "Convex Hull",
+    bounding: "Bounding Box",
+    scale: "Scaled Path"
+  }, globalSettings.outlineType, (value) => {
+    globalSettings.outlineType = value;
+    updateOutlinesForOffset(); // Auto-update all outlines when type changes
+  });
+
   // Outline offset control with automatic outline updates
   createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
     globalSettings.outlineOffset = value;
@@ -1656,8 +1863,28 @@ function updatePartSettings(part) {
   });
 }
 
+function updateInfoDisplay() {
+  const container = select("#info-display");
+  if (!container) return;
+  
+  container.html(""); // Clear existing content
+  
+  if (svgParts.length === 0) {
+    const msg = createDiv("No SVG parts loaded");
+    msg.parent(container);
+    msg.style("color", "#888");
+    msg.style("font-style", "italic");
+    msg.style("text-align", "center");
+    msg.style("padding", "20px");
+    return;
+  }
+
+  // Create info table display
+  updateInfoTable();
+}
+
 function updateInfoTable() {
-  const container = document.getElementById('info-table-container');
+  const container = document.getElementById('info-display');
   if (!container) return;
 
   if (svgParts.length === 0) {
@@ -1740,6 +1967,10 @@ function updateInfoTable() {
         <tr>
           <td>Outline Offset</td>
           <td>${globalSettings.outlineOffset}mm</td>
+        </tr>
+        <tr>
+          <td>Outline Type</td>
+          <td>${globalSettings.outlineType === 'convex' ? 'Convex Hull' : globalSettings.outlineType === 'bounding' ? 'Bounding Box' : 'Scaled Path'}</td>
         </tr>
         <tr>
           <td>Lock Aspect Ratio</td>
@@ -1946,16 +2177,48 @@ function createOutlineForPart(originalPart) {
     return existingOutline; // Already exists, return existing
   }
   
-  // Create new outline using embroideryOutline function (placeholder for now)
   console.log(`Creating outline for ${originalPart.name} with offset ${globalSettings.outlineOffset}mm`);
+  
+  // Convert original part path to stitch data points
+  const originalPoints = getPathPoints(originalPart.pathData);
+  if (originalPoints.length === 0) {
+    console.warn(`No points found for part ${originalPart.name}, cannot create outline`);
+    return null;
+  }
+  
+  // Use embroideryOutlineFromPath to create outline points
+  const outlineType = globalSettings.outlineType || 'convex';
+  const outlinePoints = embroideryOutlineFromPath(
+    originalPoints, 
+    globalSettings.outlineOffset, 
+    null, // Don't add to threads automatically
+    outlineType, // Use selected outline type
+    false // Don't apply transform here
+  );
+  
+  if (outlinePoints.length === 0) {
+    console.warn(`Failed to create outline points for part ${originalPart.name}`);
+    return null;
+  }
+  
+  // Convert outline points back to SVG path data
+  let outlinePathData = "";
+  if (outlinePoints.length > 0) {
+    outlinePathData = `M ${outlinePoints[0].x} ${outlinePoints[0].y}`;
+    for (let i = 1; i < outlinePoints.length; i++) {
+      outlinePathData += ` L ${outlinePoints[i].x} ${outlinePoints[i].y}`;
+    }
+    // Close the outline path
+    outlinePathData += " Z";
+  }
   
   const outlinePart = {
     id: outlineId,
     name: `${originalPart.name} Outline (${globalSettings.outlineOffset}mm)`,
     elementType: "path",
-    pathData: originalPart.pathData, // This should be processed with embroideryOutline
+    pathData: outlinePathData,
     shapeParams: null,
-    closed: originalPart.closed,
+    closed: true, // Outlines are always closed
     sourcePartId: originalPart.id, // Link to original part
     isOutline: true,
     outlineOffset: globalSettings.outlineOffset,
@@ -1983,7 +2246,7 @@ function createOutlineForPart(originalPart) {
   };
   
   svgParts.push(outlinePart);
-  console.log(`Outline created for ${originalPart.name}`);
+  console.log(`Outline created for ${originalPart.name} with ${outlinePoints.length} points`);
   return outlinePart;
 }
 
