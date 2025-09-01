@@ -1,5 +1,352 @@
 let svgInput;
-let svgParts = []; // Array of SVG part objects
+let svgParts = []; // Array of SVG part objects (instances of EmbroiderPart)
+
+// Editable embroidery part with transform state for interactive editing
+class EmbroiderPart {
+  constructor(base) {
+    // Copy drawable properties
+    this.id = base.id;
+    this.name = base.name;
+    this.elementType = base.elementType;
+    this.pathData = base.pathData;
+    this.shapeParams = base.shapeParams || null;
+    this.closed = base.closed;
+    this.visible = base.visible !== false;
+    this.strokeSettings = base.strokeSettings;
+    this.fillSettings = base.fillSettings;
+    this.selected = !!base.selected;
+
+    // Interactive transform state (in mm and radians)
+    this.tx = 0; // translate X (mm)
+    this.ty = 0; // translate Y (mm)
+    this.rotation = 0; // radians
+    this.sx = 1; // scale X
+    this.sy = 1; // scale Y
+  }
+
+  hasTransform() {
+    return this.tx !== 0 || this.ty !== 0 || this.rotation !== 0 || this.sx !== 1 || this.sy !== 1;
+  }
+
+  // Compute transformed edit frame (center/size/rotation) in mm
+  computeFrame() {
+    const points = getPathPoints(this.pathData);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      if (isNaN(p.x) || isNaN(p.y)) continue;
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+    if (minX === Infinity) {
+      return { centerMm: { x: this.tx || 0, y: this.ty || 0 }, widthMm: 10, heightMm: 10, rotation: this.rotation || 0, base: { cx0: 0, cy0: 0, w0: 10, h0: 10 } };
+    }
+
+    const w0 = Math.max(1e-6, maxX - minX);
+    const h0 = Math.max(1e-6, maxY - minY);
+    // Anchor at part center
+    const cx0 = (minX + maxX) / 2;
+    const cy0 = (minY + maxY) / 2;
+
+    const sx = this.sx || 1;
+    const sy = this.sy || 1;
+    const rot = this.rotation || 0;
+    const tx = this.tx || 0;
+    const ty = this.ty || 0;
+
+    // Center-pivot model: translation shifts the base center; scale/rotation do not move center
+    const cx = cx0 + tx;
+    const cy = cy0 + ty;
+
+    return {
+      centerMm: { x: cx, y: cy },
+      widthMm: w0 * sx,
+      heightMm: h0 * sy,
+      rotation: rot,
+      base: { cx0, cy0, w0, h0 },
+    };
+  }
+
+  // Hit test at mm coordinates. options: { handleMm, rotationHandleOffsetMm, allowBodyMove }
+  hitTest(mmX, mmY, options = {}) {
+    const { handleMm = 1, rotationHandleOffsetMm = 10, allowBodyMove = true } = options;
+    const frame = this.computeFrame();
+    const halfW = frame.widthMm / 2;
+    const halfH = frame.heightMm / 2;
+    const dx = mmX - frame.centerMm.x;
+    const dy = mmY - frame.centerMm.y;
+    const cosA = Math.cos(-frame.rotation);
+    const sinA = Math.sin(-frame.rotation);
+    const lx = dx * cosA - dy * sinA;
+    const ly = dx * sinA + dy * cosA;
+
+    // Corners
+    const corners = [
+      { x: -halfW, y: -halfH, id: 'nw' },
+      { x:  halfW, y: -halfH, id: 'ne' },
+      { x:  halfW, y:  halfH, id: 'se' },
+      { x: -halfW, y:  halfH, id: 'sw' },
+    ];
+    for (const c of corners) {
+      if (Math.abs(lx - c.x) <= handleMm && Math.abs(ly - c.y) <= handleMm) {
+        return { type: 'corner', corner: c.id };
+      }
+    }
+
+    // Rotation handle (local +X axis)
+    const rDistMm = Math.max(halfW, halfH) + rotationHandleOffsetMm;
+    if (Math.hypot(lx - rDistMm, ly - 0) <= handleMm * 1.5) {
+      return { type: 'rotate' };
+    }
+
+    // Body
+    if (allowBodyMove) {
+      if (lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH) {
+        return { type: 'body' };
+      }
+    }
+
+    return { type: null };
+  }
+
+  // Compute on-screen pixel frame using preview and layout params
+  computeScreenFramePx(params) {
+    const { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY } = params;
+    const frame = this.computeFrame();
+    const mmX = offsetX + frame.centerMm.x * scaleFactor;
+    const mmY = offsetY + frame.centerMm.y * scaleFactor;
+    const px0 = mmToPixel(mmX);
+    const py0 = mmToPixel(mmY);
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+    const screenX = centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX;
+    const screenY = centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY;
+    const widthPx = mmToPixel(frame.widthMm * scaleFactor) * previewScale;
+    const heightPx = mmToPixel(frame.heightMm * scaleFactor) * previewScale;
+    return { centerPx: { x: screenX, y: screenY }, widthPx, heightPx, rotation: frame.rotation };
+  }
+
+  // Hit test in pixel domain; options: { handlePx, rotationHandleOffsetPx, allowBodyMove }
+  hitTestPixel(mouseX, mouseY, params, options = {}) {
+    const { handlePx = 8, rotationHandleOffsetPx = 30, allowBodyMove = true } = options;
+    const framePx = this.computeScreenFramePx(params);
+    const halfW = framePx.widthPx / 2;
+    const halfH = framePx.heightPx / 2;
+    const dx = mouseX - framePx.centerPx.x;
+    const dy = mouseY - framePx.centerPx.y;
+    const cosA = Math.cos(-framePx.rotation);
+    const sinA = Math.sin(-framePx.rotation);
+    const lx = dx * cosA - dy * sinA;
+    const ly = dx * sinA + dy * cosA;
+
+    // Corners
+    const corners = [
+      { x: -halfW, y: -halfH, id: 'nw' },
+      { x:  halfW, y: -halfH, id: 'ne' },
+      { x:  halfW, y:  halfH, id: 'se' },
+      { x: -halfW, y:  halfH, id: 'sw' },
+    ];
+    for (const c of corners) {
+      if (Math.abs(lx - c.x) <= handlePx && Math.abs(ly - c.y) <= handlePx) {
+        return { type: 'corner', corner: c.id };
+      }
+    }
+
+    // Rotation handle
+    const rDistPx = Math.max(halfW, halfH) + rotationHandleOffsetPx;
+    if (Math.hypot(lx - rDistPx, ly - 0) <= handlePx * 1.5) {
+      return { type: 'rotate' };
+    }
+
+    if (allowBodyMove) {
+      if (lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH) {
+        return { type: 'body' };
+      }
+    }
+    return { type: null };
+  }
+
+  // Convert pixel to model (SVG) coordinates by inverting preview and output layout
+  _pixelToModel(mouseX, mouseY, params) {
+    const { centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY, offsetX, offsetY, scaleFactor } = params;
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+    // Undo preview transform to get output-pixel space
+    const outPxX = cx + (mouseX - centerOffsetX - cx - previewPanX) / Math.max(1e-6, previewScale);
+    const outPxY = cy + (mouseY - centerOffsetY - cy - previewPanY) / Math.max(1e-6, previewScale);
+    // Convert to output-mm space
+    const outMmX = outPxX / mmToPixel(1);
+    const outMmY = outPxY / mmToPixel(1);
+    // Convert to model (SVG) coordinate space used by parts
+    const modelX = (outMmX - offsetX) / Math.max(1e-6, scaleFactor);
+    const modelY = (outMmY - offsetY) / Math.max(1e-6, scaleFactor);
+    return { modelX, modelY };
+  }
+
+  mousePressedPixel(mouseX, mouseY, params, options = {}) {
+    const handlePx = Math.max(6, 8 / Math.max(0.0001, params.previewScale));
+    const hit = this.hitTestPixel(mouseX, mouseY, params, { handlePx, rotationHandleOffsetPx: Math.max(20, 30 / Math.max(0.0001, params.previewScale)), allowBodyMove: options.allowBodyMove });
+    if (!hit || !hit.type) return false;
+    const frame = this.computeFrame();
+    const start = this._pixelToModel(mouseX, mouseY, params);
+    this._drag = {
+      active: true,
+      type: hit.type === 'body' ? 'move' : hit.type,
+      corner: hit.corner || null,
+      startMouseModel: { x: start.modelX, y: start.modelY },
+      startCenterMm: { x: frame.centerMm.x, y: frame.centerMm.y },
+      startWidthMm: frame.widthMm,
+      startHeightMm: frame.heightMm,
+      startRotation: this.rotation || 0,
+      startTx: this.tx || 0,
+      startTy: this.ty || 0,
+      startSx: this.sx || 1,
+      startSy: this.sy || 1,
+      baseW0: frame.base.w0,
+      baseH0: frame.base.h0,
+    };
+    return true;
+  }
+
+  mouseDraggedPixel(mouseX, mouseY, params, modifiers = {}) {
+    if (!this._drag || !this._drag.active) return false;
+    const { shiftKey = false, altKey = false } = modifiers;
+    const drag = this._drag;
+    const pos = this._pixelToModel(mouseX, mouseY, params);
+    const mmX = pos.modelX;
+    const mmY = pos.modelY;
+    if (drag.type === 'move') {
+      const dx = mmX - drag.startMouseModel.x;
+      const dy = mmY - drag.startMouseModel.y;
+      this.tx = drag.startTx + dx;
+      this.ty = drag.startTy + dy;
+      return true;
+    }
+    if (drag.type === 'corner') {
+      // Compute in start-space (stable center and rotation)
+      const dx = mmX - drag.startCenterMm.x;
+      const dy = mmY - drag.startCenterMm.y;
+      const cosA = Math.cos(-drag.startRotation);
+      const sinA = Math.sin(-drag.startRotation);
+      const lx = dx * cosA - dy * sinA;
+      const ly = dx * sinA + dy * cosA;
+      const halfBaseW = Math.max(1e-6, drag.baseW0 / 2);
+      const halfBaseH = Math.max(1e-6, drag.baseH0 / 2);
+      let targetX = (drag.corner === 'ne' || drag.corner === 'se') ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
+      let targetY = (drag.corner === 'sw' || drag.corner === 'se') ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
+      // Absolute new scales based on base geometry, not relative to current scale
+      let absSx = Math.abs(targetX) / halfBaseW;
+      let absSy = Math.abs(targetY) / halfBaseH;
+      absSx = Math.max(0.01, absSx);
+      absSy = Math.max(0.01, absSy);
+      if (altKey) {
+        const uni = Math.max(absSx, absSy);
+        this.sx = uni;
+        this.sy = uni;
+      } else {
+        this.sx = absSx;
+        this.sy = absSy;
+      }
+      return true;
+    }
+    if (drag.type === 'rotate') {
+      const cxMm = drag.startCenterMm.x;
+      const cyMm = drag.startCenterMm.y;
+      const ang0 = Math.atan2(drag.startMouseModel.y - cyMm, drag.startMouseModel.x - cxMm);
+      const ang1 = Math.atan2(mmY - cyMm, mmX - cxMm);
+      let delta = ang1 - ang0;
+      if (shiftKey) {
+        const step = Math.PI / 12;
+        delta = Math.round(delta / step) * step;
+      }
+      this.rotation = drag.startRotation + delta;
+      return true;
+    }
+    return false;
+  }
+
+  mousePressed(mmX, mmY, options = {}) {
+    const hit = this.hitTest(mmX, mmY, options);
+    if (!hit || !hit.type) return false;
+    const frame = this.computeFrame();
+    this._drag = {
+      active: true,
+      type: hit.type === 'body' ? 'move' : hit.type,
+      corner: hit.corner || null,
+      startMouseMm: { x: mmX, y: mmY },
+      startCenterMm: { x: frame.centerMm.x, y: frame.centerMm.y },
+      startWidthMm: frame.widthMm,
+      startHeightMm: frame.heightMm,
+      startRotation: this.rotation || 0,
+      startTx: this.tx || 0,
+      startTy: this.ty || 0,
+      startSx: this.sx || 1,
+      startSy: this.sy || 1,
+    };
+    return true;
+  }
+
+  mouseDragged(mmX, mmY, modifiers = {}) {
+    if (!this._drag || !this._drag.active) return false;
+    const { shiftKey = false, altKey = false } = modifiers;
+    const drag = this._drag;
+    if (drag.type === 'move') {
+      const dx = mmX - drag.startMouseMm.x;
+      const dy = mmY - drag.startMouseMm.y;
+      this.tx = drag.startTx + dx;
+      this.ty = drag.startTy + dy;
+      return true;
+    }
+    if (drag.type === 'corner') {
+      const frame = this.computeFrame();
+      const dx = mmX - frame.centerMm.x;
+      const dy = mmY - frame.centerMm.y;
+      const cosA = Math.cos(-frame.rotation);
+      const sinA = Math.sin(-frame.rotation);
+      const lx = dx * cosA - dy * sinA;
+      const ly = dx * sinA + dy * cosA;
+      const halfW0 = drag.startWidthMm / 2;
+      const halfH0 = drag.startHeightMm / 2;
+      let targetX = (drag.corner === 'ne' || drag.corner === 'se') ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
+      let targetY = (drag.corner === 'sw' || drag.corner === 'se') ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
+      const newSx = Math.max(0.01, Math.abs(targetX / halfW0));
+      const newSy = Math.max(0.01, Math.abs(targetY / halfH0));
+      if (altKey) {
+        const uni = Math.max(newSx, newSy);
+        this.sx = uni;
+        this.sy = uni;
+      } else {
+        this.sx = newSx;
+        this.sy = newSy;
+      }
+      return true;
+    }
+    if (drag.type === 'rotate') {
+      const cxMm = drag.startCenterMm.x;
+      const cyMm = drag.startCenterMm.y;
+      const ang0 = Math.atan2(drag.startMouseMm.y - cyMm, drag.startMouseMm.x - cxMm);
+      const ang1 = Math.atan2(mmY - cyMm, mmX - cxMm);
+      let delta = ang1 - ang0;
+      if (shiftKey) {
+        const step = Math.PI / 12; // 15 degrees
+        delta = Math.round(delta / step) * step;
+      }
+      this.rotation = drag.startRotation + delta;
+      return true;
+    }
+    return false;
+  }
+
+  mouseReleased() {
+    if (this._drag) this._drag.active = false;
+  }
+
+  mouseMoved(mmX, mmY, options = {}) {
+    // Lightweight hover check; returns same shape as hitTest
+    return this.hitTest(mmX, mmY, options);
+  }
+}
 
 // SVG Presets with colored elements
 const presets = {
@@ -207,17 +554,22 @@ function parseCSSStyles(svgDoc) {
       console.log(`Found ${allElements.length} SVG elements:`, Array.from(allElements).map(el => el.tagName.toLowerCase()));
   
       allElements.forEach((element, index) => {
-        const part = createSVGPartObject(element, index, cssStyles);
-        if (part) {
-          svgParts.push(part);
+        const raw = createSVGPartObject(element, index, cssStyles);
+        if (raw) {
+          const wrapped = new EmbroiderPart(raw);
+          // Ensure closed is set for shapes that are inherently closed
+          if (wrapped.elementType === 'circle' || wrapped.elementType === 'ellipse' || wrapped.elementType === 'rect' || wrapped.elementType === 'polygon') {
+            wrapped.closed = true;
+          }
+          svgParts.push(wrapped);
         }
       });
   
       if (svgParts.length > 0) {
         boundingBox = calculateBoundingBoxForParts(svgParts);
-        
-        // Auto-select the first part (usually Path1) to show part settings
+        // Auto-select the first part (usually Path1) and clear transforms
         selectedPartIndices = [0];
+        svgParts.forEach(p => { p.selected = false; p.tx = 0; p.ty = 0; p.rotation = 0; p.sx = 1; p.sy = 1; });
         svgParts[0].selected = true;
         updatePartSettings(svgParts[0]);
         

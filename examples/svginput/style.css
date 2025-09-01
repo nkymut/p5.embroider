@@ -656,6 +656,24 @@ textarea {
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Compact transform rows */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-field .value-input {
+  max-width: 90px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
 input[type="text"]:focus,
 input[type="number"]:focus,
 select:focus,

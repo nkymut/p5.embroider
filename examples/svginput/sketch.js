@@ -27,6 +27,26 @@ let minPreviewScale = 0.5;
 let maxPreviewScale = 5;
 let isDraggingScale = false;
 let isPreviewInteracting = false;
+let isPanning = false;
+let hoverPartIndex = -1;
+let lastMousePos = { x: 0, y: 0 };
+let moveKeyHeld = false; // true while 'm' is held
+
+// Interactive edit drag state
+let editDrag = {
+  active: false,
+  type: null, // 'move' | 'corner' | 'rotate'
+  corner: null, // 'nw','ne','se','sw'
+  startMouseMm: { x: 0, y: 0 },
+  startCenterMm: { x: 0, y: 0 },
+  startWidthMm: 0,
+  startHeightMm: 0,
+  startRotation: 0,
+  startSx: 1,
+  startSy: 1,
+  baseCx0: 0,
+  baseCy0: 0,
+};
 
 function setup() {
   // Create canvas
@@ -487,6 +507,9 @@ function draw() {
     return;
   }
 
+  // Hover hit-test updates
+  updateHoverHitTest();
+
   // Apply preview-only transforms (visual only)
   push();
   // Center the embroidery output area in the canvas
@@ -519,19 +542,30 @@ function draw() {
     // Apply individual part settings
     applyPartSettings(part);
     
-    // Draw the part using p5.js primitives when possible
-    if (part.shapeParams && usePrimitiveShape(part, scaleFactor, offsetX, offsetY)) {
+    // Draw the part using p5.js primitives when possible (only if no transform)
+    const noTransform = (typeof part.hasTransform === 'function') ? !part.hasTransform() : true;
+    if (noTransform && part.shapeParams && usePrimitiveShape(part, scaleFactor, offsetX, offsetY)) {
       // Primitive shape was drawn, continue to next part
       continue;
     }
     
-    // Fall back to vertex-based drawing for complex paths
+    // Fall back to vertex-based drawing for complex paths or transformed shapes
     const points = getPathPoints(part.pathData);
     if (points.length >= 2) {
+      // Transform about part center
+      const frame = computeEditFrame(part);
+      const cx0 = frame.base.cx0;
+      const cy0 = frame.base.cy0;
+      const cosA = part.rotation ? Math.cos(part.rotation) : 1;
+      const sinA = part.rotation ? Math.sin(part.rotation) : 0;
       beginShape();
       for (let point of points) {
-        const x = offsetX + point.x * scaleFactor;
-        const y = offsetY + point.y * scaleFactor;
+        const dx = (point.x - cx0) * (part.sx || 1);
+        const dy = (point.y - cy0) * (part.sy || 1);
+        const rx = dx * cosA - dy * sinA;
+        const ry = dx * sinA + dy * cosA;
+        const x = offsetX + (rx + cx0 + (part.tx || 0)) * scaleFactor;
+        const y = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
         vertex(x, y);
       }
       if (part.closed) {
@@ -545,18 +579,32 @@ function draw() {
   pop();
   endRecord();
 
-  // Draw selection highlight in preview only (outside recording)
-  drawSelectedOverlay(scaleFactor, offsetX, offsetY);
-
   // Remove preview-only transforms
   pop();
+
+  // Draw selection highlight in screen space (apply full mapping from model to screen)
+  const _centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+  const _centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+  drawSelectedOverlay({
+    scaleFactor,
+    offsetX,
+    offsetY,
+    centerOffsetX: _centerOffsetX,
+    centerOffsetY: _centerOffsetY,
+    canvasWidth: width,
+    canvasHeight: height,
+    previewScale,
+    previewPanX,
+    previewPanY,
+  });
 
   // UI overlay (drawn in screen space)
   drawPreviewUIOverlay();
 }
 
 // Draw a visual highlight for selected parts in preview only (not recorded)
-function drawSelectedOverlay(scaleFactor, offsetX, offsetY) {
+function drawSelectedOverlay(params) {
+  const { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY } = params;
   if (!selectedPartIndices || selectedPartIndices.length === 0) return;
   push();
   noFill();
@@ -566,6 +614,27 @@ function drawSelectedOverlay(scaleFactor, offsetX, offsetY) {
   const innerW = Math.max(1, 2 / previewScale);
 
   // Helper to draw one outline pass with given stroke
+  // Convert model point (SVG coords) through part transform and output mapping to screen px
+  function modelPointToScreenPx(part, mx, my, frame) {
+    const cx0 = frame.base.cx0;
+    const cy0 = frame.base.cy0;
+    const cosA = part.rotation ? Math.cos(part.rotation) : 1;
+    const sinA = part.rotation ? Math.sin(part.rotation) : 0;
+    const dx = (mx - cx0) * (part.sx || 1);
+    const dy = (my - cy0) * (part.sy || 1);
+    const rx = dx * cosA - dy * sinA;
+    const ry = dx * sinA + dy * cosA;
+    const outMmX = offsetX + (rx + cx0 + (part.tx || 0)) * scaleFactor;
+    const outMmY = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
+    const px0 = mmToPixel(outMmX);
+    const py0 = mmToPixel(outMmY);
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+    const sx = centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX;
+    const sy = centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY;
+    return { x: sx, y: sy };
+  }
+
   function drawOutlinePass(strokeColor, weight) {
     stroke(strokeColor[0], strokeColor[1], strokeColor[2], strokeColor[3]);
     strokeWeight(weight);
@@ -574,66 +643,16 @@ function drawSelectedOverlay(scaleFactor, offsetX, offsetY) {
       const part = svgParts[idx];
       if (!part || part.visible === false) continue;
 
-      if (part.shapeParams) {
-        const params = part.shapeParams;
-        switch (part.elementType) {
-          case "circle": {
-            const cx = mmToPixel(offsetX + params.cx * scaleFactor);
-            const cy = mmToPixel(offsetY + params.cy * scaleFactor);
-            const d = mmToPixel(params.r * scaleFactor * 2);
-            ellipse(cx, cy, d, d);
-            break;
-          }
-          case "rect": {
-            const x = mmToPixel(offsetX + params.x * scaleFactor);
-            const y = mmToPixel(offsetY + params.y * scaleFactor);
-            const w = mmToPixel(params.w * scaleFactor);
-            const h = mmToPixel(params.h * scaleFactor);
-            rect(x, y, w, h);
-            break;
-          }
-          case "ellipse": {
-            const cx = mmToPixel(offsetX + params.cx * scaleFactor);
-            const cy = mmToPixel(offsetY + params.cy * scaleFactor);
-            const w = mmToPixel(params.rx * scaleFactor * 2);
-            const h = mmToPixel(params.ry * scaleFactor * 2);
-            ellipse(cx, cy, w, h);
-            break;
-          }
-          case "line": {
-            const x1 = mmToPixel(offsetX + params.x1 * scaleFactor);
-            const y1 = mmToPixel(offsetY + params.y1 * scaleFactor);
-            const x2 = mmToPixel(offsetX + params.x2 * scaleFactor);
-            const y2 = mmToPixel(offsetY + params.y2 * scaleFactor);
-            line(x1, y1, x2, y2);
-            break;
-          }
-          default: {
-            // Fallback to path points
-            const points = getPathPoints(part.pathData);
-            if (points.length >= 2) {
-              beginShape();
-              for (const point of points) {
-                const px = mmToPixel(offsetX + point.x * scaleFactor);
-                const py = mmToPixel(offsetY + point.y * scaleFactor);
-                vertex(px, py);
-              }
-              if (part.closed) endShape(CLOSE); else endShape();
-            }
-          }
+      const frame = computeEditFrame(part);
+      // Draw outline path using transformed points mapped to screen
+      const points = getPathPoints(part.pathData);
+      if (points.length >= 2) {
+        beginShape();
+        for (const point of points) {
+          const sp = modelPointToScreenPx(part, point.x, point.y, frame);
+          vertex(sp.x, sp.y);
         }
-      } else {
-        // General path
-        const points = getPathPoints(part.pathData);
-        if (points.length >= 2) {
-          beginShape();
-          for (const point of points) {
-            const px = mmToPixel(offsetX + point.x * scaleFactor);
-            const py = mmToPixel(offsetY + point.y * scaleFactor);
-            vertex(px, py);
-          }
-          if (part.closed) endShape(CLOSE); else endShape();
-        }
+        if (part.closed) endShape(CLOSE); else endShape();
       }
     }
   }
@@ -642,7 +661,125 @@ function drawSelectedOverlay(scaleFactor, offsetX, offsetY) {
   drawOutlinePass([255, 255, 255, 220], outerW);
   drawOutlinePass([0, 120, 255, 230], innerW);
 
+  // If single selection, draw interactive frame with handles
+  if (selectedPartIndices.length === 1) {
+    const part = svgParts[selectedPartIndices[0]];
+    const frame = computeEditFrame(part);
+    // Center in screen space
+    const centerMmX = offsetX + frame.centerMm.x * scaleFactor;
+    const centerMmY = offsetY + frame.centerMm.y * scaleFactor;
+    const px0 = mmToPixel(centerMmX);
+    const py0 = mmToPixel(centerMmY);
+    const cx = canvasWidth / 2;
+    const cy = canvasHeight / 2;
+    const px = centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX;
+    const py = centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY;
+    const wPix = mmToPixel(frame.widthMm * scaleFactor) * previewScale;
+    const hPix = mmToPixel(frame.heightMm * scaleFactor) * previewScale;
+    const rot = frame.rotation;
+
+    push();
+    translate(px, py);
+    rotate(rot);
+    rectMode(CENTER);
+    stroke(0, 150, 255, 220);
+    strokeWeight(Math.max(1, 2 / previewScale));
+    noFill();
+    rect(0, 0, wPix, hPix);
+
+    // Draw corner and edge handles
+    const hs = Math.max(6, 8 / previewScale);
+    const corners = [
+      { x: -wPix/2, y: -hPix/2, type: 'corner', id: 'nw' },
+      { x:  wPix/2, y: -hPix/2, type: 'corner', id: 'ne' },
+      { x:  wPix/2, y:  hPix/2, type: 'corner', id: 'se' },
+      { x: -wPix/2, y:  hPix/2, type: 'corner', id: 'sw' },
+    ];
+    const edges = [
+      { x: 0, y: -hPix/2, type: 'edge', id: 'top' },
+      { x:  wPix/2, y: 0, type: 'edge', id: 'right' },
+      { x: 0, y:  hPix/2, type: 'edge', id: 'bottom' },
+      { x: -wPix/2, y: 0, type: 'edge', id: 'left' },
+    ];
+
+    // Corner handles
+    for (const c of corners) {
+      push();
+      translate(c.x, c.y);
+      fill(255);
+      stroke(0, 150, 255);
+      rectMode(CENTER);
+      rect(0, 0, hs, hs);
+      pop();
+    }
+
+    // Edge handles
+    for (const e of edges) {
+      push();
+      translate(e.x, e.y);
+      fill(255);
+      stroke(0, 100, 200);
+      rectMode(CENTER);
+      rect(0, 0, hs * 0.7, hs * 0.7);
+      pop();
+    }
+
+    // Rotation handle
+    const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
+    const rx = rDist * Math.cos(0);
+    const ry = rDist * Math.sin(0);
+    stroke(0, 150, 255);
+    strokeWeight(Math.max(1, 1 / previewScale));
+    line(0, 0, rx, ry);
+    fill(100, 200, 255);
+    stroke(0, 150, 255);
+    strokeWeight(Math.max(1, 2 / previewScale));
+    ellipse(rx, ry, Math.max(8, 10 / previewScale), Math.max(8, 10 / previewScale));
+
+    pop();
+  }
+
   pop();
+}
+
+// Compute transformed edit frame of a part (center/size/rotation in mm)
+function computeEditFrame(part) {
+  // Base bbox in mm
+  const base = getPathPoints(part.pathData);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of base) {
+    if (isNaN(p.x) || isNaN(p.y)) continue;
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  if (minX === Infinity) {
+    return { centerMm: { x: part.tx || 0, y: part.ty || 0 }, widthMm: 10, heightMm: 10, rotation: part.rotation || 0 };
+  }
+
+  const w0 = Math.max(1e-6, maxX - minX);
+  const h0 = Math.max(1e-6, maxY - minY);
+  const cx0 = (minX + maxX) / 2;
+  const cy0 = (minY + maxY) / 2;
+
+  const sx = part.sx || 1;
+  const sy = part.sy || 1;
+  const rot = part.rotation || 0;
+  const tx = part.tx || 0;
+  const ty = part.ty || 0;
+
+  // Center-pivot model: translation shifts the base center; scale/rotation do not move center
+  const cx = cx0 + tx;
+  const cy = cy0 + ty;
+
+  return {
+    centerMm: { x: cx, y: cy },
+    widthMm: w0 * sx,
+    heightMm: h0 * sy,
+    rotation: rot,
+    base: { cx0, cy0, w0, h0 },
+  };
 }
 
 // Interactive preview controls
@@ -684,16 +821,39 @@ function mouseDragged() {
     handled = true;
   }
 
-  //if (keyIsDown(SHIFT)) {
-    // Pan follows mouse movement with modest sensitivity
+  // Edit drag: move/scale/rotate selected part in pixel domain
+  if (editDrag.active && selectedPartIndices.length === 1) {
+    const idx = selectedPartIndices[0];
+    const part = svgParts[idx];
+    if (part) {
+      const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+      const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+      const scaleFactor = Math.min(scaleXmm, scaleYmm);
+      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+      const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+      const changed = part.mouseDraggedPixel(mouseX, mouseY, {
+        scaleFactor, offsetX, offsetY,
+        centerOffsetX, centerOffsetY,
+        canvasWidth: width, canvasHeight: height,
+        previewScale, previewPanX, previewPanY
+      }, { shiftKey: keyIsDown(SHIFT), altKey: keyIsDown(ALT) });
+      if (changed) {
+        handled = true;
+        // Keep transform UI in sync while dragging
+        updatePartSettings(svgParts[selectedPartIndices[0]]);
+      }
+    }
+  }
+  else if (isPanning) {
+    // Pan follows mouse drag
     const dx = mouseX - pmouseX;
     const dy = mouseY - pmouseY;
-    const sensitivity = 0.5; // drag sensitivity
-    previewPanX += dx * sensitivity;
-    previewPanY += dy * sensitivity;
-    console.log(previewPanX, previewPanY);
+    previewPanX += dx;
+    previewPanY += dy;
     handled = true;
-  //}
+  }
 
   if (handled) {
     redraw();
@@ -721,11 +881,63 @@ function mousePressed() {
     redraw();
     return false;
   }
+
+  // // If hovering a part, select it
+  // if (hoverPartIndex >= 0) {
+  //   // Single-select via parser's selection util if available
+  //   if (typeof selectPart === 'function') {
+  //     selectPart(hoverPartIndex, { ctrlKey: false, metaKey: false, shiftKey: false });
+  //   } else {
+  //     selectedPartIndices = [hoverPartIndex];
+  //     svgParts.forEach(p => p.selected = false);
+  //     if (svgParts[hoverPartIndex]) svgParts[hoverPartIndex].selected = true;
+  //   }
+  // }
+
+  // Begin edit interaction if clicking a handle/body; moving body requires 'm' held, handles do not
+  if (selectedPartIndices.length === 1 && isPreviewInteracting) {
+    const idx = selectedPartIndices[0];
+    const part = svgParts[idx];
+    if (part) {
+      const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+      const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+      const scaleFactor = Math.min(scaleXmm, scaleYmm);
+      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+      const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+      const picked = part.mousePressedPixel(mouseX, mouseY, {
+        scaleFactor, offsetX, offsetY,
+        centerOffsetX, centerOffsetY,
+        canvasWidth: width, canvasHeight: height,
+        previewScale, previewPanX, previewPanY
+      }, { allowBodyMove: moveKeyHeld });
+      if (picked) {
+        editDrag.active = true;
+        // Refresh transform inputs to reflect live changes during drag
+        updatePartSettings(svgParts[selectedPartIndices[0]]);
+        return false;
+      }
+    }
+  }
+  // Otherwise, start panning
+  isPanning = true;
+  lastMousePos.x = mouseX;
+  lastMousePos.y = mouseY;
+  editDrag.active = false;
+  editDrag.type = null;
+  return false;
 }
 
 function mouseReleased() {
   isDraggingScale = false;
   isPreviewInteracting = false;
+  editDrag.active = false;
+  if (selectedPartIndices.length === 1) {
+    const part = svgParts[selectedPartIndices[0]];
+    if (part && typeof part.mouseReleased === 'function') part.mouseReleased();
+  }
+  isPanning = false;
 }
 
 function mouseWheel(event) {
@@ -759,6 +971,33 @@ function mouseWheel(event) {
   return false;
 }
 
+function updateHoverHitTest() {
+  hoverPartIndex = -1;
+  if (svgParts.length === 0) return;
+  // Compute draw-time scale and offset (mirror of draw())
+  const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+  const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+  const scaleFactor = Math.min(scaleXmm, scaleYmm);
+  const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+  const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+  const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+  const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+
+  // Iterate in reverse (topmost first)
+  for (let i = svgParts.length - 1; i >= 0; i--) {
+    const part = svgParts[i];
+    if (!part || part.visible === false) continue;
+    const hit = (typeof part.hitTestPixel === 'function')
+      ? part.hitTestPixel(mouseX, mouseY, {
+          scaleFactor, offsetX, offsetY,
+          centerOffsetX, centerOffsetY,
+          canvasWidth: width, canvasHeight: height,
+          previewScale, previewPanX, previewPanY
+        }, { handlePx: Math.max(6, 8 / previewScale), rotationHandleOffsetPx: Math.max(20, 30 / previewScale), allowBodyMove: true })
+      : { type: null };
+    if (hit && hit.type) { hoverPartIndex = i; break; }
+  }
+}
 
 
 function applyPartSettings(part) {
@@ -1169,8 +1408,8 @@ function updatePartSettings(part) {
   const nameLabel = createDiv("Part Name");
   nameLabel.parent(container);
   nameLabel.style("font-weight", "600");
-  nameLabel.style("margin-bottom", "4px");
-  nameLabel.style("font-size", "12px");
+  nameLabel.style("margin-bottom", "2px");
+  nameLabel.style("font-size", "10px");
   nameLabel.style("color", "#666");
 
   const nameInput = createInput(part.name);
@@ -1180,13 +1419,126 @@ function updatePartSettings(part) {
   nameInput.style("border", "1px solid #ddd");
   nameInput.style("border-radius", "4px");
   nameInput.style("font-size", "14px");
-  nameInput.style("margin-bottom", "16px");
+  nameInput.style("margin-bottom", "0px");
   
   nameInput.changed(() => {
     part.name = nameInput.value();
     updateSVGPartsList(); // Update the button text
     updateInfoTable(); // Update the info table
   });
+
+  // Transform controls
+  const transformHeader = createDiv("Transform");
+  transformHeader.parent(container);
+  transformHeader.style("font-weight", "600");
+  transformHeader.style("margin", "16px 0 8px 0");
+  transformHeader.style("padding-bottom", "8px");
+  transformHeader.style("border-bottom", "1px solid #ddd");
+
+  const txInput = createInput((part.tx || 0).toFixed(2), 'number');
+  const tyInput = createInput((part.ty || 0).toFixed(2), 'number');
+  const sxInput = createInput((part.sx || 1).toFixed(3), 'number');
+  const syInput = createInput((part.sy || 1).toFixed(3), 'number');
+  const rotInput = createInput(((part.rotation || 0) * 180 / Math.PI).toFixed(1), 'number');
+
+  // Steps for smoother editing
+  txInput.attribute('step', '0.1');
+  tyInput.attribute('step', '0.1');
+  sxInput.attribute('step', '0.01');
+  syInput.attribute('step', '0.01');
+  rotInput.attribute('step', '0.1');
+
+  // Set reasonable min/max to allow spinner to work
+  txInput.attribute('min', '-100000');
+  txInput.attribute('max', '100000');
+  tyInput.attribute('min', '-100000');
+  tyInput.attribute('max', '100000');
+  sxInput.attribute('min', '0.01');
+  sxInput.attribute('max', '1000');
+  syInput.attribute('min', '0.01');
+  syInput.attribute('max', '1000');
+  rotInput.attribute('min', '-3600');
+  rotInput.attribute('max', '3600');
+
+  // Prevent canvas/global handlers from hijacking input events
+  const shieldEvents = (elt) => {
+    ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => {
+      elt.addEventListener(evt, (e) => {
+        e.stopPropagation();
+      });
+    });
+  };
+  [txInput, tyInput, sxInput, syInput, rotInput].forEach(inp => {
+    // Compact width per request
+    inp.style('width', '80px');
+    shieldEvents(inp.elt);
+  });
+
+  const row1 = createDiv(); row1.parent(container); row1.class('form-row');
+  const row2 = createDiv(); row2.parent(container); row2.class('form-row');
+
+  const makeLabeled = (row, label, input, unit) => {
+    const wrap = createDiv(); wrap.parent(row); wrap.class('form-field');
+    const lab = createDiv(label); lab.parent(wrap); lab.class('control-label');
+    input.parent(wrap); input.class('value-input');
+    // No unit labels requested
+  };
+
+  // X and Y in the same row, no units
+  makeLabeled(row1, 'X', txInput);
+  makeLabeled(row1, 'Y', tyInput);
+  makeLabeled(row2, 'Scale X', sxInput);
+  makeLabeled(row2, 'Scale Y', syInput);
+  makeLabeled(row2, 'Rotate', rotInput);
+
+  const btnRow = createDiv(); btnRow.parent(container); btnRow.style('margin','8px 0 16px');
+  const resetBtn = createButton('Reset Transform');
+  resetBtn.parent(btnRow);
+  resetBtn.mousePressed(() => {
+    part.tx = 0; part.ty = 0; part.sx = 1; part.sy = 1; part.rotation = 0;
+    updatePartSettings(part);
+    updateInfoTable();
+    redraw();
+  });
+
+  const parseOrNull = (el) => {
+    const s = el.value();
+    if (s === '' || s === '-' || s === '.' || s === '-.') return null;
+    const v = parseFloat(s);
+    return isNaN(v) ? null : v;
+  };
+
+  const applyChanges = (finalize = false) => {
+    const txv = parseOrNull(txInput);
+    const tyv = parseOrNull(tyInput);
+    const sxv = parseOrNull(sxInput);
+    const syv = parseOrNull(syInput);
+    const rtv = parseOrNull(rotInput);
+
+    let changed = false;
+    if (txv !== null) { part.tx = txv; changed = true; }
+    if (tyv !== null) { part.ty = tyv; changed = true; }
+    if (sxv !== null) { part.sx = Math.max(0.01, sxv); changed = true; }
+    if (syv !== null) { part.sy = Math.max(0.01, syv); changed = true; }
+    if (rtv !== null) { part.rotation = rtv * Math.PI / 180; changed = true; }
+    if (changed || finalize) {
+      updateInfoTable();
+      redraw();
+    }
+  };
+
+  // Live update on input when valid; always commit on change (blur/enter)
+  txInput.input(() => applyChanges(false));
+  tyInput.input(() => applyChanges(false));
+  sxInput.input(() => applyChanges(false));
+  syInput.input(() => applyChanges(false));
+  rotInput.input(() => applyChanges(false));
+
+  txInput.changed(() => applyChanges(true));
+  tyInput.changed(() => applyChanges(true));
+  sxInput.changed(() => applyChanges(true));
+  syInput.changed(() => applyChanges(true));
+  rotInput.changed(() => applyChanges(true));
 
   // Stroke settings section header
   const strokeHeader = createDiv("Stroke Settings");
@@ -2059,10 +2411,23 @@ function createTextAreaControl(container, label, placeholder, height) {
 }
 
 function keyPressed() {
+  // Ignore global keybinds when editing a form element
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
   if (key === "l" || key === "L") {
     loadSVGFromTextArea();
   } else if (key === "c" || key === "C") {
     clearCanvas();
+  } else if (key === 'm' || key === 'M') {
+    moveKeyHeld = true;
+  }
+}
+
+function keyReleased() {
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+  if (key === 'm' || key === 'M') {
+    moveKeyHeld = false;
   }
 }
 
