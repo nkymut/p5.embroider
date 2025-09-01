@@ -1,3 +1,7 @@
+.collapsible-section {}
+.collapsible-header {
+  position: relative;
+}
 /* ==========================================================================
    SVG Input Example - Enhanced Styling
    ========================================================================== */

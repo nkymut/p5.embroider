@@ -31,6 +31,17 @@ let isPanning = false;
 let hoverPartIndex = -1;
 let lastMousePos = { x: 0, y: 0 };
 let moveKeyHeld = false; // true while 'm' is held
+// Group drag state for multi-select transforms
+let groupDrag = {
+  active: false,
+  type: null, // 'move' | 'corner' | 'rotate'
+  startMouseModel: { x: 0, y: 0 },
+  groupCenter: { x: 0, y: 0 },
+  startVec: { x: 0, y: 0 },
+  startDist: 0,
+  startAngle: 0,
+  parts: [], // { index, tx0, ty0, sx0, sy0, rot0, center0:{x,y} }
+};
 
 // Interactive edit drag state
 let editDrag = {
@@ -737,6 +748,69 @@ function drawSelectedOverlay(params) {
     ellipse(rx, ry, Math.max(8, 10 / previewScale), Math.max(8, 10 / previewScale));
 
     pop();
+  } else if (selectedPartIndices.length > 1) {
+    // Group frame around all selected parts (screen-space axis-aligned box)
+    let minPX = Infinity, minPY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
+    for (const idx of selectedPartIndices) {
+      const part = svgParts[idx];
+      if (!part || !part.visible) continue;
+      const frame = computeEditFrame(part);
+      const points = getPathPoints(part.pathData);
+      for (const pt of points) {
+        const sp = modelPointToScreenPx(part, pt.x, pt.y, frame);
+        if (!isNaN(sp.x) && !isNaN(sp.y)) {
+          minPX = Math.min(minPX, sp.x);
+          minPY = Math.min(minPY, sp.y);
+          maxPX = Math.max(maxPX, sp.x);
+          maxPY = Math.max(maxPY, sp.y);
+        }
+      }
+    }
+    if (minPX !== Infinity) {
+      const gx = (minPX + maxPX) / 2;
+      const gy = (minPY + maxPY) / 2;
+      const wPix = Math.max(1, maxPX - minPX);
+      const hPix = Math.max(1, maxPY - minPY);
+
+      push();
+      translate(gx, gy);
+      rectMode(CENTER);
+      stroke(0, 150, 255, 220);
+      strokeWeight(Math.max(1, 2 / previewScale));
+      noFill();
+      rect(0, 0, wPix, hPix);
+
+      // Handles
+      const hs = Math.max(6, 8 / previewScale);
+      const corners = [
+        { x: -wPix/2, y: -hPix/2 },
+        { x:  wPix/2, y: -hPix/2 },
+        { x:  wPix/2, y:  hPix/2 },
+        { x: -wPix/2, y:  hPix/2 },
+      ];
+      const edges = [
+        { x: 0, y: -hPix/2 },
+        { x:  wPix/2, y: 0 },
+        { x: 0, y:  hPix/2 },
+        { x: -wPix/2, y: 0 },
+      ];
+      fill(255);
+      stroke(0, 150, 255);
+      for (const c of corners) { push(); translate(c.x, c.y); rectMode(CENTER); rect(0, 0, hs, hs); pop(); }
+      stroke(0, 100, 200);
+      for (const e of edges) { push(); translate(e.x, e.y); rectMode(CENTER); rect(0, 0, hs*0.7, hs*0.7); pop(); }
+
+      // Rotation handle on +X
+      const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
+      stroke(0, 150, 255);
+      strokeWeight(Math.max(1, 1 / previewScale));
+      line(0, 0, rDist, 0);
+      fill(100, 200, 255);
+      stroke(0, 150, 255);
+      strokeWeight(Math.max(1, 2 / previewScale));
+      ellipse(rDist, 0, Math.max(8, 10 / previewScale), Math.max(8, 10 / previewScale));
+      pop();
+    }
   }
 
   pop();
@@ -845,6 +919,66 @@ function mouseDragged() {
         updatePartSettings(svgParts[selectedPartIndices[0]]);
       }
     }
+  } else if (groupDrag.active && selectedPartIndices.length > 1) {
+    const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+    const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+    const scaleFactor = Math.min(scaleXmm, scaleYmm);
+    const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+    const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+    const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+    const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+    // Convert mouse to model
+    const toModel = (mx, my) => {
+      const cx = width / 2, cy = height / 2;
+      const outPxX = cx + (mx - centerOffsetX - cx - previewPanX) / Math.max(1e-6, previewScale);
+      const outPxY = cy + (my - centerOffsetY - cy - previewPanY) / Math.max(1e-6, previewScale);
+      const outMmX = outPxX / mmToPixel(1);
+      const outMmY = outPxY / mmToPixel(1);
+      return { x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor), y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor) };
+    };
+    const mm = toModel(mouseX, mouseY);
+    const vx = mm.x - groupDrag.groupCenter.x;
+    const vy = mm.y - groupDrag.groupCenter.y;
+    const dist = Math.max(1e-6, Math.hypot(vx, vy));
+    const ang = Math.atan2(vy, vx);
+    let scaleRatio = dist / groupDrag.startDist;
+    if (keyIsDown(ALT)) {
+      // uniform enforced by same ratio applied to both axes
+    }
+    // Rotation only when groupDrag.type is rotate; corners/edges scale only
+    const deltaAng = (groupDrag.type === 'rotate')
+      ? (keyIsDown(SHIFT) ? (() => { const step = radians(15); return Math.round((ang - groupDrag.startAngle)/step)*step; })() : (ang - groupDrag.startAngle))
+      : 0;
+    // Apply to each part
+    groupDrag.parts.forEach(info => {
+      const p = svgParts[info.index];
+      // New center from scaling around group center
+      const dx0 = info.cx0 - groupDrag.groupCenter.x;
+      const dy0 = info.cy0 - groupDrag.groupCenter.y;
+      const dxr = dx0 * Math.cos(deltaAng) - dy0 * Math.sin(deltaAng);
+      const dyr = dx0 * Math.sin(deltaAng) + dy0 * Math.cos(deltaAng);
+      const dxs = dxr * scaleRatio;
+      const dys = dyr * scaleRatio;
+      const newCx = groupDrag.groupCenter.x + dxs;
+      const newCy = groupDrag.groupCenter.y + dys;
+      // Update translation so that base center moves to newCx/newCy
+      p.tx = newCx - info.base.cx0;
+      p.ty = newCy - info.base.cy0;
+      // Update scale; rotation only if we grabbed the rotate handle
+      if (keyIsDown(ALT)) {
+        const uni = (info.sx0 + info.sy0) * 0.5 * scaleRatio;
+        p.sx = Math.max(0.01, uni);
+        p.sy = Math.max(0.01, uni);
+      } else {
+        p.sx = Math.max(0.01, info.sx0 * scaleRatio);
+        p.sy = Math.max(0.01, info.sy0 * scaleRatio);
+      }
+      if (groupDrag.type === 'rotate') {
+        p.rotation = info.rot0 + deltaAng;
+      }
+    });
+    handled = true;
+    updatePartSettings(svgParts[selectedPartIndices[0]]);
   }
   else if (isPanning) {
     // Pan follows mouse drag
@@ -895,7 +1029,111 @@ function mousePressed() {
   // }
 
   // Begin edit interaction if clicking a handle/body; moving body requires 'm' held, handles do not
-  if (selectedPartIndices.length === 1 && isPreviewInteracting) {
+  if (selectedPartIndices.length >= 1 && isPreviewInteracting) {
+    // First, if multiple selected, try group handle hit-test in pixel space
+    if (selectedPartIndices.length > 1) {
+      const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+      const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+      const scaleFactor = Math.min(scaleXmm, scaleYmm);
+      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+      const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+      // Compute screen-space AABB of all selected parts
+      let minPX = Infinity, minPY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
+      const mapPoint = (part, mx, my, frame) => {
+        const cx0 = frame.base.cx0, cy0 = frame.base.cy0;
+        const cosA = part.rotation ? Math.cos(part.rotation) : 1;
+        const sinA = part.rotation ? Math.sin(part.rotation) : 0;
+        const dx = (mx - cx0) * (part.sx || 1);
+        const dy = (my - cy0) * (part.sy || 1);
+        const rx = dx * cosA - dy * sinA;
+        const ry = dx * sinA + dy * cosA;
+        const outMmX = offsetX + (rx + cx0 + (part.tx || 0)) * scaleFactor;
+        const outMmY = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
+        const px0 = mmToPixel(outMmX);
+        const py0 = mmToPixel(outMmY);
+        const cx = width / 2, cy = height / 2;
+        return {
+          x: centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX,
+          y: centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY,
+        };
+      };
+      for (const si of selectedPartIndices) {
+        const p = svgParts[si];
+        if (!p || !p.visible) continue;
+        const frame = computeEditFrame(p);
+        const pts = getPathPoints(p.pathData);
+        for (const q of pts) {
+          const sp = mapPoint(p, q.x, q.y, frame);
+          if (!isNaN(sp.x) && !isNaN(sp.y)) {
+            minPX = Math.min(minPX, sp.x); minPY = Math.min(minPY, sp.y);
+            maxPX = Math.max(maxPX, sp.x); maxPY = Math.max(maxPY, sp.y);
+          }
+        }
+      }
+      if (minPX !== Infinity) {
+        const gx = (minPX + maxPX) / 2;
+        const gy = (minPY + maxPY) / 2;
+        const wPix = Math.max(1, maxPX - minPX);
+        const hPix = Math.max(1, maxPY - minPY);
+        const hs = Math.max(6, 8 / previewScale);
+        const handleHit = (mx, my, hx, hy, size) => Math.abs(mx - hx) <= size && Math.abs(my - hy) <= size;
+        // Corners
+        const corners = [
+          { x: gx - wPix/2, y: gy - hPix/2, id: 'corner' },
+          { x: gx + wPix/2, y: gy - hPix/2, id: 'corner' },
+          { x: gx + wPix/2, y: gy + hPix/2, id: 'corner' },
+          { x: gx - wPix/2, y: gy + hPix/2, id: 'corner' },
+        ];
+        let pickedGroup = false;
+        for (const c of corners) {
+          if (handleHit(mouseX, mouseY, c.x, c.y, hs)) { groupDrag.type = 'corner'; pickedGroup = true; break; }
+        }
+        // Rotation handle on +X
+        if (!pickedGroup) {
+          const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
+          const rx = gx + rDist, ry = gy;
+          if (Math.hypot(mouseX - rx, mouseY - ry) <= Math.max(hs*0.8, 10)) { groupDrag.type = 'rotate'; pickedGroup = true; }
+        }
+        // Body move (requires 'm')
+        if (!pickedGroup && moveKeyHeld) {
+          if (mouseX >= gx - wPix/2 && mouseX <= gx + wPix/2 && mouseY >= gy - hPix/2 && mouseY <= gy + hPix/2) {
+            groupDrag.type = 'move'; pickedGroup = true;
+          }
+        }
+        if (pickedGroup) {
+          // Initialize group drag snapshot
+          const toModel = (mx, my) => {
+            const cx = width / 2, cy = height / 2;
+            const outPxX = cx + (mx - centerOffsetX - cx - previewPanX) / Math.max(1e-6, previewScale);
+            const outPxY = cy + (my - centerOffsetY - cy - previewPanY) / Math.max(1e-6, previewScale);
+            const outMmX = outPxX / mmToPixel(1);
+            const outMmY = outPxY / mmToPixel(1);
+            return { x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor), y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor) };
+          };
+          const selectedParts = selectedPartIndices.map(i => svgParts[i]);
+          let gcx = 0, gcy = 0;
+          const infos = [];
+          selectedParts.forEach((p, idxSel) => {
+            const frame = computeEditFrame(p);
+            infos.push({ index: selectedPartIndices[idxSel], tx0: p.tx||0, ty0: p.ty||0, sx0: p.sx||1, sy0: p.sy||1, rot0: p.rotation||0, cx0: frame.centerMm.x, cy0: frame.centerMm.y, base: frame.base });
+            gcx += frame.centerMm.x; gcy += frame.centerMm.y;
+          });
+          gcx /= selectedParts.length; gcy /= selectedParts.length;
+          groupDrag.active = true;
+          groupDrag.groupCenter = { x: gcx, y: gcy };
+          groupDrag.parts = infos;
+          const m0 = toModel(mouseX, mouseY);
+          groupDrag.startMouseModel = { x: m0.x, y: m0.y };
+          groupDrag.startVec = { x: m0.x - gcx, y: m0.y - gcy };
+          groupDrag.startDist = Math.max(1e-6, Math.hypot(groupDrag.startVec.x, groupDrag.startVec.y));
+          groupDrag.startAngle = Math.atan2(groupDrag.startVec.y, groupDrag.startVec.x);
+          return false;
+        }
+      }
+    }
+
     const idx = selectedPartIndices[0];
     const part = svgParts[idx];
     if (part) {
@@ -913,10 +1151,33 @@ function mousePressed() {
         previewScale, previewPanX, previewPanY
       }, { allowBodyMove: moveKeyHeld });
       if (picked) {
-        editDrag.active = true;
-        // Refresh transform inputs to reflect live changes during drag
-        updatePartSettings(svgParts[selectedPartIndices[0]]);
-        return false;
+        if (selectedPartIndices.length === 1) {
+          editDrag.active = true;
+          updatePartSettings(svgParts[selectedPartIndices[0]]);
+          return false;
+        } else {
+          // Initialize group drag
+          const modelStart = svgParts[idx]._pixelToModel ? svgParts[idx]._pixelToModel(mouseX, mouseY, { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth: width, canvasHeight: height, previewScale, previewPanX, previewPanY }) : null;
+          const partsInfo = [];
+          let gx = 0, gy = 0;
+          selectedPartIndices.forEach(i => {
+            const p = svgParts[i];
+            const frame = computeEditFrame(p);
+            partsInfo.push({ index: i, tx0: p.tx||0, ty0: p.ty||0, sx0: p.sx||1, sy0: p.sy||1, rot0: p.rotation||0, cx0: frame.centerMm.x, cy0: frame.centerMm.y, base: frame.base });
+            gx += frame.centerMm.x; gy += frame.centerMm.y;
+          });
+          gx /= selectedPartIndices.length; gy /= selectedPartIndices.length;
+          groupDrag.active = true;
+          groupDrag.type = picked ? (svgParts[idx]._drag && svgParts[idx]._drag.type) : 'move';
+          groupDrag.startMouseModel = modelStart ? { x: modelStart.modelX, y: modelStart.modelY } : { x: gx, y: gy };
+          groupDrag.groupCenter = { x: gx, y: gy };
+          groupDrag.parts = partsInfo;
+          // Seed rotation/scale reference
+          groupDrag.startVec = { x: groupDrag.startMouseModel.x - gx, y: groupDrag.startMouseModel.y - gy };
+          groupDrag.startDist = Math.max(1e-6, Math.hypot(groupDrag.startVec.x, groupDrag.startVec.y));
+          groupDrag.startAngle = Math.atan2(groupDrag.startVec.y, groupDrag.startVec.x);
+          return false;
+        }
       }
     }
   }
@@ -937,6 +1198,7 @@ function mouseReleased() {
     const part = svgParts[selectedPartIndices[0]];
     if (part && typeof part.mouseReleased === 'function') part.mouseReleased();
   }
+  groupDrag.active = false;
   isPanning = false;
 }
 
@@ -1127,6 +1389,53 @@ function updateMultiPartSettings() {
   container.html(""); // Clear existing content
   
   if (selectedPartIndices.length === 0) return;
+  // Group Transform (collapsible)
+  const groupTransformSec = createCollapsibleSection(container, 'Group Transform', true);
+
+  // Compute current group center and representative transform (not unique)
+  let gcx = 0, gcy = 0;
+  selectedParts.forEach(p => { const f = computeEditFrame(p); gcx += f.centerMm.x; gcy += f.centerMm.y; });
+  gcx /= selectedParts.length; gcy /= selectedParts.length;
+
+  const txInput = createInput(gcx.toFixed(2), 'number');
+  const tyInput = createInput(gcy.toFixed(2), 'number');
+  const sxInput = createInput('1.000', 'number');
+  const syInput = createInput('1.000', 'number');
+  const rotInput = createInput('0.0', 'number');
+  ;[txInput,tyInput].forEach(inp=>{ inp.attribute('step','0.1'); inp.style('width','80px'); });
+  ;[sxInput,syInput].forEach(inp=>{ inp.attribute('step','0.01'); inp.style('width','80px'); });
+  rotInput.attribute('step','0.1'); rotInput.style('width','80px');
+
+  const row1 = createDiv(); row1.parent(groupTransformSec.content); row1.addClass('form-row');
+  const row2 = createDiv(); row2.parent(groupTransformSec.content); row2.addClass('form-row');
+  const makeLabeled = (row, label, input) => { const wrap = createDiv(); wrap.parent(row); wrap.addClass('form-field'); const lab = createDiv(label); lab.parent(wrap); lab.addClass('control-label'); input.parent(wrap); input.addClass('value-input'); };
+  makeLabeled(row1,'X',txInput); makeLabeled(row1,'Y',tyInput);
+  makeLabeled(row2,'Scale X',sxInput); makeLabeled(row2,'Scale Y',syInput); makeLabeled(row2,'Rotate',rotInput);
+
+  const applyGroup = () => {
+    const ntx = parseFloat(txInput.value());
+    const nty = parseFloat(tyInput.value());
+    const nsx = Math.max(0.01, parseFloat(sxInput.value()));
+    const nsy = Math.max(0.01, parseFloat(syInput.value()));
+    const nrot = (parseFloat(rotInput.value())||0) * Math.PI/180;
+    // Apply translation by delta to each part center
+    const dx = (isNaN(ntx)?gcx:ntx) - gcx;
+    const dy = (isNaN(nty)?gcy:nty) - gcy;
+    selectedParts.forEach(p => {
+      const f = computeEditFrame(p);
+      const newCx = f.centerMm.x + dx;
+      const newCy = f.centerMm.y + dy;
+      p.tx = newCx - f.base.cx0;
+      p.ty = newCy - f.base.cy0;
+      p.sx = p.sx * nsx;
+      p.sy = p.sy * nsy;
+      p.rotation = p.rotation + nrot;
+    });
+    updateSVGPartsList(); updateInfoTable(); redraw();
+  };
+  txInput.changed(applyGroup); tyInput.changed(applyGroup);
+  sxInput.changed(applyGroup); syInput.changed(applyGroup); rotInput.changed(applyGroup);
+
 
   // Get common values for controls
   const selectedParts = selectedPartIndices.map(i => svgParts[i]);
@@ -1427,13 +1736,8 @@ function updatePartSettings(part) {
     updateInfoTable(); // Update the info table
   });
 
-  // Transform controls
-  const transformHeader = createDiv("Transform");
-  transformHeader.parent(container);
-  transformHeader.style("font-weight", "600");
-  transformHeader.style("margin", "16px 0 8px 0");
-  transformHeader.style("padding-bottom", "8px");
-  transformHeader.style("border-bottom", "1px solid #ddd");
+  // Transform controls (collapsible)
+  const transformSec = createCollapsibleSection(container, 'Transform', true);
 
   const txInput = createInput((part.tx || 0).toFixed(2), 'number');
   const tyInput = createInput((part.ty || 0).toFixed(2), 'number');
@@ -1474,8 +1778,8 @@ function updatePartSettings(part) {
     shieldEvents(inp.elt);
   });
 
-  const row1 = createDiv(); row1.parent(container); row1.class('form-row');
-  const row2 = createDiv(); row2.parent(container); row2.class('form-row');
+  const row1 = createDiv(); row1.parent(transformSec.content); row1.class('form-row');
+  const row2 = createDiv(); row2.parent(transformSec.content); row2.class('form-row');
 
   const makeLabeled = (row, label, input, unit) => {
     const wrap = createDiv(); wrap.parent(row); wrap.class('form-field');
@@ -1491,7 +1795,7 @@ function updatePartSettings(part) {
   makeLabeled(row2, 'Scale Y', syInput);
   makeLabeled(row2, 'Rotate', rotInput);
 
-  const btnRow = createDiv(); btnRow.parent(container); btnRow.style('margin','8px 0 16px');
+  const btnRow = createDiv(); btnRow.parent(transformSec.content); btnRow.style('margin','8px 0 16px');
   const resetBtn = createButton('Reset Transform');
   resetBtn.parent(btnRow);
   resetBtn.mousePressed(() => {
@@ -1540,13 +1844,8 @@ function updatePartSettings(part) {
   syInput.changed(() => applyChanges(true));
   rotInput.changed(() => applyChanges(true));
 
-  // Stroke settings section header
-  const strokeHeader = createDiv("Stroke Settings");
-  strokeHeader.parent(container);
-  strokeHeader.style("font-weight", "600");
-  strokeHeader.style("margin", "16px 0 8px 0");
-  strokeHeader.style("padding-bottom", "8px");
-  strokeHeader.style("border-bottom", "1px solid #ddd");
+  // Stroke settings (collapsible)
+  const strokeSec = createCollapsibleSection(container, 'Stroke Settings', true);
 
   // Stroke settings
   createCheckboxControl(container, "Enable Stroke", part.strokeSettings.enabled, (enabled) => {
@@ -1558,7 +1857,7 @@ function updatePartSettings(part) {
 
   // Create stroke controls container
   const strokeControlsDiv = createDiv();
-  strokeControlsDiv.parent(container);
+  strokeControlsDiv.parent(strokeSec.content);
   strokeControlsDiv.id("stroke-controls");
    
 
@@ -1621,13 +1920,8 @@ function updatePartSettings(part) {
     strokeControlsDiv.style("display", "none");
   }
 
-  // Fill settings section header
-  const fillHeader = createDiv("Fill Settings");
-  fillHeader.parent(container);
-  fillHeader.style("font-weight", "600");
-  fillHeader.style("margin", "16px 0 8px 0");
-  fillHeader.style("padding-bottom", "8px");
-  fillHeader.style("border-bottom", "1px solid #ddd");
+  // Fill settings (collapsible)
+  const fillSec = createCollapsibleSection(container, 'Fill Settings', false);
 
   // Fill settings
   createCheckboxControl(container, "Enable Fill", part.fillSettings.enabled, (enabled) => {
@@ -1639,7 +1933,7 @@ function updatePartSettings(part) {
 
   // Create fill controls container
   const fillControlsDiv = createDiv();
-  fillControlsDiv.parent(container);
+  fillControlsDiv.parent(fillSec.content);
   fillControlsDiv.id("fill-controls");
 
   if (part.fillSettings.enabled) {
@@ -1692,13 +1986,8 @@ function updatePartSettings(part) {
   }
 
 
-  // Outline controls section
-  const outlineHeader = createDiv("Outline Settings");
-  outlineHeader.parent(container);
-  outlineHeader.style("font-weight", "600");
-  outlineHeader.style("margin", "16px 0 8px 0");
-  outlineHeader.style("padding-bottom", "8px");
-  outlineHeader.style("border-bottom", "1px solid #ddd");
+  // Outline settings (collapsible)
+  const outlineSec = createCollapsibleSection(container, 'Outline Settings', false);
    // Add to outline control with automatic outline creation/removal
  createCheckboxControl(container, "Add to Outline", part.addToOutline, (addToOutline) => {
   part.addToOutline = addToOutline;
@@ -1710,7 +1999,7 @@ function updatePartSettings(part) {
     globalSettings.outlineType = 'convex'; // Default to convex
   }
   
-  createSelectControl(container, "Outline Type", {
+  createSelectControl(outlineSec.content, "Outline Type", {
     convex: "Convex Hull",
     bounding: "Bounding Box",
     scale: "Scaled Path"
@@ -1720,7 +2009,7 @@ function updatePartSettings(part) {
   });
 
   // Outline offset control with automatic outline updates
-  createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
+  createSliderControl(outlineSec.content, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
     globalSettings.outlineOffset = value;
     updateOutlinesForOffset(); // Auto-update all outlines when offset changes
   });
@@ -2408,6 +2697,40 @@ function createTextAreaControl(container, label, placeholder, height) {
   textarea.elt.style.height = height + "px";
 
   return textarea;
+}
+
+// Collapsible section helper
+function createCollapsibleSection(parent, title, initiallyOpen = true) {
+  const section = createDiv();
+  section.parent(parent);
+  section.addClass('collapsible-section');
+
+  const header = createDiv(title);
+  header.parent(section);
+  header.addClass('collapsible-header');
+  header.style('cursor', 'pointer');
+  header.style('user-select', 'none');
+  header.style('font-weight', '600');
+  header.style('margin', '16px 0 8px 0');
+  header.style('padding-bottom', '8px');
+  header.style('border-bottom', '1px solid #ddd');
+
+  const indicator = createSpan(initiallyOpen ? '▾' : '▸');
+  indicator.parent(header);
+  indicator.style('float', 'right');
+  indicator.style('color', '#888');
+
+  const content = createDiv();
+  content.parent(section);
+  if (!initiallyOpen) content.style('display', 'none');
+
+  header.mousePressed(() => {
+    const visible = content.elt.style.display !== 'none';
+    content.style('display', visible ? 'none' : 'block');
+    indicator.html(visible ? '▸' : '▾');
+  });
+
+  return { section, header, content };
 }
 
 function keyPressed() {
