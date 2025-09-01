@@ -472,7 +472,6 @@ function setDebugMode(enabled) {
         count = 1;
       }
       if (_recording) {
-        console.log("endShape", _vertices, _vertices.length);
         if (_vertices.length === 0) {
           console.log("🪡 p5.embroider says: No vertices to draw");
           return this;
@@ -568,7 +567,7 @@ function setDebugMode(enabled) {
         }
 
         // After drawing both shapes
-        console.log(
+        if(_DEBUG) console.log(
           "Thread runs:",
           _stitchData.threads[_strokeThreadIndex].runs.map((run) => ({
             length: run.length,
@@ -3832,6 +3831,7 @@ function setDebugMode(enabled) {
    *   });
    * }
    */
+  //TODO Add bounding box to SVG so that SVG can be previewed in browser and not cropped
   p5embroidery.exportSVG = function (filename = "embroidery-pattern.svg", options = {}) {
     if (!_stitchData || !_stitchData.threads) {
       console.warn("🪡 p5.embroider says: No embroidery data to export");
