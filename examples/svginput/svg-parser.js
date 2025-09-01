@@ -1,6 +1,16 @@
 let svgInput;
 let svgParts = []; // Array of SVG part objects (instances of EmbroiderPart)
 
+// Debug flag and helper for conditional logging
+let SVG_PARSER_DEBUG = false;
+function setSvgParserDebug(flag) { SVG_PARSER_DEBUG = !!flag; }
+function getSvgParserDebug() { return SVG_PARSER_DEBUG; }
+function svgDebugLog() { if (SVG_PARSER_DEBUG) { console.log.apply(console, arguments); } }
+if (typeof window !== 'undefined') {
+  window.setSvgParserDebug = setSvgParserDebug;
+  window.getSvgParserDebug = getSvgParserDebug;
+}
+
 // Editable embroidery part with transform state for interactive editing
 class EmbroiderPart {
   constructor(base) {
@@ -30,14 +40,57 @@ class EmbroiderPart {
 
   // Compute transformed edit frame (center/size/rotation) in mm
   computeFrame() {
-    const points = getPathPoints(this.pathData);
+    // Prefer precise base bounds from shape parameters where available (avoids arc approximation issues)
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const p of points) {
-      if (isNaN(p.x) || isNaN(p.y)) continue;
-      minX = Math.min(minX, p.x);
-      minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x);
-      maxY = Math.max(maxY, p.y);
+    const sp = this.shapeParams;
+    switch (this.elementType) {
+      case 'circle':
+        if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.r === 'number') {
+          minX = sp.cx - sp.r; maxX = sp.cx + sp.r; minY = sp.cy - sp.r; maxY = sp.cy + sp.r;
+        }
+        break;
+      case 'ellipse':
+        if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.rx === 'number' && typeof sp.ry === 'number') {
+          minX = sp.cx - sp.rx; maxX = sp.cx + sp.rx; minY = sp.cy - sp.ry; maxY = sp.cy + sp.ry;
+        }
+        break;
+      case 'rect':
+        if (sp && typeof sp.x === 'number' && typeof sp.y === 'number' && typeof sp.w === 'number' && typeof sp.h === 'number') {
+          minX = sp.x; maxX = sp.x + sp.w; minY = sp.y; maxY = sp.y + sp.h;
+        }
+        break;
+      case 'line':
+        if (sp && typeof sp.x1 === 'number' && typeof sp.y1 === 'number' && typeof sp.x2 === 'number' && typeof sp.y2 === 'number') {
+          minX = Math.min(sp.x1, sp.x2); maxX = Math.max(sp.x1, sp.x2); minY = Math.min(sp.y1, sp.y2); maxY = Math.max(sp.y1, sp.y2);
+        }
+        break;
+      case 'polygon':
+      case 'polyline':
+        if (sp && Array.isArray(sp.coords) && sp.coords.length >= 2) {
+          for (let i = 0; i < sp.coords.length; i += 2) {
+            const x = sp.coords[i];
+            const y = sp.coords[i + 1];
+            if (isFinite(x) && isFinite(y)) {
+              minX = Math.min(minX, x);
+              minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x);
+              maxY = Math.max(maxY, y);
+            }
+          }
+        }
+        break;
+    }
+
+    // If shapeParams did not yield bounds, fall back to path sampling
+    if (minX === Infinity) {
+      const points = getPathPoints(this.pathData);
+      for (const p of points) {
+        if (isNaN(p.x) || isNaN(p.y)) continue;
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
     }
     if (minX === Infinity) {
       return { centerMm: { x: this.tx || 0, y: this.ty || 0 }, widthMm: 10, heightMm: 10, rotation: this.rotation || 0, base: { cx0: 0, cy0: 0, w0: 10, h0: 10 } };
@@ -125,6 +178,110 @@ class EmbroiderPart {
     const widthPx = mmToPixel(frame.widthMm * scaleFactor) * previewScale;
     const heightPx = mmToPixel(frame.heightMm * scaleFactor) * previewScale;
     return { centerPx: { x: screenX, y: screenY }, widthPx, heightPx, rotation: frame.rotation };
+  }
+
+  // Draw this part using p5.js. Expects global helpers from the sketch (applyPartSettings, usePrimitiveShape, getPathPoints)
+  draw(scaleFactor, offsetX, offsetY) {
+    if (this.visible === false) return;
+
+    if (typeof applyPartSettings === 'function') {
+      applyPartSettings(this);
+    }
+
+    // Prefer primitive drawing when shape parameters are available (with full transform support)
+    if (this.shapeParams && typeof this.drawPrimitive === 'function') {
+      const didDraw = this.drawPrimitive(scaleFactor, offsetX, offsetY);
+      if (didDraw) return;
+    }
+
+    const points = getPathPoints(this.pathData);
+    if (points.length >= 2) {
+      const frame = this.computeFrame();
+      const cx0 = frame.base.cx0;
+      const cy0 = frame.base.cy0;
+      push();
+      translate(
+        offsetX + (cx0 + (this.tx || 0)) * scaleFactor,
+        offsetY + (cy0 + (this.ty || 0)) * scaleFactor
+      );
+      rotate(this.rotation || 0);
+      scale(this.sx || 1, this.sy || 1);
+      beginShape();
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        const lx = (point.x - cx0) * scaleFactor;
+        const ly = (point.y - cy0) * scaleFactor;
+        vertex(lx, ly);
+      }
+      if (this.closed) endShape(CLOSE); else endShape();
+      pop();
+    }
+  }
+
+  // Draw primitive shapes (circle, rect, ellipse, line) with transforms applied
+  drawPrimitive(scaleFactor, offsetX, offsetY) {
+    const params = this.shapeParams;
+    if (!params) return false;
+
+    // Only handle core primitives here
+    const supported = this.elementType === 'circle' || this.elementType === 'rect' || this.elementType === 'ellipse' || this.elementType === 'line';
+    if (!supported) return false;
+
+    // Compute base center for local coordinates
+    const frame = this.computeFrame();
+    const cx0 = frame.base.cx0;
+    const cy0 = frame.base.cy0;
+
+    push();
+    // Translate to transformed center in output mm space
+    translate(
+      offsetX + (cx0 + (this.tx || 0)) * scaleFactor,
+      offsetY + (cy0 + (this.ty || 0)) * scaleFactor
+    );
+    // Apply rotation and non-uniform scale in model space
+    rotate(this.rotation || 0);
+    scale(this.sx || 1, this.sy || 1);
+
+    switch (this.elementType) {
+      case 'circle': {
+        const dx = (params.cx - cx0) * scaleFactor;
+        const dy = (params.cy - cy0) * scaleFactor;
+        const r = (params.r || 0) * scaleFactor;
+        circle(dx, dy, r * 2);
+        pop();
+        return true;
+      }
+      case 'rect': {
+        const dx = (params.x - cx0) * scaleFactor;
+        const dy = (params.y - cy0) * scaleFactor;
+        const w = (params.w || 0) * scaleFactor;
+        const h = (params.h || 0) * scaleFactor;
+        rect(dx, dy, w, h);
+        pop();
+        return true;
+      }
+      case 'ellipse': {
+        const dx = (params.cx - cx0) * scaleFactor;
+        const dy = (params.cy - cy0) * scaleFactor;
+        const w = (params.rx || 0) * 2 * scaleFactor;
+        const h = (params.ry || 0) * 2 * scaleFactor;
+        ellipse(dx, dy, w, h);
+        pop();
+        return true;
+      }
+      case 'line': {
+        const x1 = (params.x1 - cx0) * scaleFactor;
+        const y1 = (params.y1 - cy0) * scaleFactor;
+        const x2 = (params.x2 - cx0) * scaleFactor;
+        const y2 = (params.y2 - cy0) * scaleFactor;
+        line(x1, y1, x2, y2);
+        pop();
+        return true;
+      }
+      default:
+        pop();
+        return false;
+    }
   }
 
   // Hit test in pixel domain; options: { handlePx, rotationHandleOffsetPx, allowBodyMove }
@@ -492,7 +649,7 @@ function parseCSSStyles(svgDoc) {
     
     styleElements.forEach(styleElement => {
       const cssText = styleElement.textContent || styleElement.innerHTML;
-      console.log("Found CSS style element:", cssText.substring(0, 200) + "...");
+      svgDebugLog("Found CSS style element:", cssText.substring(0, 200) + "...");
       
       // Use regex to find CSS rules: selector { properties }
       const ruleRegex = /([^{]+)\{([^}]+)\}/g;
@@ -520,7 +677,7 @@ function parseCSSStyles(svgDoc) {
         
         if (Object.keys(styleObj).length > 0) {
           styles[selector] = styleObj;
-          console.log(`Parsed CSS rule for ${selector}:`, styleObj);
+          svgDebugLog(`Parsed CSS rule for ${selector}:`, styleObj);
         }
       }
     });
@@ -528,11 +685,11 @@ function parseCSSStyles(svgDoc) {
     return styles;
   }
   
-  function loadSVGFromTextArea() {
+  function loadSVGFromTextArea(append = false) {
     const svgText = svgInput.value().trim();
     if (!svgText) return;
     
-    console.log("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
+    svgDebugLog("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
   
     try {
       const parser = new DOMParser();
@@ -546,12 +703,12 @@ function parseCSSStyles(svgDoc) {
   
       // Parse CSS styles from <defs><style> section
       const cssStyles = parseCSSStyles(svgDoc);
-      console.log("Parsed CSS styles:", cssStyles);
+      svgDebugLog("Parsed CSS styles:", cssStyles);
   
-      svgParts = [];
+      if (!append) svgParts = [];
       const allElements = svgElement.querySelectorAll("path, circle, rect, line, polyline, polygon, ellipse");
       
-      console.log(`Found ${allElements.length} SVG elements:`, Array.from(allElements).map(el => el.tagName.toLowerCase()));
+      svgDebugLog(`Found ${allElements.length} SVG elements:`, Array.from(allElements).map(el => el.tagName.toLowerCase()));
   
       allElements.forEach((element, index) => {
         const raw = createSVGPartObject(element, index, cssStyles);
@@ -567,16 +724,25 @@ function parseCSSStyles(svgDoc) {
   
       if (svgParts.length > 0) {
         boundingBox = calculateBoundingBoxForParts(svgParts);
-        // Auto-select the first part (usually Path1) and clear transforms
-        selectedPartIndices = [0];
-        svgParts.forEach(p => { p.selected = false; p.tx = 0; p.ty = 0; p.rotation = 0; p.sx = 1; p.sy = 1; });
-        svgParts[0].selected = true;
+        // Selection behavior
+        if (!append) {
+          selectedPartIndices = [svgParts.length - 1];
+          svgParts.forEach(p => { p.selected = false; p.tx = 0; p.ty = 0; p.rotation = 0; p.sx = 1; p.sy = 1; });
+          svgParts[svgParts.length - 1].selected = true;
+        } else {
+          // Append mode: keep existing selection, select newly added parts too
+          const existingCount = svgParts.length - allElements.length;
+          for (let i = existingCount; i < svgParts.length; i++) {
+            svgParts[i].selected = true;
+            selectedPartIndices.push(i);
+          }
+        }
         updatePartSettings(svgParts[0]);
         
         updateSVGPartsList();
         updateInfoTable();
         redraw();
-        console.log(`Loaded ${svgParts.length} SVG parts as objects`);
+        svgDebugLog(`Loaded ${svgParts.length} SVG parts as objects`);
       }
     } catch (error) {
       console.error("Error loading SVG:", error);
@@ -588,7 +754,7 @@ function parseCSSStyles(svgDoc) {
     let shapeParams = null;
     const tagName = element.tagName.toLowerCase();
     
-    console.log(`Creating SVG part object for ${tagName} element:`, element);
+    svgDebugLog(`Creating SVG part object for ${tagName} element:`, element);
   
     // Store original shape parameters and convert to path data
     switch (tagName) {
@@ -684,7 +850,7 @@ function parseCSSStyles(svgDoc) {
       classes.forEach(className => {
         const cssRule = cssStyles[`.${className}`];
         if (cssRule) {
-          console.log(`Applying CSS rule for class ${className}:`, cssRule);
+          svgDebugLog(`Applying CSS rule for class ${className}:`, cssRule);
           if (cssRule.fill) cssFill = cssRule.fill;
           if (cssRule.stroke) cssStroke = cssRule.stroke;
           if (cssRule['stroke-width']) cssStrokeWidth = parseFloat(cssRule['stroke-width']);
@@ -697,7 +863,7 @@ function parseCSSStyles(svgDoc) {
     const finalStroke = cssStroke || stroke || styleStroke;
     const finalStrokeWidth = cssStrokeWidth || strokeWidth || styleStrokeWidth || 2;
   
-    console.log(`Element ${tagName} color parsing:`, {
+    svgDebugLog(`Element ${tagName} color parsing:`, {
       directFill: fill,
       styleFill: styleFill,
       cssFill: cssFill,
@@ -757,7 +923,7 @@ function parseCSSStyles(svgDoc) {
       addToOutline: false,
     };
   
-    console.log(`Created part object:`, {
+    svgDebugLog(`Created part object:`, {
       name: partObject.name,
       fillEnabled: partObject.fillSettings.enabled,
       fillColor: partObject.fillSettings.color,
@@ -771,7 +937,7 @@ function parseCSSStyles(svgDoc) {
   function parseColor(colorStr) {
     if (!colorStr || colorStr === 'none') return null;
     
-    console.log(`Parsing color: "${colorStr}"`);
+    svgDebugLog(`Parsing color: "${colorStr}"`);
     
     // Handle hex colors
     if (colorStr.startsWith('#')) {
@@ -782,7 +948,7 @@ function parseCSSStyles(svgDoc) {
           parseInt(hex[1] + hex[1], 16),
           parseInt(hex[2] + hex[2], 16)
         ];
-        console.log(`Parsed 3-digit hex:`, result);
+        svgDebugLog(`Parsed 3-digit hex:`, result);
         return result;
       } else if (hex.length === 6) {
         const result = [
@@ -790,7 +956,7 @@ function parseCSSStyles(svgDoc) {
           parseInt(hex.slice(2, 4), 16),
           parseInt(hex.slice(4, 6), 16)
         ];
-        console.log(`Parsed 6-digit hex:`, result);
+        svgDebugLog(`Parsed 6-digit hex:`, result);
         return result;
       }
     }
@@ -799,7 +965,7 @@ function parseCSSStyles(svgDoc) {
     const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
     if (rgbMatch) {
       const result = [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
-      console.log(`Parsed RGB:`, result);
+      svgDebugLog(`Parsed RGB:`, result);
       return result;
     }
     
@@ -807,7 +973,7 @@ function parseCSSStyles(svgDoc) {
     const rgbaMatch = colorStr.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/);
     if (rgbaMatch) {
       const result = [parseInt(rgbaMatch[1]), parseInt(rgbaMatch[2]), parseInt(rgbaMatch[3])];
-      console.log(`Parsed RGBA:`, result);
+      svgDebugLog(`Parsed RGBA:`, result);
       return result;
     }
     
@@ -838,11 +1004,11 @@ function parseCSSStyles(svgDoc) {
     
     const result = colorMap[colorStr.toLowerCase()];
     if (result) {
-      console.log(`Parsed color name "${colorStr}":`, result);
+      svgDebugLog(`Parsed color name "${colorStr}":`, result);
       return result;
     }
     
-    console.log(`Could not parse color: "${colorStr}"`);
+    svgDebugLog(`Could not parse color: "${colorStr}"`);
     return null;
   }
   
@@ -851,8 +1017,8 @@ function parseCSSStyles(svgDoc) {
     // Updated regex to include all SVG path commands
     const commands = pathData.match(/[MmLlHhVvCcSsQqTtAaZz][^MmLlHhVvCcSsQqTtAaZz]*/g);
   
-    console.log('Parsing path data:', pathData.substring(0, 100) + '...');
-    console.log('Found commands:', commands?.length || 0);
+    svgDebugLog('Parsing path data:', pathData.substring(0, 100) + '...');
+    svgDebugLog('Found commands:', commands?.length || 0);
   
     if (commands) {
       let currentX = 0, currentY = 0;
@@ -876,7 +1042,7 @@ function parseCSSStyles(svgDoc) {
   
         // Debug coordinate parsing for first few commands
         if (commands.indexOf(command) < 3) {
-          console.log(`Command: ${type}, coords:`, coords);
+          svgDebugLog(`Command: ${type}, coords:`, coords);
         }
   
         switch (type.toLowerCase()) {
@@ -937,7 +1103,7 @@ function parseCSSStyles(svgDoc) {
                 
                 // Debug first few curve segments
                 if (i < 12) {
-                  console.log(`Curve ${i/6}: from (${currentX.toFixed(1)}, ${currentY.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
+                  svgDebugLog(`Curve ${i/6}: from (${currentX.toFixed(1)}, ${currentY.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
                 }
                 
                 // Approximate Bézier curve with multiple points
@@ -1052,22 +1218,64 @@ function parseCSSStyles(svgDoc) {
   
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   
-    for (let part of parts) {
-      const points = getPathPoints(part.pathData);
-      console.log(`Part ${part.name} has ${points.length} points`);
-      
-      if (points.length > 0) {
-        console.log(`First point: (${points[0].x}, ${points[0].y})`);
-        console.log(`Last point: (${points[points.length-1].x}, ${points[points.length-1].y})`);
+    // Helper to apply a candidate bounds
+    function includeBounds(b) {
+      if (!b) return;
+      if (isFinite(b.minX) && isFinite(b.minY) && isFinite(b.maxX) && isFinite(b.maxY)) {
+        minX = Math.min(minX, b.minX);
+        minY = Math.min(minY, b.minY);
+        maxX = Math.max(maxX, b.maxX);
+        maxY = Math.max(maxY, b.maxY);
       }
-      
-      for (let point of points) {
-        if (!isNaN(point.x) && !isNaN(point.y)) {
-          minX = Math.min(minX, point.x);
-          minY = Math.min(minY, point.y);
-          maxX = Math.max(maxX, point.x);
-          maxY = Math.max(maxY, point.y);
+    }
+
+    // Compute bounds per part, preferring shape parameters when available
+    for (let part of parts) {
+      let b = null;
+      const sp = part.shapeParams;
+      switch (part.elementType) {
+        case 'circle':
+          if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.r === 'number') {
+            b = { minX: sp.cx - sp.r, minY: sp.cy - sp.r, maxX: sp.cx + sp.r, maxY: sp.cy + sp.r };
+          }
+          break;
+        case 'ellipse':
+          if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.rx === 'number' && typeof sp.ry === 'number') {
+            b = { minX: sp.cx - sp.rx, minY: sp.cy - sp.ry, maxX: sp.cx + sp.rx, maxY: sp.cy + sp.ry };
+          }
+          break;
+        case 'rect':
+          if (sp && typeof sp.x === 'number' && typeof sp.y === 'number' && typeof sp.w === 'number' && typeof sp.h === 'number') {
+            b = { minX: sp.x, minY: sp.y, maxX: sp.x + sp.w, maxY: sp.y + sp.h };
+          }
+          break;
+        case 'line':
+          if (sp && typeof sp.x1 === 'number' && typeof sp.y1 === 'number' && typeof sp.x2 === 'number' && typeof sp.y2 === 'number') {
+            b = { minX: Math.min(sp.x1, sp.x2), minY: Math.min(sp.y1, sp.y2), maxX: Math.max(sp.x1, sp.x2), maxY: Math.max(sp.y1, sp.y2) };
+          }
+          break;
+        case 'polygon':
+        case 'polyline':
+          if (sp && Array.isArray(sp.coords) && sp.coords.length >= 2) {
+            for (let i = 0; i < sp.coords.length; i += 2) {
+              const x = sp.coords[i];
+              const y = sp.coords[i + 1];
+              includeBounds({ minX: x, minY: y, maxX: x, maxY: y });
+            }
+            continue; // already included all points
+          }
+          break;
+      }
+
+      if (!b) {
+        const points = getPathPoints(part.pathData);
+        for (let point of points) {
+          if (!isNaN(point.x) && !isNaN(point.y)) {
+            includeBounds({ minX: point.x, minY: point.y, maxX: point.x, maxY: point.y });
+          }
         }
+      } else {
+        includeBounds(b);
       }
     }
   
@@ -1081,7 +1289,7 @@ function parseCSSStyles(svgDoc) {
         height: maxY - minY,
       };
       
-      console.log('Calculated bounding box:', bbox);
+      svgDebugLog('Calculated bounding box:', bbox);
       return bbox;
     } else {
       console.warn('No valid points found, using default bounding box');
@@ -1129,7 +1337,7 @@ function parseCSSStyles(svgDoc) {
         partButton.elt.style.cssText += colorIndicators;
       }
       
-      partButton.mousePressed((event) => selectPart(index, event));
+      partButton.mousePressed((event) => { event && event.stopPropagation && event.stopPropagation(); selectPart(index, event || window.event); });
     });
   }
   
@@ -1159,11 +1367,10 @@ function parseCSSStyles(svgDoc) {
     
     // Update UI based on selection
     if (selectedPartIndices.length === 1) {
-      // Single selection: show part settings
       updatePartSettings(svgParts[selectedPartIndices[0]]);
     } else if (selectedPartIndices.length > 1) {
-      // Multi-selection: show multi-edit settings
-      updateMultiPartSettings();
+      // Show first part settings; edits propagate to all selected
+      updatePartSettings(svgParts[selectedPartIndices[0]], true);
     } else {
       // No selection: clear settings
       updatePartSettings(null);
@@ -1181,11 +1388,9 @@ function parseCSSStyles(svgDoc) {
     selectedPartIndices = svgParts.map((_, index) => index);
     svgParts.forEach(part => part.selected = true);
     
-    // Update UI
-    if (selectedPartIndices.length > 1) {
-      updateMultiPartSettings();
-    } else if (selectedPartIndices.length === 1) {
-      updatePartSettings(svgParts[selectedPartIndices[0]]);
+    // Update UI: show first part's settings and propagate edits to all
+    if (selectedPartIndices.length >= 1) {
+      updatePartSettings(svgParts[selectedPartIndices[0]], true);
     }
     
     updateSVGPartsList();

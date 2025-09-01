@@ -348,6 +348,11 @@ function createUI() {
     .class("primary")
     .mousePressed(() => loadSVGFromTextArea());
   
+  createButton("Add SVG Parts")
+    .parent(svgButtonsContainer)
+    .class("secondary")
+    .mousePressed(() => loadSVGFromTextArea(true));
+  
   
   createButton("Clear")
     .parent(svgButtonsContainer)
@@ -356,6 +361,12 @@ function createUI() {
 
   // Initialize info display in right sidebar
   updateInfoDisplay();
+  // Initialize right panel with correct form for current selection
+  if (selectedPartIndices.length > 1) {
+    updateMultiPartSettings();
+  } else if (selectedPartIndices.length === 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]]);
+  }
 
   // Dimension controls
   outputWidthControl = createSliderControl(
@@ -550,39 +561,32 @@ function draw() {
   for (let i = 0; i < svgParts.length; i++) {
     const part = svgParts[i];
     
-    // Apply individual part settings
-    applyPartSettings(part);
-    
-    // Draw the part using p5.js primitives when possible (only if no transform)
-    const noTransform = (typeof part.hasTransform === 'function') ? !part.hasTransform() : true;
-    if (noTransform && part.shapeParams && usePrimitiveShape(part, scaleFactor, offsetX, offsetY)) {
-      // Primitive shape was drawn, continue to next part
-      continue;
-    }
-    
-    // Fall back to vertex-based drawing for complex paths or transformed shapes
-    const points = getPathPoints(part.pathData);
-    if (points.length >= 2) {
-      // Transform about part center
-      const frame = computeEditFrame(part);
-      const cx0 = frame.base.cx0;
-      const cy0 = frame.base.cy0;
-      const cosA = part.rotation ? Math.cos(part.rotation) : 1;
-      const sinA = part.rotation ? Math.sin(part.rotation) : 0;
-      beginShape();
-      for (let point of points) {
-        const dx = (point.x - cx0) * (part.sx || 1);
-        const dy = (point.y - cy0) * (part.sy || 1);
-        const rx = dx * cosA - dy * sinA;
-        const ry = dx * sinA + dy * cosA;
-        const x = offsetX + (rx + cx0 + (part.tx || 0)) * scaleFactor;
-        const y = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
-        vertex(x, y);
-      }
-      if (part.closed) {
-        endShape(CLOSE);
-      } else {
-        endShape();
+    if (typeof part.draw === 'function') {
+      part.draw(scaleFactor, offsetX, offsetY);
+    } else {
+      // Fallback to existing inline logic if draw is unavailable
+      applyPartSettings(part);
+      const points = getPathPoints(part.pathData);
+      if (points.length >= 2) {
+        const frame = computeEditFrame(part);
+        const cx0 = frame.base.cx0;
+        const cy0 = frame.base.cy0;
+        push();
+        translate(
+          offsetX + (cx0 + (part.tx || 0)) * scaleFactor,
+          offsetY + (cy0 + (part.ty || 0)) * scaleFactor
+        );
+        rotate(part.rotation || 0);
+        scale(part.sx || 1, part.sy || 1);
+        beginShape();
+        for (let j = 0; j < points.length; j++) {
+          const point = points[j];
+          const lx = (point.x - cx0) * scaleFactor;
+          const ly = (point.y - cy0) * scaleFactor;
+          vertex(lx, ly);
+        }
+        if (part.closed) endShape(CLOSE); else endShape();
+        pop();
       }
     }
   }
@@ -1181,13 +1185,16 @@ function mousePressed() {
       }
     }
   }
-  // Otherwise, start panning
-  isPanning = true;
-  lastMousePos.x = mouseX;
-  lastMousePos.y = mouseY;
-  editDrag.active = false;
-  editDrag.type = null;
-  return false;
+  // Otherwise, start panning only if inside canvas; don't block UI inputs
+  if (isPreviewInteracting) {
+    isPanning = true;
+    lastMousePos.x = mouseX;
+    lastMousePos.y = mouseY;
+    editDrag.active = false;
+    editDrag.type = null;
+    return false;
+  }
+  // Click was outside canvas; allow default behavior for inputs/controls
 }
 
 function mouseReleased() {
@@ -1699,7 +1706,7 @@ function updateMultiPartSettings() {
   });
 }
 
-function updatePartSettings(part) {
+function updatePartSettings(part, propagateToSelection = false) {
   const container = select("#part-settings");
   container.html(""); // Clear existing content
   
@@ -1800,7 +1807,7 @@ function updatePartSettings(part) {
   resetBtn.parent(btnRow);
   resetBtn.mousePressed(() => {
     part.tx = 0; part.ty = 0; part.sx = 1; part.sy = 1; part.rotation = 0;
-    updatePartSettings(part);
+    updatePartSettings(part, propagateToSelection);
     updateInfoTable();
     redraw();
   });
@@ -1820,11 +1827,16 @@ function updatePartSettings(part) {
     const rtv = parseOrNull(rotInput);
 
     let changed = false;
-    if (txv !== null) { part.tx = txv; changed = true; }
-    if (tyv !== null) { part.ty = tyv; changed = true; }
-    if (sxv !== null) { part.sx = Math.max(0.01, sxv); changed = true; }
-    if (syv !== null) { part.sy = Math.max(0.01, syv); changed = true; }
-    if (rtv !== null) { part.rotation = rtv * Math.PI / 180; changed = true; }
+    const applyTo = propagateToSelection && selectedPartIndices.length > 1
+      ? selectedPartIndices.map(i => svgParts[i])
+      : [part];
+    applyTo.forEach(p => {
+      if (txv !== null) { p.tx = txv; changed = true; }
+      if (tyv !== null) { p.ty = tyv; changed = true; }
+      if (sxv !== null) { p.sx = Math.max(0.01, sxv); changed = true; }
+      if (syv !== null) { p.sy = Math.max(0.01, syv); changed = true; }
+      if (rtv !== null) { p.rotation = rtv * Math.PI / 180; changed = true; }
+    });
     if (changed || finalize) {
       updateInfoTable();
       redraw();
@@ -1849,8 +1861,9 @@ function updatePartSettings(part) {
 
   // Stroke settings
   createCheckboxControl(container, "Enable Stroke", part.strokeSettings.enabled, (enabled) => {
-    part.strokeSettings.enabled = enabled;
-    updatePartSettings(part); // Refresh the UI to show/hide elements
+    const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+    applyTo.forEach(p => p.strokeSettings.enabled = enabled);
+    updatePartSettings(part, propagateToSelection); // Refresh the UI to show/hide elements
     updateInfoTable();
     redraw();
   });
@@ -1865,7 +1878,8 @@ function updatePartSettings(part) {
     strokeControlsDiv.style("display", "block");
     
     createColorControl(strokeControlsDiv, "Stroke Color", part.strokeSettings.color, (color) => {
-      part.strokeSettings.color = color;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.strokeSettings.color = color);
       updateSVGPartsList();
       updateInfoTable();
       redraw();
@@ -1876,33 +1890,37 @@ function updatePartSettings(part) {
       lines: "lines",
       sashiko: "sashiko"
     }, part.strokeSettings.mode, (value) => {
-      part.strokeSettings.mode = value;
-      applyStrokeModeDefaults(part, value);
-      updatePartSettings(part); // Refresh UI to show new values
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => { p.strokeSettings.mode = value; applyStrokeModeDefaults(p, value); });
+      updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(strokeControlsDiv, "Stroke Weight", 0.5, 10, part.strokeSettings.weight, 0.5, (value) => {
-      part.strokeSettings.weight = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.strokeSettings.weight = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(strokeControlsDiv, "Stroke Stitch Length", 0.1, 10, part.strokeSettings.stitchLength, 0.1, (value) => {
-      part.strokeSettings.stitchLength = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.strokeSettings.stitchLength = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(strokeControlsDiv, "Min Stitch Length", 0.1, 5, part.strokeSettings.minStitchLength, 0.1, (value) => {
-      part.strokeSettings.minStitchLength = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.strokeSettings.minStitchLength = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(strokeControlsDiv, "Resample Noise", 0.0, 2, part.strokeSettings.resampleNoise, 0.1, (value) => {
-      part.strokeSettings.resampleNoise = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.strokeSettings.resampleNoise = value);
       updateInfoTable();
       redraw();
     });
@@ -1925,8 +1943,9 @@ function updatePartSettings(part) {
 
   // Fill settings
   createCheckboxControl(container, "Enable Fill", part.fillSettings.enabled, (enabled) => {
-    part.fillSettings.enabled = enabled;
-    updatePartSettings(part); // Refresh the UI to show/hide elements
+    const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+    applyTo.forEach(p => p.fillSettings.enabled = enabled);
+    updatePartSettings(part, propagateToSelection); // Refresh the UI to show/hide elements
     updateInfoTable();
     redraw();
   });
@@ -1940,7 +1959,8 @@ function updatePartSettings(part) {
     fillControlsDiv.style("display", "block");
     
     createColorControl(fillControlsDiv, "Fill Color", part.fillSettings.color, (color) => {
-      part.fillSettings.color = color;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.fillSettings.color = color);
       updateSVGPartsList();
       updateInfoTable();
       redraw();
@@ -1951,33 +1971,37 @@ function updatePartSettings(part) {
       satin: "Satin",
       spiral: "Spiral"
     }, part.fillSettings.mode, (value) => {
-      part.fillSettings.mode = value;
-      applyFillModeDefaults(part, value);
-      updatePartSettings(part); // Refresh UI to show new values
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => { p.fillSettings.mode = value; applyFillModeDefaults(p, value); });
+      updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(fillControlsDiv, "Fill Stitch Length", 0.5, 10, part.fillSettings.stitchLength, 0.1, (value) => {
-      part.fillSettings.stitchLength = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.fillSettings.stitchLength = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(fillControlsDiv, "Row Spacing", 0.2, 5, part.fillSettings.rowSpacing, 0.1, (value) => {
-      part.fillSettings.rowSpacing = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.fillSettings.rowSpacing = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(fillControlsDiv, "Min Stitch Length", 0.1, 5, part.fillSettings.minStitchLength, 0.1, (value) => {
-      part.fillSettings.minStitchLength = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.fillSettings.minStitchLength = value);
       updateInfoTable();
       redraw();
     });
 
     createSliderControl(fillControlsDiv, "Resample Noise", 0.0, 2, part.fillSettings.resampleNoise, 0.1, (value) => {
-      part.fillSettings.resampleNoise = value;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => p.fillSettings.resampleNoise = value);
       updateInfoTable();
       redraw();
     });
@@ -1989,9 +2013,9 @@ function updatePartSettings(part) {
   // Outline settings (collapsible)
   const outlineSec = createCollapsibleSection(container, 'Outline Settings', false);
    // Add to outline control with automatic outline creation/removal
- createCheckboxControl(container, "Add to Outline", part.addToOutline, (addToOutline) => {
-  part.addToOutline = addToOutline;
-  togglePartOutline(part, addToOutline);
+ createCheckboxControl(outlineSec.content, "Add to Outline", part.addToOutline, (addToOutline) => {
+  const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+  applyTo.forEach(p => { p.addToOutline = addToOutline; togglePartOutline(p, addToOutline); });
 });
 
   // Outline type selection
