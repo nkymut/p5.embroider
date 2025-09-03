@@ -1,4 +1,6 @@
 // p5.js SVG Writer for Embroidery Patterns
+import { PAPER_SIZES, HOOP_PRESETS } from '../utils/embroidery-guides.js';
+
 export class SVGWriter {
   constructor() {
     this.data = [];
@@ -19,22 +21,9 @@ export class SVGWriter {
     };
   }
 
-  // Paper size definitions (in mm)
-  static PAPER_SIZES = {
-    A4: { width: 210, height: 297 },
-    A3: { width: 297, height: 420 },
-    A2: { width: 420, height: 594 },
-    A1: { width: 594, height: 841 },
-  };
-
-  // Hoop size presets (in mm)
-  static HOOP_PRESETS = {
-    "4x4": { width: 100, height: 100 },
-    "5x7": { width: 130, height: 180 },
-    "6x10": { width: 160, height: 250 },
-    "8x8": { width: 200, height: 200 },
-    "8x10": { width: 200, height: 250 },
-  };
+  // Use imported constants
+  static PAPER_SIZES = PAPER_SIZES;
+  static HOOP_PRESETS = HOOP_PRESETS;
 
   setOptions(options = {}) {
     this.options = { ...this.options, ...options };
@@ -167,19 +156,19 @@ export class SVGWriter {
     const hoop = this.options.hoopSize;
     const centerX = hoop.width / 2;
     const centerY = hoop.height / 2;
-    
+
     // Draw outer hoop ring (wood/plastic)
     const outerRadius = Math.min(hoop.width, hoop.height) / 2;
     const innerRadius = outerRadius - 3; // 3mm thick hoop ring
-    
+
     // Outer ring
     this.data.push(`<circle cx="${centerX}" cy="${centerY}" r="${outerRadius}" 
       fill="#8B4513" stroke="#654321" stroke-width="0.5" opacity="0.8"/>`);
-    
+
     // Inner ring (working area)
     this.data.push(`<circle cx="${centerX}" cy="${centerY}" r="${innerRadius}" 
       fill="#F5F5DC" stroke="#D2B48C" stroke-width="0.3" opacity="0.9"/>`);
-    
+
     // Add center marks for alignment
     this.data.push(`<line x1="${centerX - 2}" y1="${centerY}" x2="${centerX + 2}" y2="${centerY}" 
       stroke="#999999" stroke-width="0.2" opacity="0.6"/>`);
@@ -200,7 +189,7 @@ export class SVGWriter {
     const hoopCenterY = hoop.height / 2;
     const patternCenterX = bounds.x + bounds.width / 2;
     const patternCenterY = bounds.y + bounds.height / 2;
-    
+
     // Calculate offset to center pattern in hoop
     const offsetX = hoopCenterX - patternCenterX;
     const offsetY = hoopCenterY - patternCenterY;

@@ -2,6 +2,43 @@ import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
+import { 
+  drawGrid, 
+  drawHoopGuides, 
+  drawHoop,
+  drawManualHoop,
+  drawMachineHoop,
+  drawCornerMarks, 
+  drawPaperGuides,
+  drawEmbroideryWorkspace,
+  PAPER_SIZES,
+  HOOP_PRESETS,
+  getHoopPreset,
+  getPaperSize,
+  getHoopsByBrand,
+  getHoopsByType,
+  getHoopsBySize,
+  findBestHoop,
+  getHoopBrands,
+  getHoopTypes
+} from "./utils/embroidery-guides.js";
+import {
+  setupPreviewViewport,
+  endPreviewViewport,
+  handlePreviewZoom,
+  handlePreviewPan,
+  startPreviewPan,
+  stopPreviewPan,
+  resetPreviewViewport,
+  fitPreviewToContent,
+  getPreviewState,
+  screenToWorld,
+  worldToScreen,
+  drawPreviewControls,
+  handlePreviewControlsPressed,
+  handlePreviewControlsDragged,
+  handlePreviewControlsReleased
+} from "./utils/preview-viewport.js";
 
 let _DEBUG = false;
 
@@ -536,13 +573,14 @@ function setDebugMode(enabled) {
         _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
 
         if (_drawMode === "stitch" || _drawMode === "realistic") {
-          console.log("Drawing stitches:", {
-            count: stitches.length,
-            threadIndex: _strokeThreadIndex,
-            mode: _drawMode,
-            firstStitch: stitches.length > 0 ? stitches[0] : null,
-            lastStitch: stitches.length > 0 ? stitches[stitches.length - 1] : null,
-          });
+          if (_DEBUG)
+            console.log("Drawing stitches:", {
+              count: stitches.length,
+              threadIndex: _strokeThreadIndex,
+              mode: _drawMode,
+              firstStitch: stitches.length > 0 ? stitches[0] : null,
+              lastStitch: stitches.length > 0 ? stitches[stitches.length - 1] : null,
+            });
           drawStitches(stitches, _strokeThreadIndex);
         } else if (_drawMode === "p5") {
           _originalEndShapeFunc.call(_p5Instance, mode, count);
@@ -567,14 +605,15 @@ function setDebugMode(enabled) {
         }
 
         // After drawing both shapes
-        if(_DEBUG) console.log(
-          "Thread runs:",
-          _stitchData.threads[_strokeThreadIndex].runs.map((run) => ({
-            length: run.length,
-            first: run.length > 0 ? { x: run[0].x, y: run[0].y } : null,
-            last: run.length > 0 ? { x: run[run.length - 1].x, y: run[run.length - 1].y } : null,
-          })),
-        );
+        if (_DEBUG)
+          console.log(
+            "Thread runs:",
+            _stitchData.threads[_strokeThreadIndex].runs.map((run) => ({
+              length: run.length,
+              first: run.length > 0 ? { x: run[0].x, y: run[0].y } : null,
+              last: run.length > 0 ? { x: run[run.length - 1].x, y: run[run.length - 1].y } : null,
+            })),
+          );
       } else {
         _originalEndShapeFunc.apply(this, arguments);
       }
@@ -606,14 +645,7 @@ function setDebugMode(enabled) {
         }
 
         if (_drawMode === "p5") {
-          _originalVertexFunc.call(
-            _p5Instance,
-            mmToPixel(x),
-            mmToPixel(y),
-            moveTo,
-            u,
-            v,
-          );
+          _originalVertexFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y), moveTo, u, v);
         }
 
         // Add to appropriate container based on contour state
@@ -1439,7 +1471,6 @@ function setDebugMode(enabled) {
         if (_drawMode == "p5") {
           _originalTranslateFunc.call(this, mmToPixel(x), mmToPixel(y));
           //_originalTranslateFunc.call(this, x, y);
-          
         }
       } else {
         _originalTranslateFunc.apply(this, arguments);
@@ -2280,6 +2311,7 @@ function setDebugMode(enabled) {
     window.curve = _originalCurveFunc;
     window.bezier = _originalBezierFunc;
     window.ellipse = _originalEllipseFunc;
+    window.circle = _originalCircleFunc;
     window.strokeWeight = _originalStrokeWeightFunc;
     window.strokeJoin = _originalStrokeJoinFunc;
     window.point = _originalPointFunc;
@@ -4981,6 +5013,44 @@ function setDebugMode(enabled) {
   global.convertPathToStitches = convertPathToStitches;
   global.multiLineStitchingFromPath = multiLineStitchFromPath;
   global.sashikoStitchingFromPath = sashikoStitchFromPath;
+  
+  // Expose embroidery guide utilities
+  global.drawGrid = drawGrid;
+  global.drawHoopGuides = drawHoopGuides;
+  global.drawHoop = drawHoop;
+  global.drawManualHoop = drawManualHoop;
+  global.drawMachineHoop = drawMachineHoop;
+  global.drawCornerMarks = drawCornerMarks;
+  global.drawPaperGuides = drawPaperGuides;
+  global.drawEmbroideryWorkspace = drawEmbroideryWorkspace;
+  global.PAPER_SIZES = PAPER_SIZES;
+  global.HOOP_PRESETS = HOOP_PRESETS;
+  global.getHoopPreset = getHoopPreset;
+  global.getPaperSize = getPaperSize;
+  global.getHoopsByBrand = getHoopsByBrand;
+  global.getHoopsByType = getHoopsByType;
+  global.getHoopsBySize = getHoopsBySize;
+  global.findBestHoop = findBestHoop;
+  global.getHoopBrands = getHoopBrands;
+  global.getHoopTypes = getHoopTypes;
+  
+  // Expose preview viewport utilities  
+  global.setupPreviewViewport = setupPreviewViewport;
+  global.endPreviewViewport = endPreviewViewport;
+  global.handlePreviewZoom = handlePreviewZoom;
+  global.handlePreviewPan = handlePreviewPan;
+  global.startPreviewPan = startPreviewPan;
+  global.stopPreviewPan = stopPreviewPan;
+  global.resetPreviewViewport = resetPreviewViewport;
+  global.fitPreviewToContent = fitPreviewToContent;
+  global.getPreviewState = getPreviewState;
+  global.screenToWorld = screenToWorld;
+  global.worldToScreen = worldToScreen;
+  global.drawPreviewControls = drawPreviewControls;
+  global.handlePreviewControlsPressed = handlePreviewControlsPressed;
+  global.handlePreviewControlsDragged = handlePreviewControlsDragged;
+  global.handlePreviewControlsReleased = handlePreviewControlsReleased;
+  
   global.zigzagStitchFromPath = zigzagStitchFromPath;
   global.rampStitchFromPath = rampStitchFromPath;
   global.squareStitchFromPath = squareStitchFromPath;
@@ -5124,7 +5194,13 @@ function setDebugMode(enabled) {
    *   endRecord();
    * }
    */
-  global.embroideryOutlineFromPath = function (stitchDataArray, offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex", applyTransform = true) {
+  global.embroideryOutlineFromPath = function (
+    stitchDataArray,
+    offsetDistance,
+    threadIndex = _strokeThreadIndex,
+    outlineType = "convex",
+    applyTransform = true,
+  ) {
     if (!stitchDataArray || !Array.isArray(stitchDataArray)) {
       console.warn("🪡 p5.embroider says: embroideryOutlineFromPath() requires a valid array of stitch data");
       return [];
@@ -5139,9 +5215,9 @@ function setDebugMode(enabled) {
     const allPoints = [];
     for (const stitch of stitchDataArray) {
       // Handle different possible stitch data formats
-      if (stitch && typeof stitch === 'object') {
+      if (stitch && typeof stitch === "object") {
         let x, y;
-        
+
         // Check for direct x, y properties
         if (stitch.x != null && stitch.y != null) {
           x = stitch.x;
@@ -5158,7 +5234,7 @@ function setDebugMode(enabled) {
             }
           }
         }
-        
+
         // Add point if valid and not a special command
         if (x != null && y != null && isFinite(x) && isFinite(y) && !stitch.command) {
           allPoints.push({ x: x, y: y });
@@ -5295,7 +5371,8 @@ function setDebugMode(enabled) {
     if (points.length === 0) return [];
 
     // Calculate the centroid of the path
-    let centroidX = 0, centroidY = 0;
+    let centroidX = 0,
+      centroidY = 0;
     for (const point of points) {
       centroidX += point.x;
       centroidY += point.y;
@@ -5321,10 +5398,10 @@ function setDebugMode(enabled) {
     for (const point of points) {
       const dx = point.x - centroidX;
       const dy = point.y - centroidY;
-      
+
       const scaledX = centroidX + dx * scaleFactor;
       const scaledY = centroidY + dy * scaleFactor;
-      
+
       scaledPoints.push({ x: scaledX, y: scaledY });
     }
 
@@ -5332,14 +5409,12 @@ function setDebugMode(enabled) {
     if (scaledPoints.length > 2 && scaledPoints.length > 0) {
       const firstPoint = scaledPoints[0];
       const lastPoint = scaledPoints[scaledPoints.length - 1];
-      
+
       // Only add closing point if it's not already closed
-      const distance = Math.sqrt(
-        Math.pow(lastPoint.x - firstPoint.x, 2) + 
-        Math.pow(lastPoint.y - firstPoint.y, 2)
-      );
-      
-      if (distance > 0.1) { // Small threshold to avoid duplicate points
+      const distance = Math.sqrt(Math.pow(lastPoint.x - firstPoint.x, 2) + Math.pow(lastPoint.y - firstPoint.y, 2));
+
+      if (distance > 0.1) {
+        // Small threshold to avoid duplicate points
         scaledPoints.push({ x: firstPoint.x, y: firstPoint.y });
       }
     }
