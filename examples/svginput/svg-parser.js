@@ -3,10 +3,18 @@ let svgParts = []; // Array of SVG part objects (instances of EmbroiderPart)
 
 // Debug flag and helper for conditional logging
 let SVG_PARSER_DEBUG = false;
-function setSvgParserDebug(flag) { SVG_PARSER_DEBUG = !!flag; }
-function getSvgParserDebug() { return SVG_PARSER_DEBUG; }
-function svgDebugLog() { if (SVG_PARSER_DEBUG) { console.log.apply(console, arguments); } }
-if (typeof window !== 'undefined') {
+function setSvgParserDebug(flag) {
+  SVG_PARSER_DEBUG = !!flag;
+}
+function getSvgParserDebug() {
+  return SVG_PARSER_DEBUG;
+}
+function svgDebugLog() {
+  if (SVG_PARSER_DEBUG) {
+    console.log.apply(console, arguments);
+  }
+}
+if (typeof window !== "undefined") {
   window.setSvgParserDebug = setSvgParserDebug;
   window.getSvgParserDebug = getSvgParserDebug;
 }
@@ -41,31 +49,64 @@ class EmbroiderPart {
   // Compute transformed edit frame (center/size/rotation) in mm
   computeFrame() {
     // Prefer precise base bounds from shape parameters where available (avoids arc approximation issues)
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     const sp = this.shapeParams;
     switch (this.elementType) {
-      case 'circle':
-        if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.r === 'number') {
-          minX = sp.cx - sp.r; maxX = sp.cx + sp.r; minY = sp.cy - sp.r; maxY = sp.cy + sp.r;
+      case "circle":
+        if (sp && typeof sp.cx === "number" && typeof sp.cy === "number" && typeof sp.r === "number") {
+          minX = sp.cx - sp.r;
+          maxX = sp.cx + sp.r;
+          minY = sp.cy - sp.r;
+          maxY = sp.cy + sp.r;
         }
         break;
-      case 'ellipse':
-        if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.rx === 'number' && typeof sp.ry === 'number') {
-          minX = sp.cx - sp.rx; maxX = sp.cx + sp.rx; minY = sp.cy - sp.ry; maxY = sp.cy + sp.ry;
+      case "ellipse":
+        if (
+          sp &&
+          typeof sp.cx === "number" &&
+          typeof sp.cy === "number" &&
+          typeof sp.rx === "number" &&
+          typeof sp.ry === "number"
+        ) {
+          minX = sp.cx - sp.rx;
+          maxX = sp.cx + sp.rx;
+          minY = sp.cy - sp.ry;
+          maxY = sp.cy + sp.ry;
         }
         break;
-      case 'rect':
-        if (sp && typeof sp.x === 'number' && typeof sp.y === 'number' && typeof sp.w === 'number' && typeof sp.h === 'number') {
-          minX = sp.x; maxX = sp.x + sp.w; minY = sp.y; maxY = sp.y + sp.h;
+      case "rect":
+        if (
+          sp &&
+          typeof sp.x === "number" &&
+          typeof sp.y === "number" &&
+          typeof sp.w === "number" &&
+          typeof sp.h === "number"
+        ) {
+          minX = sp.x;
+          maxX = sp.x + sp.w;
+          minY = sp.y;
+          maxY = sp.y + sp.h;
         }
         break;
-      case 'line':
-        if (sp && typeof sp.x1 === 'number' && typeof sp.y1 === 'number' && typeof sp.x2 === 'number' && typeof sp.y2 === 'number') {
-          minX = Math.min(sp.x1, sp.x2); maxX = Math.max(sp.x1, sp.x2); minY = Math.min(sp.y1, sp.y2); maxY = Math.max(sp.y1, sp.y2);
+      case "line":
+        if (
+          sp &&
+          typeof sp.x1 === "number" &&
+          typeof sp.y1 === "number" &&
+          typeof sp.x2 === "number" &&
+          typeof sp.y2 === "number"
+        ) {
+          minX = Math.min(sp.x1, sp.x2);
+          maxX = Math.max(sp.x1, sp.x2);
+          minY = Math.min(sp.y1, sp.y2);
+          maxY = Math.max(sp.y1, sp.y2);
         }
         break;
-      case 'polygon':
-      case 'polyline':
+      case "polygon":
+      case "polyline":
         if (sp && Array.isArray(sp.coords) && sp.coords.length >= 2) {
           for (let i = 0; i < sp.coords.length; i += 2) {
             const x = sp.coords[i];
@@ -93,7 +134,13 @@ class EmbroiderPart {
       }
     }
     if (minX === Infinity) {
-      return { centerMm: { x: this.tx || 0, y: this.ty || 0 }, widthMm: 10, heightMm: 10, rotation: this.rotation || 0, base: { cx0: 0, cy0: 0, w0: 10, h0: 10 } };
+      return {
+        centerMm: { x: this.tx || 0, y: this.ty || 0 },
+        widthMm: 10,
+        heightMm: 10,
+        rotation: this.rotation || 0,
+        base: { cx0: 0, cy0: 0, w0: 10, h0: 10 },
+      };
     }
 
     const w0 = Math.max(1e-6, maxX - minX);
@@ -136,27 +183,27 @@ class EmbroiderPart {
 
     // Corners
     const corners = [
-      { x: -halfW, y: -halfH, id: 'nw' },
-      { x:  halfW, y: -halfH, id: 'ne' },
-      { x:  halfW, y:  halfH, id: 'se' },
-      { x: -halfW, y:  halfH, id: 'sw' },
+      { x: -halfW, y: -halfH, id: "nw" },
+      { x: halfW, y: -halfH, id: "ne" },
+      { x: halfW, y: halfH, id: "se" },
+      { x: -halfW, y: halfH, id: "sw" },
     ];
     for (const c of corners) {
       if (Math.abs(lx - c.x) <= handleMm && Math.abs(ly - c.y) <= handleMm) {
-        return { type: 'corner', corner: c.id };
+        return { type: "corner", corner: c.id };
       }
     }
 
     // Rotation handle (local +X axis)
     const rDistMm = Math.max(halfW, halfH) + rotationHandleOffsetMm;
     if (Math.hypot(lx - rDistMm, ly - 0) <= handleMm * 1.5) {
-      return { type: 'rotate' };
+      return { type: "rotate" };
     }
 
     // Body
     if (allowBodyMove) {
       if (lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH) {
-        return { type: 'body' };
+        return { type: "body" };
       }
     }
 
@@ -165,7 +212,18 @@ class EmbroiderPart {
 
   // Compute on-screen pixel frame using preview and layout params
   computeScreenFramePx(params) {
-    const { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY } = params;
+    const {
+      scaleFactor,
+      offsetX,
+      offsetY,
+      centerOffsetX,
+      centerOffsetY,
+      canvasWidth,
+      canvasHeight,
+      previewScale,
+      previewPanX,
+      previewPanY,
+    } = params;
     const frame = this.computeFrame();
     const mmX = offsetX + frame.centerMm.x * scaleFactor;
     const mmY = offsetY + frame.centerMm.y * scaleFactor;
@@ -184,12 +242,12 @@ class EmbroiderPart {
   draw(scaleFactor, offsetX, offsetY) {
     if (this.visible === false) return;
 
-    if (typeof applyPartSettings === 'function') {
+    if (typeof applyPartSettings === "function") {
       applyPartSettings(this);
     }
 
     // Prefer primitive drawing when shape parameters are available (with full transform support)
-    if (this.shapeParams && typeof this.drawPrimitive === 'function') {
+    if (this.shapeParams && typeof this.drawPrimitive === "function") {
       const didDraw = this.drawPrimitive(scaleFactor, offsetX, offsetY);
       if (didDraw) return;
     }
@@ -200,10 +258,7 @@ class EmbroiderPart {
       const cx0 = frame.base.cx0;
       const cy0 = frame.base.cy0;
       push();
-      translate(
-        offsetX + (cx0 + (this.tx || 0)) * scaleFactor,
-        offsetY + (cy0 + (this.ty || 0)) * scaleFactor
-      );
+      translate(offsetX + (cx0 + (this.tx || 0)) * scaleFactor, offsetY + (cy0 + (this.ty || 0)) * scaleFactor);
       rotate(this.rotation || 0);
       scale(this.sx || 1, this.sy || 1);
       beginShape();
@@ -213,7 +268,8 @@ class EmbroiderPart {
         const ly = (point.y - cy0) * scaleFactor;
         vertex(lx, ly);
       }
-      if (this.closed) endShape(CLOSE); else endShape();
+      if (this.closed) endShape(CLOSE);
+      else endShape();
       pop();
     }
   }
@@ -224,7 +280,11 @@ class EmbroiderPart {
     if (!params) return false;
 
     // Only handle core primitives here
-    const supported = this.elementType === 'circle' || this.elementType === 'rect' || this.elementType === 'ellipse' || this.elementType === 'line';
+    const supported =
+      this.elementType === "circle" ||
+      this.elementType === "rect" ||
+      this.elementType === "ellipse" ||
+      this.elementType === "line";
     if (!supported) return false;
 
     // Compute base center for local coordinates
@@ -234,16 +294,13 @@ class EmbroiderPart {
 
     push();
     // Translate to transformed center in output mm space
-    translate(
-      offsetX + (cx0 + (this.tx || 0)) * scaleFactor,
-      offsetY + (cy0 + (this.ty || 0)) * scaleFactor
-    );
+    translate(offsetX + (cx0 + (this.tx || 0)) * scaleFactor, offsetY + (cy0 + (this.ty || 0)) * scaleFactor);
     // Apply rotation and non-uniform scale in model space
     rotate(this.rotation || 0);
     scale(this.sx || 1, this.sy || 1);
 
     switch (this.elementType) {
-      case 'circle': {
+      case "circle": {
         const dx = (params.cx - cx0) * scaleFactor;
         const dy = (params.cy - cy0) * scaleFactor;
         const r = (params.r || 0) * scaleFactor;
@@ -251,7 +308,7 @@ class EmbroiderPart {
         pop();
         return true;
       }
-      case 'rect': {
+      case "rect": {
         const dx = (params.x - cx0) * scaleFactor;
         const dy = (params.y - cy0) * scaleFactor;
         const w = (params.w || 0) * scaleFactor;
@@ -260,7 +317,7 @@ class EmbroiderPart {
         pop();
         return true;
       }
-      case 'ellipse': {
+      case "ellipse": {
         const dx = (params.cx - cx0) * scaleFactor;
         const dy = (params.cy - cy0) * scaleFactor;
         const w = (params.rx || 0) * 2 * scaleFactor;
@@ -269,7 +326,7 @@ class EmbroiderPart {
         pop();
         return true;
       }
-      case 'line': {
+      case "line": {
         const x1 = (params.x1 - cx0) * scaleFactor;
         const y1 = (params.y1 - cy0) * scaleFactor;
         const x2 = (params.x2 - cx0) * scaleFactor;
@@ -299,26 +356,26 @@ class EmbroiderPart {
 
     // Corners
     const corners = [
-      { x: -halfW, y: -halfH, id: 'nw' },
-      { x:  halfW, y: -halfH, id: 'ne' },
-      { x:  halfW, y:  halfH, id: 'se' },
-      { x: -halfW, y:  halfH, id: 'sw' },
+      { x: -halfW, y: -halfH, id: "nw" },
+      { x: halfW, y: -halfH, id: "ne" },
+      { x: halfW, y: halfH, id: "se" },
+      { x: -halfW, y: halfH, id: "sw" },
     ];
     for (const c of corners) {
       if (Math.abs(lx - c.x) <= handlePx && Math.abs(ly - c.y) <= handlePx) {
-        return { type: 'corner', corner: c.id };
+        return { type: "corner", corner: c.id };
       }
     }
 
     // Rotation handle
     const rDistPx = Math.max(halfW, halfH) + rotationHandleOffsetPx;
     if (Math.hypot(lx - rDistPx, ly - 0) <= handlePx * 1.5) {
-      return { type: 'rotate' };
+      return { type: "rotate" };
     }
 
     if (allowBodyMove) {
       if (lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH) {
-        return { type: 'body' };
+        return { type: "body" };
       }
     }
     return { type: null };
@@ -326,7 +383,18 @@ class EmbroiderPart {
 
   // Convert pixel to model (SVG) coordinates by inverting preview and output layout
   _pixelToModel(mouseX, mouseY, params) {
-    const { centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY, offsetX, offsetY, scaleFactor } = params;
+    const {
+      centerOffsetX,
+      centerOffsetY,
+      canvasWidth,
+      canvasHeight,
+      previewScale,
+      previewPanX,
+      previewPanY,
+      offsetX,
+      offsetY,
+      scaleFactor,
+    } = params;
     const cx = canvasWidth / 2;
     const cy = canvasHeight / 2;
     // Undo preview transform to get output-pixel space
@@ -343,13 +411,17 @@ class EmbroiderPart {
 
   mousePressedPixel(mouseX, mouseY, params, options = {}) {
     const handlePx = Math.max(6, 8 / Math.max(0.0001, params.previewScale));
-    const hit = this.hitTestPixel(mouseX, mouseY, params, { handlePx, rotationHandleOffsetPx: Math.max(20, 30 / Math.max(0.0001, params.previewScale)), allowBodyMove: options.allowBodyMove });
+    const hit = this.hitTestPixel(mouseX, mouseY, params, {
+      handlePx,
+      rotationHandleOffsetPx: Math.max(20, 30 / Math.max(0.0001, params.previewScale)),
+      allowBodyMove: options.allowBodyMove,
+    });
     if (!hit || !hit.type) return false;
     const frame = this.computeFrame();
     const start = this._pixelToModel(mouseX, mouseY, params);
     this._drag = {
       active: true,
-      type: hit.type === 'body' ? 'move' : hit.type,
+      type: hit.type === "body" ? "move" : hit.type,
       corner: hit.corner || null,
       startMouseModel: { x: start.modelX, y: start.modelY },
       startCenterMm: { x: frame.centerMm.x, y: frame.centerMm.y },
@@ -373,14 +445,14 @@ class EmbroiderPart {
     const pos = this._pixelToModel(mouseX, mouseY, params);
     const mmX = pos.modelX;
     const mmY = pos.modelY;
-    if (drag.type === 'move') {
+    if (drag.type === "move") {
       const dx = mmX - drag.startMouseModel.x;
       const dy = mmY - drag.startMouseModel.y;
       this.tx = drag.startTx + dx;
       this.ty = drag.startTy + dy;
       return true;
     }
-    if (drag.type === 'corner') {
+    if (drag.type === "corner") {
       // Compute in start-space (stable center and rotation)
       const dx = mmX - drag.startCenterMm.x;
       const dy = mmY - drag.startCenterMm.y;
@@ -390,8 +462,8 @@ class EmbroiderPart {
       const ly = dx * sinA + dy * cosA;
       const halfBaseW = Math.max(1e-6, drag.baseW0 / 2);
       const halfBaseH = Math.max(1e-6, drag.baseH0 / 2);
-      let targetX = (drag.corner === 'ne' || drag.corner === 'se') ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
-      let targetY = (drag.corner === 'sw' || drag.corner === 'se') ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
+      let targetX = drag.corner === "ne" || drag.corner === "se" ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
+      let targetY = drag.corner === "sw" || drag.corner === "se" ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
       // Absolute new scales based on base geometry, not relative to current scale
       let absSx = Math.abs(targetX) / halfBaseW;
       let absSy = Math.abs(targetY) / halfBaseH;
@@ -407,7 +479,7 @@ class EmbroiderPart {
       }
       return true;
     }
-    if (drag.type === 'rotate') {
+    if (drag.type === "rotate") {
       const cxMm = drag.startCenterMm.x;
       const cyMm = drag.startCenterMm.y;
       const ang0 = Math.atan2(drag.startMouseModel.y - cyMm, drag.startMouseModel.x - cxMm);
@@ -429,7 +501,7 @@ class EmbroiderPart {
     const frame = this.computeFrame();
     this._drag = {
       active: true,
-      type: hit.type === 'body' ? 'move' : hit.type,
+      type: hit.type === "body" ? "move" : hit.type,
       corner: hit.corner || null,
       startMouseMm: { x: mmX, y: mmY },
       startCenterMm: { x: frame.centerMm.x, y: frame.centerMm.y },
@@ -448,14 +520,14 @@ class EmbroiderPart {
     if (!this._drag || !this._drag.active) return false;
     const { shiftKey = false, altKey = false } = modifiers;
     const drag = this._drag;
-    if (drag.type === 'move') {
+    if (drag.type === "move") {
       const dx = mmX - drag.startMouseMm.x;
       const dy = mmY - drag.startMouseMm.y;
       this.tx = drag.startTx + dx;
       this.ty = drag.startTy + dy;
       return true;
     }
-    if (drag.type === 'corner') {
+    if (drag.type === "corner") {
       const frame = this.computeFrame();
       const dx = mmX - frame.centerMm.x;
       const dy = mmY - frame.centerMm.y;
@@ -465,8 +537,8 @@ class EmbroiderPart {
       const ly = dx * sinA + dy * cosA;
       const halfW0 = drag.startWidthMm / 2;
       const halfH0 = drag.startHeightMm / 2;
-      let targetX = (drag.corner === 'ne' || drag.corner === 'se') ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
-      let targetY = (drag.corner === 'sw' || drag.corner === 'se') ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
+      let targetX = drag.corner === "ne" || drag.corner === "se" ? Math.max(1e-6, lx) : Math.min(-1e-6, lx);
+      let targetY = drag.corner === "sw" || drag.corner === "se" ? Math.max(1e-6, ly) : Math.min(-1e-6, ly);
       const newSx = Math.max(0.01, Math.abs(targetX / halfW0));
       const newSy = Math.max(0.01, Math.abs(targetY / halfH0));
       if (altKey) {
@@ -479,7 +551,7 @@ class EmbroiderPart {
       }
       return true;
     }
-    if (drag.type === 'rotate') {
+    if (drag.type === "rotate") {
       const cxMm = drag.startCenterMm.x;
       const cyMm = drag.startCenterMm.y;
       const ang0 = Math.atan2(drag.startMouseMm.y - cyMm, drag.startMouseMm.x - cxMm);
@@ -507,8 +579,7 @@ class EmbroiderPart {
 
 // SVG Presets with colored elements
 const presets = {
-
-    1:`<?xml version="1.0" encoding="UTF-8"?>
+  1: `<?xml version="1.0" encoding="UTF-8"?>
     <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470.39 1300.91">
       <defs>
         <style>
@@ -526,15 +597,15 @@ const presets = {
       <path d="M306.53,58.99c-30.53-2.7-48.64,28.33-55,54-3.39,25.39,5.23,52.31,32,60,60.9,7.76,80-97.36,23-114Z"/>
       <path class="cls-1" d="M459.25,1300.9c-7.13-253.24-65.36-677.54-56.02-931,9.46-50.12,45.96-99.68,62.02-147,8.38-35.87,7.58-82.88-21.01-110-11.91-13.96-38.93-18.24-56-20-.24-37.6-25.4-79.92-63-90-28.35-6.84-63.62.85-82.68,24.05h0c-29.57-32.73-82.65-33.38-116-6-20.87,16.94-33.56,47.46-34,74-32.5-6.5-64.95,21.3-78,49-19.56,44.39,7.67,103.2,27,143C86.81,345.61-2.39,1212.39.57,1299.94"/>
     </svg>`,
-    2: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  2: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
     <rect x="10" y="10" width="80" height="80" fill="#ff6b6b" stroke="#4ecdc4" stroke-width="2"/>
     <circle cx="50" cy="50" r="25" fill="#45b7d1" stroke="#f7dc6f" stroke-width="3"/>
   </svg>`,
-    3: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  3: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
     <polygon points="50,10 90,80 10,80" fill="#f39c12" stroke="#34495e" stroke-width="2"/>
     <circle cx="50" cy="50" r="15" fill="#1abc9c" stroke="#e67e22" stroke-width="2"/>
   </svg>`,
-    4: `<?xml version="1.0" encoding="UTF-8"?>
+  4: `<?xml version="1.0" encoding="UTF-8"?>
   <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3437.29 873.8">
     <defs>
       <style>
@@ -611,789 +682,845 @@ const presets = {
     <path class="cls-1" d="M1206.25,44.85v-26c11.78-.24,41.57-3.89,35.67,16.55-3.58,12.39-25.9,9.28-35.67,9.45Z"/>
     <path class="cls-1" d="M1398.25,62.81h-23.99s10.01-37.95,10.01-37.95c8.2,9.66,10.24,25.77,13.97,37.95Z"/>
   </svg>`,
-  };
+};
 
-  function loadPreset(num) {
-    if (presets[num]) {
-      svgInput.value(presets[num]);
-      // Reset title to default when loading preset
-      updateCanvasTitle();
+function loadPreset(num) {
+  if (presets[num]) {
+    svgInput.value(presets[num]);
+    // Reset title to default when loading preset
+    updateCanvasTitle();
+    loadSVGFromTextArea();
+  }
+}
+
+function handleSVGFileUpload(file) {
+  if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+    // Read the SVG file content
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const svgContent = e.target.result;
+      // Display the SVG content in the textarea
+      svgInput.value(svgContent);
+      // Update the title with filename
+      updateCanvasTitle(file.name);
+      // Automatically load the SVG
       loadSVGFromTextArea();
-    }
+    };
+    reader.readAsText(file);
+  } else {
+    console.error("Please upload a valid SVG file");
   }
-  
-  function handleSVGFileUpload(file) {
-    if (file && (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg'))) {
-      // Read the SVG file content
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const svgContent = e.target.result;
-        // Display the SVG content in the textarea
-        svgInput.value(svgContent);
-        // Update the title with filename
-        updateCanvasTitle(file.name);
-        // Automatically load the SVG
-        loadSVGFromTextArea();
-      };
-      reader.readAsText(file);
-    } else {
-      console.error('Please upload a valid SVG file');
-    }
-  }
-  
-
+}
 
 function parseCSSStyles(svgDoc) {
-    const styles = {};
-    const styleElements = svgDoc.querySelectorAll("defs style, style");
-    
-    styleElements.forEach(styleElement => {
-      const cssText = styleElement.textContent || styleElement.innerHTML;
-      svgDebugLog("Found CSS style element:", cssText.substring(0, 200) + "...");
-      
-      // Use regex to find CSS rules: selector { properties }
-      const ruleRegex = /([^{]+)\{([^}]+)\}/g;
+  const styles = {};
+  const styleElements = svgDoc.querySelectorAll("defs style, style");
+
+  styleElements.forEach((styleElement) => {
+    const cssText = styleElement.textContent || styleElement.innerHTML;
+    svgDebugLog("Found CSS style element:", cssText.substring(0, 200) + "...");
+
+    // Use regex to find CSS rules: selector { properties }
+    const ruleRegex = /([^{]+)\{([^}]+)\}/g;
+    let match;
+
+    while ((match = ruleRegex.exec(cssText)) !== null) {
+      const selector = match[1].trim();
+      const properties = match[2].trim();
+
+      // Parse properties
+      const styleObj = {};
+      properties.split(";").forEach((prop) => {
+        const trimmedProp = prop.trim();
+        if (trimmedProp) {
+          const colonIndex = trimmedProp.indexOf(":");
+          if (colonIndex > 0) {
+            const property = trimmedProp.substring(0, colonIndex).trim();
+            const value = trimmedProp.substring(colonIndex + 1).trim();
+            if (property && value) {
+              styleObj[property] = value;
+            }
+          }
+        }
+      });
+
+      if (Object.keys(styleObj).length > 0) {
+        styles[selector] = styleObj;
+        svgDebugLog(`Parsed CSS rule for ${selector}:`, styleObj);
+      }
+    }
+  });
+
+  return styles;
+}
+
+function loadSVGFromTextArea(append = false) {
+  const svgText = svgInput.value().trim();
+  if (!svgText) return;
+
+  svgDebugLog("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
+
+  try {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+    const svgElement = svgDoc.querySelector("svg");
+
+    if (!svgElement) {
+      console.error("No <svg> element found");
+      return;
+    }
+
+    // Parse CSS styles from <defs><style> section
+    const cssStyles = parseCSSStyles(svgDoc);
+    svgDebugLog("Parsed CSS styles:", cssStyles);
+
+    if (!append) svgParts = [];
+    const allElements = svgElement.querySelectorAll("path, circle, rect, line, polyline, polygon, ellipse");
+
+    svgDebugLog(
+      `Found ${allElements.length} SVG elements:`,
+      Array.from(allElements).map((el) => el.tagName.toLowerCase()),
+    );
+
+    allElements.forEach((element, index) => {
+      const raw = createSVGPartObject(element, index, cssStyles);
+      if (raw) {
+        const wrapped = new EmbroiderPart(raw);
+        // Ensure closed is set for shapes that are inherently closed
+        if (
+          wrapped.elementType === "circle" ||
+          wrapped.elementType === "ellipse" ||
+          wrapped.elementType === "rect" ||
+          wrapped.elementType === "polygon"
+        ) {
+          wrapped.closed = true;
+        }
+        svgParts.push(wrapped);
+      }
+    });
+
+    if (svgParts.length > 0) {
+      boundingBox = calculateBoundingBoxForParts(svgParts);
+      // Selection behavior
+      if (!append) {
+        selectedPartIndices = [0];
+        svgParts.forEach((p) => {
+          p.selected = false;
+          p.tx = 0;
+          p.ty = 0;
+          p.rotation = 0;
+          p.sx = 1;
+          p.sy = 1;
+        });
+        svgParts[0].selected = true;
+      } else {
+        // Append mode: keep existing selection, select newly added parts too
+        const existingCount = svgParts.length - allElements.length;
+        for (let i = existingCount; i < svgParts.length; i++) {
+          svgParts[i].selected = true;
+          selectedPartIndices.push(i);
+        }
+      }
+      updatePartSettings(svgParts[selectedPartIndices[0]]);
+
+      updateSVGPartsList();
+      updateInfoTable();
+      redraw();
+      svgDebugLog(`Loaded ${svgParts.length} SVG parts as objects`);
+    }
+  } catch (error) {
+    console.error("Error loading SVG:", error);
+  }
+}
+
+function createSVGPartObject(element, index, cssStyles = {}) {
+  let pathData = "";
+  let shapeParams = null;
+  const tagName = element.tagName.toLowerCase();
+
+  svgDebugLog(`Creating SVG part object for ${tagName} element:`, element);
+
+  // Store original shape parameters and convert to path data
+  switch (tagName) {
+    case "path":
+      pathData = element.getAttribute("d");
+      break;
+    case "circle":
+      const cx = parseFloat(element.getAttribute("cx") || 0);
+      const cy = parseFloat(element.getAttribute("cy") || 0);
+      const r = parseFloat(element.getAttribute("r") || 0);
+      if (r > 0) {
+        shapeParams = { cx, cy, r };
+        pathData = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
+      }
+      break;
+    case "rect":
+      const x = parseFloat(element.getAttribute("x") || 0);
+      const y = parseFloat(element.getAttribute("y") || 0);
+      const w = parseFloat(element.getAttribute("width") || 0);
+      const h = parseFloat(element.getAttribute("height") || 0);
+      if (w > 0 && h > 0) {
+        shapeParams = { x, y, w, h };
+        pathData = `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+      }
+      break;
+    case "ellipse":
+      const ex = parseFloat(element.getAttribute("cx") || 0);
+      const ey = parseFloat(element.getAttribute("cy") || 0);
+      const rx = parseFloat(element.getAttribute("rx") || 0);
+      const ry = parseFloat(element.getAttribute("ry") || 0);
+      if (rx > 0 && ry > 0) {
+        shapeParams = { cx: ex, cy: ey, rx, ry };
+        pathData = `M ${ex - rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex + rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex - rx} ${ey} Z`;
+      }
+      break;
+    case "line":
+      const x1 = parseFloat(element.getAttribute("x1") || 0);
+      const y1 = parseFloat(element.getAttribute("y1") || 0);
+      const x2 = parseFloat(element.getAttribute("x2") || 0);
+      const y2 = parseFloat(element.getAttribute("y2") || 0);
+      shapeParams = { x1, y1, x2, y2 };
+      pathData = `M ${x1} ${y1} L ${x2} ${y2}`;
+      break;
+    case "polygon":
+    case "polyline":
+      const points = element.getAttribute("points") || "";
+      const coords = points
+        .trim()
+        .split(/[\s,]+/)
+        .map(parseFloat);
+      if (coords.length >= 4) {
+        shapeParams = { coords, closed: tagName === "polygon" };
+        pathData = `M ${coords[0]} ${coords[1]}`;
+        for (let i = 2; i < coords.length; i += 2) {
+          pathData += ` L ${coords[i]} ${coords[i + 1]}`;
+        }
+        if (tagName === "polygon") {
+          pathData += " Z";
+        }
+      }
+      break;
+  }
+
+  if (!pathData) return null;
+
+  // Parse SVG attributes for colors with improved handling
+  const stroke = element.getAttribute("stroke");
+  const fill = element.getAttribute("fill");
+  const strokeWidth = parseFloat(element.getAttribute("stroke-width")) || 2;
+
+  // Also check for style attribute which might contain fill/stroke
+  const styleAttr = element.getAttribute("style");
+  let styleFill = null;
+  let styleStroke = null;
+  let styleStrokeWidth = null;
+
+  if (styleAttr) {
+    // Parse style attribute for fill, stroke, and stroke-width
+    const styleRules = styleAttr.split(";");
+    styleRules.forEach((rule) => {
+      const [property, value] = rule.split(":").map((s) => s.trim());
+      if (property === "fill") styleFill = value;
+      else if (property === "stroke") styleStroke = value;
+      else if (property === "stroke-width") styleStrokeWidth = parseFloat(value);
+    });
+  }
+
+  // Check for CSS classes and apply their styles
+  let cssFill = null;
+  let cssStroke = null;
+  let cssStrokeWidth = null;
+
+  const classAttr = element.getAttribute("class");
+  if (classAttr && cssStyles) {
+    const classes = classAttr
+      .split(" ")
+      .map((c) => c.trim())
+      .filter((c) => c);
+    classes.forEach((className) => {
+      const cssRule = cssStyles[`.${className}`];
+      if (cssRule) {
+        svgDebugLog(`Applying CSS rule for class ${className}:`, cssRule);
+        if (cssRule.fill) cssFill = cssRule.fill;
+        if (cssRule.stroke) cssStroke = cssRule.stroke;
+        if (cssRule["stroke-width"]) cssStrokeWidth = parseFloat(cssRule["stroke-width"]);
+      }
+    });
+  }
+
+  // Use CSS values if available, otherwise fall back to style attributes, then direct attributes
+  const finalFill = cssFill || fill || styleFill;
+  const finalStroke = cssStroke || stroke || styleStroke;
+  const finalStrokeWidth = cssStrokeWidth || strokeWidth || styleStrokeWidth || 2;
+
+  svgDebugLog(`Element ${tagName} color parsing:`, {
+    directFill: fill,
+    styleFill: styleFill,
+    cssFill: cssFill,
+    finalFill: finalFill,
+    directStroke: stroke,
+    styleStroke: styleStroke,
+    cssStroke: cssStroke,
+    finalStroke: finalStroke,
+    classes: element.getAttribute("class"),
+    hasFill: finalFill && finalFill !== "none",
+    hasStroke: finalStroke && finalStroke !== "none",
+  });
+
+  // Determine default behavior when no colors are specified
+  const hasStroke = finalStroke && finalStroke !== "none";
+  const hasFill = finalFill && finalFill !== "none";
+  const hasNoColors = !hasStroke && !hasFill;
+
+  // Determine if path should be closed (has Z command)
+  const shouldClose = pathData.toLowerCase().includes("z");
+
+  // Create structured object
+  const partObject = {
+    id: `part_${index}`,
+    name: `${tagName.charAt(0).toUpperCase() + tagName.slice(1)} ${index + 1}`,
+    elementType: tagName,
+    pathData: pathData,
+    shapeParams: shapeParams,
+    closed: shouldClose,
+    originalAttributes: {
+      stroke: finalStroke,
+      fill: finalFill,
+      "stroke-width": finalStrokeWidth,
+      style: styleAttr,
+      class: element.getAttribute("class"),
+    },
+    strokeSettings: {
+      enabled: hasStroke || hasNoColors, // Enable stroke if explicitly set or no colors specified
+      color: parseColor(finalStroke) || [128, 128, 128], // Gray default stroke
+      weight: finalStrokeWidth,
+      mode: "straight",
+      stitchLength: 2,
+      minStitchLength: 0.5,
+      resampleNoise: 0.0,
+    },
+    fillSettings: {
+      enabled: hasFill, // Only enable fill if explicitly set
+      color: parseColor(finalFill) || [0, 0, 0], // Black default fill
+      mode: "tatami",
+      stitchLength: 3,
+      minStitchLength: 0.5,
+      resampleNoise: 0.0,
+      rowSpacing: 0.8,
+    },
+    visible: true,
+    selected: false,
+    addToOutline: false,
+  };
+
+  svgDebugLog(`Created part object:`, {
+    name: partObject.name,
+    fillEnabled: partObject.fillSettings.enabled,
+    fillColor: partObject.fillSettings.color,
+    strokeEnabled: partObject.strokeSettings.enabled,
+    strokeColor: partObject.strokeSettings.color,
+  });
+
+  return partObject;
+}
+
+function parseColor(colorStr) {
+  if (!colorStr || colorStr === "none") return null;
+
+  svgDebugLog(`Parsing color: "${colorStr}"`);
+
+  // Handle hex colors
+  if (colorStr.startsWith("#")) {
+    const hex = colorStr.slice(1);
+    if (hex.length === 3) {
+      const result = [parseInt(hex[0] + hex[0], 16), parseInt(hex[1] + hex[1], 16), parseInt(hex[2] + hex[2], 16)];
+      svgDebugLog(`Parsed 3-digit hex:`, result);
+      return result;
+    } else if (hex.length === 6) {
+      const result = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
+      svgDebugLog(`Parsed 6-digit hex:`, result);
+      return result;
+    }
+  }
+
+  // Handle RGB colors
+  const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+  if (rgbMatch) {
+    const result = [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
+    svgDebugLog(`Parsed RGB:`, result);
+    return result;
+  }
+
+  // Handle RGBA colors (ignore alpha for now)
+  const rgbaMatch = colorStr.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/);
+  if (rgbaMatch) {
+    const result = [parseInt(rgbaMatch[1]), parseInt(rgbaMatch[2]), parseInt(rgbaMatch[3])];
+    svgDebugLog(`Parsed RGBA:`, result);
+    return result;
+  }
+
+  // Handle common color names with extended palette
+  const colorMap = {
+    black: [0, 0, 0],
+    white: [255, 255, 255],
+    red: [255, 0, 0],
+    green: [0, 255, 0],
+    blue: [0, 0, 255],
+    yellow: [255, 255, 0],
+    cyan: [0, 255, 255],
+    magenta: [255, 0, 255],
+    orange: [255, 165, 0],
+    purple: [128, 0, 128],
+    pink: [255, 192, 203],
+    brown: [165, 42, 42],
+    gray: [128, 128, 128],
+    grey: [128, 128, 128],
+    lime: [0, 255, 0],
+    navy: [0, 0, 128],
+    teal: [0, 128, 128],
+    olive: [128, 128, 0],
+    maroon: [128, 0, 0],
+    fuchsia: [255, 0, 255],
+    aqua: [0, 255, 255],
+  };
+
+  const result = colorMap[colorStr.toLowerCase()];
+  if (result) {
+    svgDebugLog(`Parsed color name "${colorStr}":`, result);
+    return result;
+  }
+
+  svgDebugLog(`Could not parse color: "${colorStr}"`);
+  return null;
+}
+
+function getPathPoints(pathData) {
+  const points = [];
+  // Updated regex to include all SVG path commands
+  const commands = pathData.match(/[MmLlHhVvCcSsQqTtAaZz][^MmLlHhVvCcSsQqTtAaZz]*/g);
+
+  svgDebugLog("Parsing path data:", pathData.substring(0, 100) + "...");
+  svgDebugLog("Found commands:", commands?.length || 0);
+
+  if (commands) {
+    let currentX = 0,
+      currentY = 0;
+    let lastControlX = 0,
+      lastControlY = 0; // For smooth curve commands
+
+    for (let command of commands) {
+      const type = command[0];
+      // Robust coordinate parsing for SVG paths
+      const coordString = command.slice(1).trim();
+      const coords = [];
+
+      // Use regex to match floating point numbers (including negative)
+      const numberRegex = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/g;
       let match;
-      
-      while ((match = ruleRegex.exec(cssText)) !== null) {
-        const selector = match[1].trim();
-        const properties = match[2].trim();
-        
-        // Parse properties
-        const styleObj = {};
-        properties.split(';').forEach(prop => {
-          const trimmedProp = prop.trim();
-          if (trimmedProp) {
-            const colonIndex = trimmedProp.indexOf(':');
-            if (colonIndex > 0) {
-              const property = trimmedProp.substring(0, colonIndex).trim();
-              const value = trimmedProp.substring(colonIndex + 1).trim();
-              if (property && value) {
-                styleObj[property] = value;
+      while ((match = numberRegex.exec(coordString)) !== null) {
+        const num = parseFloat(match[0]);
+        if (!isNaN(num)) {
+          coords.push(num);
+        }
+      }
+
+      // Debug coordinate parsing for first few commands
+      if (commands.indexOf(command) < 3) {
+        svgDebugLog(`Command: ${type}, coords:`, coords);
+      }
+
+      switch (type.toLowerCase()) {
+        case "m": // Move to
+        case "l": // Line to
+          if (coords.length >= 2) {
+            currentX = type === type.toUpperCase() ? coords[0] : currentX + coords[0];
+            currentY = type === type.toUpperCase() ? coords[1] : currentY + coords[1];
+            points.push({ x: currentX, y: currentY });
+
+            // Handle additional coordinate pairs for moveto/lineto
+            for (let i = 2; i < coords.length; i += 2) {
+              if (i + 1 < coords.length) {
+                currentX = type === type.toUpperCase() ? coords[i] : currentX + coords[i];
+                currentY = type === type.toUpperCase() ? coords[i + 1] : currentY + coords[i + 1];
+                points.push({ x: currentX, y: currentY });
               }
             }
           }
-        });
-        
-        if (Object.keys(styleObj).length > 0) {
-          styles[selector] = styleObj;
-          svgDebugLog(`Parsed CSS rule for ${selector}:`, styleObj);
-        }
-      }
-    });
-    
-    return styles;
-  }
-  
-  function loadSVGFromTextArea(append = false) {
-    const svgText = svgInput.value().trim();
-    if (!svgText) return;
-    
-    svgDebugLog("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
-  
-    try {
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
-      const svgElement = svgDoc.querySelector("svg");
-  
-      if (!svgElement) {
-        console.error("No <svg> element found");
-        return;
-      }
-  
-      // Parse CSS styles from <defs><style> section
-      const cssStyles = parseCSSStyles(svgDoc);
-      svgDebugLog("Parsed CSS styles:", cssStyles);
-  
-      if (!append) svgParts = [];
-      const allElements = svgElement.querySelectorAll("path, circle, rect, line, polyline, polygon, ellipse");
-      
-      svgDebugLog(`Found ${allElements.length} SVG elements:`, Array.from(allElements).map(el => el.tagName.toLowerCase()));
-  
-      allElements.forEach((element, index) => {
-        const raw = createSVGPartObject(element, index, cssStyles);
-        if (raw) {
-          const wrapped = new EmbroiderPart(raw);
-          // Ensure closed is set for shapes that are inherently closed
-          if (wrapped.elementType === 'circle' || wrapped.elementType === 'ellipse' || wrapped.elementType === 'rect' || wrapped.elementType === 'polygon') {
-            wrapped.closed = true;
+          break;
+
+        case "h": // Horizontal line to
+          if (coords.length >= 1) {
+            currentX = type === "H" ? coords[0] : currentX + coords[0];
+            points.push({ x: currentX, y: currentY });
           }
-          svgParts.push(wrapped);
-        }
-      });
-  
-      if (svgParts.length > 0) {
-        boundingBox = calculateBoundingBoxForParts(svgParts);
-        // Selection behavior
-        if (!append) {
-          selectedPartIndices = [svgParts.length - 1];
-          svgParts.forEach(p => { p.selected = false; p.tx = 0; p.ty = 0; p.rotation = 0; p.sx = 1; p.sy = 1; });
-          svgParts[svgParts.length - 1].selected = true;
-        } else {
-          // Append mode: keep existing selection, select newly added parts too
-          const existingCount = svgParts.length - allElements.length;
-          for (let i = existingCount; i < svgParts.length; i++) {
-            svgParts[i].selected = true;
-            selectedPartIndices.push(i);
+          break;
+
+        case "v": // Vertical line to
+          if (coords.length >= 1) {
+            currentY = type === "V" ? coords[0] : currentY + coords[0];
+            points.push({ x: currentX, y: currentY });
           }
-        }
-        updatePartSettings(svgParts[0]);
-        
-        updateSVGPartsList();
-        updateInfoTable();
-        redraw();
-        svgDebugLog(`Loaded ${svgParts.length} SVG parts as objects`);
+          break;
+
+        case "c": // Cubic Bézier curve
+          for (let i = 0; i < coords.length; i += 6) {
+            if (i + 5 < coords.length) {
+              let cp1x, cp1y, cp2x, cp2y, endX, endY;
+
+              if (type === "C") {
+                // Absolute coordinates
+                cp1x = coords[i];
+                cp1y = coords[i + 1];
+                cp2x = coords[i + 2];
+                cp2y = coords[i + 3];
+                endX = coords[i + 4];
+                endY = coords[i + 5];
+              } else {
+                // Relative coordinates
+                cp1x = currentX + coords[i];
+                cp1y = currentY + coords[i + 1];
+                cp2x = currentX + coords[i + 2];
+                cp2y = currentY + coords[i + 3];
+                endX = currentX + coords[i + 4];
+                endY = currentY + coords[i + 5];
+              }
+
+              // Debug first few curve segments
+              if (i < 12) {
+                svgDebugLog(
+                  `Curve ${i / 6}: from (${currentX.toFixed(1)}, ${currentY.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`,
+                );
+              }
+
+              // Approximate Bézier curve with multiple points
+              const numPoints = 10;
+              for (let j = 0; j <= numPoints; j++) {
+                const t = j / numPoints;
+                const x =
+                  Math.pow(1 - t, 3) * currentX +
+                  3 * Math.pow(1 - t, 2) * t * cp1x +
+                  3 * (1 - t) * t * t * cp2x +
+                  t * t * t * endX;
+                const y =
+                  Math.pow(1 - t, 3) * currentY +
+                  3 * Math.pow(1 - t, 2) * t * cp1y +
+                  3 * (1 - t) * t * t * cp2y +
+                  t * t * t * endY;
+                points.push({ x: x, y: y });
+              }
+
+              lastControlX = cp2x;
+              lastControlY = cp2y;
+              currentX = endX;
+              currentY = endY;
+            }
+          }
+          break;
+
+        case "s": // Smooth cubic Bézier curve
+          for (let i = 0; i < coords.length; i += 4) {
+            if (i + 3 < coords.length) {
+              // First control point is reflection of last control point
+              const cp1x = 2 * currentX - lastControlX;
+              const cp1y = 2 * currentY - lastControlY;
+              const cp2x = type === "S" ? coords[i] : currentX + coords[i];
+              const cp2y = type === "S" ? coords[i + 1] : currentY + coords[i + 1];
+              const endX = type === "S" ? coords[i + 2] : currentX + coords[i + 2];
+              const endY = type === "S" ? coords[i + 3] : currentY + coords[i + 3];
+
+              // Approximate Bézier curve with multiple points
+              const numPoints = 10;
+              for (let t = 0; t <= 1; t += 1 / numPoints) {
+                const x =
+                  Math.pow(1 - t, 3) * currentX +
+                  3 * Math.pow(1 - t, 2) * t * cp1x +
+                  3 * (1 - t) * t * t * cp2x +
+                  t * t * t * endX;
+                const y =
+                  Math.pow(1 - t, 3) * currentY +
+                  3 * Math.pow(1 - t, 2) * t * cp1y +
+                  3 * (1 - t) * t * t * cp2y +
+                  t * t * t * endY;
+                points.push({ x: x, y: y });
+              }
+
+              lastControlX = cp2x;
+              lastControlY = cp2y;
+              currentX = endX;
+              currentY = endY;
+            }
+          }
+          break;
+
+        case "q": // Quadratic Bézier curve
+          for (let i = 0; i < coords.length; i += 4) {
+            if (i + 3 < coords.length) {
+              const cpx = type === "Q" ? coords[i] : currentX + coords[i];
+              const cpy = type === "Q" ? coords[i + 1] : currentY + coords[i + 1];
+              const endX = type === "Q" ? coords[i + 2] : currentX + coords[i + 2];
+              const endY = type === "Q" ? coords[i + 3] : currentY + coords[i + 3];
+
+              // Approximate quadratic Bézier curve
+              const numPoints = 8;
+              for (let t = 0; t <= 1; t += 1 / numPoints) {
+                const x = (1 - t) * (1 - t) * currentX + 2 * (1 - t) * t * cpx + t * t * endX;
+                const y = (1 - t) * (1 - t) * currentY + 2 * (1 - t) * t * cpy + t * t * endY;
+                points.push({ x: x, y: y });
+              }
+
+              lastControlX = cpx;
+              lastControlY = cpy;
+              currentX = endX;
+              currentY = endY;
+            }
+          }
+          break;
+
+        case "a": // Elliptical arc - simplified approximation
+          for (let i = 0; i < coords.length; i += 7) {
+            if (i + 6 < coords.length) {
+              // For now, approximate arc with a straight line
+              // Full arc implementation would be quite complex
+              const endX = type === "A" ? coords[i + 5] : currentX + coords[i + 5];
+              const endY = type === "A" ? coords[i + 6] : currentY + coords[i + 6];
+
+              // Simple approximation - draw multiple points along arc
+              const numPoints = 15;
+              for (let j = 1; j <= numPoints; j++) {
+                const t = j / numPoints;
+                const x = currentX + t * (endX - currentX);
+                const y = currentY + t * (endY - currentY);
+                points.push({ x: x, y: y });
+              }
+
+              currentX = endX;
+              currentY = endY;
+            }
+          }
+          break;
+
+        case "z": // Close path
+          // Don't add extra points, just note that path is closed
+          break;
       }
-    } catch (error) {
-      console.error("Error loading SVG:", error);
     }
   }
-  
-  function createSVGPartObject(element, index, cssStyles = {}) {
-    let pathData = "";
-    let shapeParams = null;
-    const tagName = element.tagName.toLowerCase();
-    
-    svgDebugLog(`Creating SVG part object for ${tagName} element:`, element);
-  
-    // Store original shape parameters and convert to path data
-    switch (tagName) {
-      case "path":
-        pathData = element.getAttribute("d");
-        break;
+
+  return points;
+}
+
+function calculateBoundingBoxForParts(parts) {
+  if (!parts || parts.length === 0) {
+    return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
+  }
+
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
+
+  // Helper to apply a candidate bounds
+  function includeBounds(b) {
+    if (!b) return;
+    if (isFinite(b.minX) && isFinite(b.minY) && isFinite(b.maxX) && isFinite(b.maxY)) {
+      minX = Math.min(minX, b.minX);
+      minY = Math.min(minY, b.minY);
+      maxX = Math.max(maxX, b.maxX);
+      maxY = Math.max(maxY, b.maxY);
+    }
+  }
+
+  // Compute bounds per part, preferring shape parameters when available
+  for (let part of parts) {
+    let b = null;
+    const sp = part.shapeParams;
+    switch (part.elementType) {
       case "circle":
-        const cx = parseFloat(element.getAttribute("cx") || 0);
-        const cy = parseFloat(element.getAttribute("cy") || 0);
-        const r = parseFloat(element.getAttribute("r") || 0);
-        if (r > 0) {
-          shapeParams = { cx, cy, r };
-          pathData = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
-        }
-        break;
-      case "rect":
-        const x = parseFloat(element.getAttribute("x") || 0);
-        const y = parseFloat(element.getAttribute("y") || 0);
-        const w = parseFloat(element.getAttribute("width") || 0);
-        const h = parseFloat(element.getAttribute("height") || 0);
-        if (w > 0 && h > 0) {
-          shapeParams = { x, y, w, h };
-          pathData = `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
+        if (sp && typeof sp.cx === "number" && typeof sp.cy === "number" && typeof sp.r === "number") {
+          b = { minX: sp.cx - sp.r, minY: sp.cy - sp.r, maxX: sp.cx + sp.r, maxY: sp.cy + sp.r };
         }
         break;
       case "ellipse":
-        const ex = parseFloat(element.getAttribute("cx") || 0);
-        const ey = parseFloat(element.getAttribute("cy") || 0);
-        const rx = parseFloat(element.getAttribute("rx") || 0);
-        const ry = parseFloat(element.getAttribute("ry") || 0);
-        if (rx > 0 && ry > 0) {
-          shapeParams = { cx: ex, cy: ey, rx, ry };
-          pathData = `M ${ex - rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex + rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex - rx} ${ey} Z`;
+        if (
+          sp &&
+          typeof sp.cx === "number" &&
+          typeof sp.cy === "number" &&
+          typeof sp.rx === "number" &&
+          typeof sp.ry === "number"
+        ) {
+          b = { minX: sp.cx - sp.rx, minY: sp.cy - sp.ry, maxX: sp.cx + sp.rx, maxY: sp.cy + sp.ry };
+        }
+        break;
+      case "rect":
+        if (
+          sp &&
+          typeof sp.x === "number" &&
+          typeof sp.y === "number" &&
+          typeof sp.w === "number" &&
+          typeof sp.h === "number"
+        ) {
+          b = { minX: sp.x, minY: sp.y, maxX: sp.x + sp.w, maxY: sp.y + sp.h };
         }
         break;
       case "line":
-        const x1 = parseFloat(element.getAttribute("x1") || 0);
-        const y1 = parseFloat(element.getAttribute("y1") || 0);
-        const x2 = parseFloat(element.getAttribute("x2") || 0);
-        const y2 = parseFloat(element.getAttribute("y2") || 0);
-        shapeParams = { x1, y1, x2, y2 };
-        pathData = `M ${x1} ${y1} L ${x2} ${y2}`;
+        if (
+          sp &&
+          typeof sp.x1 === "number" &&
+          typeof sp.y1 === "number" &&
+          typeof sp.x2 === "number" &&
+          typeof sp.y2 === "number"
+        ) {
+          b = {
+            minX: Math.min(sp.x1, sp.x2),
+            minY: Math.min(sp.y1, sp.y2),
+            maxX: Math.max(sp.x1, sp.x2),
+            maxY: Math.max(sp.y1, sp.y2),
+          };
+        }
         break;
       case "polygon":
       case "polyline":
-        const points = element.getAttribute("points") || "";
-        const coords = points.trim().split(/[\s,]+/).map(parseFloat);
-        if (coords.length >= 4) {
-          shapeParams = { coords, closed: tagName === "polygon" };
-          pathData = `M ${coords[0]} ${coords[1]}`;
-          for (let i = 2; i < coords.length; i += 2) {
-            pathData += ` L ${coords[i]} ${coords[i + 1]}`;
+        if (sp && Array.isArray(sp.coords) && sp.coords.length >= 2) {
+          for (let i = 0; i < sp.coords.length; i += 2) {
+            const x = sp.coords[i];
+            const y = sp.coords[i + 1];
+            includeBounds({ minX: x, minY: y, maxX: x, maxY: y });
           }
-          if (tagName === "polygon") {
-            pathData += " Z";
-          }
+          continue; // already included all points
         }
         break;
     }
-  
-    if (!pathData) return null;
-  
-    // Parse SVG attributes for colors with improved handling
-    const stroke = element.getAttribute('stroke');
-    const fill = element.getAttribute('fill');
-    const strokeWidth = parseFloat(element.getAttribute('stroke-width')) || 2;
-    
-    // Also check for style attribute which might contain fill/stroke
-    const styleAttr = element.getAttribute('style');
-    let styleFill = null;
-    let styleStroke = null;
-    let styleStrokeWidth = null;
-    
-    if (styleAttr) {
-      // Parse style attribute for fill, stroke, and stroke-width
-      const styleRules = styleAttr.split(';');
-      styleRules.forEach(rule => {
-        const [property, value] = rule.split(':').map(s => s.trim());
-        if (property === 'fill') styleFill = value;
-        else if (property === 'stroke') styleStroke = value;
-        else if (property === 'stroke-width') styleStrokeWidth = parseFloat(value);
-      });
-    }
-    
-    // Check for CSS classes and apply their styles
-    let cssFill = null;
-    let cssStroke = null;
-    let cssStrokeWidth = null;
-    
-    const classAttr = element.getAttribute('class');
-    if (classAttr && cssStyles) {
-      const classes = classAttr.split(' ').map(c => c.trim()).filter(c => c);
-      classes.forEach(className => {
-        const cssRule = cssStyles[`.${className}`];
-        if (cssRule) {
-          svgDebugLog(`Applying CSS rule for class ${className}:`, cssRule);
-          if (cssRule.fill) cssFill = cssRule.fill;
-          if (cssRule.stroke) cssStroke = cssRule.stroke;
-          if (cssRule['stroke-width']) cssStrokeWidth = parseFloat(cssRule['stroke-width']);
-        }
-      });
-    }
-    
-    // Use CSS values if available, otherwise fall back to style attributes, then direct attributes
-    const finalFill = cssFill || fill || styleFill;
-    const finalStroke = cssStroke || stroke || styleStroke;
-    const finalStrokeWidth = cssStrokeWidth || strokeWidth || styleStrokeWidth || 2;
-  
-    svgDebugLog(`Element ${tagName} color parsing:`, {
-      directFill: fill,
-      styleFill: styleFill,
-      cssFill: cssFill,
-      finalFill: finalFill,
-      directStroke: stroke,
-      styleStroke: styleStroke,
-      cssStroke: cssStroke,
-      finalStroke: finalStroke,
-      classes: element.getAttribute('class'),
-      hasFill: finalFill && finalFill !== 'none',
-      hasStroke: finalStroke && finalStroke !== 'none'
-    });
-  
-    // Determine default behavior when no colors are specified
-    const hasStroke = finalStroke && finalStroke !== 'none';
-    const hasFill = finalFill && finalFill !== 'none';
-    const hasNoColors = !hasStroke && !hasFill;
-  
-    // Determine if path should be closed (has Z command)
-    const shouldClose = pathData.toLowerCase().includes('z');
-  
-    // Create structured object
-    const partObject = {
-      id: `part_${index}`,
-      name: `${tagName.charAt(0).toUpperCase() + tagName.slice(1)} ${index + 1}`,
-      elementType: tagName,
-      pathData: pathData,
-      shapeParams: shapeParams,
-      closed: shouldClose,
-      originalAttributes: {
-        stroke: finalStroke,
-        fill: finalFill,
-        'stroke-width': finalStrokeWidth,
-        style: styleAttr,
-        class: element.getAttribute('class'),
-      },
-      strokeSettings: {
-        enabled: hasStroke || hasNoColors, // Enable stroke if explicitly set or no colors specified
-        color: parseColor(finalStroke) || [128, 128, 128], // Gray default stroke
-        weight: finalStrokeWidth,
-        mode: "straight",
-        stitchLength: 2,
-        minStitchLength: 0.5,
-        resampleNoise: 0.0,
-      },
-      fillSettings: {
-        enabled: hasFill, // Only enable fill if explicitly set
-        color: parseColor(finalFill) || [0, 0, 0], // Black default fill
-        mode: "tatami",
-        stitchLength: 3,
-        minStitchLength: 0.5,
-        resampleNoise: 0.0,
-        rowSpacing: 0.8,
-      },
-      visible: true,
-      selected: false,
-      addToOutline: false,
-    };
-  
-    svgDebugLog(`Created part object:`, {
-      name: partObject.name,
-      fillEnabled: partObject.fillSettings.enabled,
-      fillColor: partObject.fillSettings.color,
-      strokeEnabled: partObject.strokeSettings.enabled,
-      strokeColor: partObject.strokeSettings.color
-    });
-  
-    return partObject;
-  }
-  
-  function parseColor(colorStr) {
-    if (!colorStr || colorStr === 'none') return null;
-    
-    svgDebugLog(`Parsing color: "${colorStr}"`);
-    
-    // Handle hex colors
-    if (colorStr.startsWith('#')) {
-      const hex = colorStr.slice(1);
-      if (hex.length === 3) {
-        const result = [
-          parseInt(hex[0] + hex[0], 16),
-          parseInt(hex[1] + hex[1], 16),
-          parseInt(hex[2] + hex[2], 16)
-        ];
-        svgDebugLog(`Parsed 3-digit hex:`, result);
-        return result;
-      } else if (hex.length === 6) {
-        const result = [
-          parseInt(hex.slice(0, 2), 16),
-          parseInt(hex.slice(2, 4), 16),
-          parseInt(hex.slice(4, 6), 16)
-        ];
-        svgDebugLog(`Parsed 6-digit hex:`, result);
-        return result;
-      }
-    }
-    
-    // Handle RGB colors
-    const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
-    if (rgbMatch) {
-      const result = [parseInt(rgbMatch[1]), parseInt(rgbMatch[2]), parseInt(rgbMatch[3])];
-      svgDebugLog(`Parsed RGB:`, result);
-      return result;
-    }
-    
-    // Handle RGBA colors (ignore alpha for now)
-    const rgbaMatch = colorStr.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*[\d.]+\s*\)/);
-    if (rgbaMatch) {
-      const result = [parseInt(rgbaMatch[1]), parseInt(rgbaMatch[2]), parseInt(rgbaMatch[3])];
-      svgDebugLog(`Parsed RGBA:`, result);
-      return result;
-    }
-    
-    // Handle common color names with extended palette
-    const colorMap = {
-      'black': [0, 0, 0],
-      'white': [255, 255, 255],
-      'red': [255, 0, 0],
-      'green': [0, 255, 0],
-      'blue': [0, 0, 255],
-      'yellow': [255, 255, 0],
-      'cyan': [0, 255, 255],
-      'magenta': [255, 0, 255],
-      'orange': [255, 165, 0],
-      'purple': [128, 0, 128],
-      'pink': [255, 192, 203],
-      'brown': [165, 42, 42],
-      'gray': [128, 128, 128],
-      'grey': [128, 128, 128],
-      'lime': [0, 255, 0],
-      'navy': [0, 0, 128],
-      'teal': [0, 128, 128],
-      'olive': [128, 128, 0],
-      'maroon': [128, 0, 0],
-      'fuchsia': [255, 0, 255],
-      'aqua': [0, 255, 255]
-    };
-    
-    const result = colorMap[colorStr.toLowerCase()];
-    if (result) {
-      svgDebugLog(`Parsed color name "${colorStr}":`, result);
-      return result;
-    }
-    
-    svgDebugLog(`Could not parse color: "${colorStr}"`);
-    return null;
-  }
-  
-  function getPathPoints(pathData) {
-    const points = [];
-    // Updated regex to include all SVG path commands
-    const commands = pathData.match(/[MmLlHhVvCcSsQqTtAaZz][^MmLlHhVvCcSsQqTtAaZz]*/g);
-  
-    svgDebugLog('Parsing path data:', pathData.substring(0, 100) + '...');
-    svgDebugLog('Found commands:', commands?.length || 0);
-  
-    if (commands) {
-      let currentX = 0, currentY = 0;
-      let lastControlX = 0, lastControlY = 0; // For smooth curve commands
-  
-      for (let command of commands) {
-        const type = command[0];
-        // Robust coordinate parsing for SVG paths
-        const coordString = command.slice(1).trim();
-        const coords = [];
-        
-        // Use regex to match floating point numbers (including negative)
-        const numberRegex = /[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/g;
-        let match;
-        while ((match = numberRegex.exec(coordString)) !== null) {
-          const num = parseFloat(match[0]);
-          if (!isNaN(num)) {
-            coords.push(num);
-          }
-        }
-  
-        // Debug coordinate parsing for first few commands
-        if (commands.indexOf(command) < 3) {
-          svgDebugLog(`Command: ${type}, coords:`, coords);
-        }
-  
-        switch (type.toLowerCase()) {
-          case "m": // Move to
-          case "l": // Line to
-            if (coords.length >= 2) {
-              currentX = type === type.toUpperCase() ? coords[0] : currentX + coords[0];
-              currentY = type === type.toUpperCase() ? coords[1] : currentY + coords[1];
-              points.push({ x: currentX, y: currentY });
-              
-              // Handle additional coordinate pairs for moveto/lineto
-              for (let i = 2; i < coords.length; i += 2) {
-                if (i + 1 < coords.length) {
-                  currentX = type === type.toUpperCase() ? coords[i] : currentX + coords[i];
-                  currentY = type === type.toUpperCase() ? coords[i + 1] : currentY + coords[i + 1];
-                  points.push({ x: currentX, y: currentY });
-                }
-              }
-            }
-            break;
-            
-          case "h": // Horizontal line to
-            if (coords.length >= 1) {
-              currentX = type === "H" ? coords[0] : currentX + coords[0];
-              points.push({ x: currentX, y: currentY });
-            }
-            break;
-            
-          case "v": // Vertical line to
-            if (coords.length >= 1) {
-              currentY = type === "V" ? coords[0] : currentY + coords[0];
-              points.push({ x: currentX, y: currentY });
-            }
-            break;
-            
-          case "c": // Cubic Bézier curve
-            for (let i = 0; i < coords.length; i += 6) {
-              if (i + 5 < coords.length) {
-                let cp1x, cp1y, cp2x, cp2y, endX, endY;
-                
-                if (type === "C") {
-                  // Absolute coordinates
-                  cp1x = coords[i];
-                  cp1y = coords[i + 1];
-                  cp2x = coords[i + 2];
-                  cp2y = coords[i + 3];
-                  endX = coords[i + 4];
-                  endY = coords[i + 5];
-                } else {
-                  // Relative coordinates
-                  cp1x = currentX + coords[i];
-                  cp1y = currentY + coords[i + 1];
-                  cp2x = currentX + coords[i + 2];
-                  cp2y = currentY + coords[i + 3];
-                  endX = currentX + coords[i + 4];
-                  endY = currentY + coords[i + 5];
-                }
-                
-                // Debug first few curve segments
-                if (i < 12) {
-                  svgDebugLog(`Curve ${i/6}: from (${currentX.toFixed(1)}, ${currentY.toFixed(1)}) to (${endX.toFixed(1)}, ${endY.toFixed(1)})`);
-                }
-                
-                // Approximate Bézier curve with multiple points
-                const numPoints = 10;
-                for (let j = 0; j <= numPoints; j++) {
-                  const t = j / numPoints;
-                  const x = Math.pow(1-t, 3) * currentX + 3 * Math.pow(1-t, 2) * t * cp1x + 
-                           3 * (1-t) * t * t * cp2x + t * t * t * endX;
-                  const y = Math.pow(1-t, 3) * currentY + 3 * Math.pow(1-t, 2) * t * cp1y + 
-                           3 * (1-t) * t * t * cp2y + t * t * t * endY;
-                  points.push({ x: x, y: y });
-                }
-                
-                lastControlX = cp2x;
-                lastControlY = cp2y;
-                currentX = endX;
-                currentY = endY;
-              }
-            }
-            break;
-            
-          case "s": // Smooth cubic Bézier curve
-            for (let i = 0; i < coords.length; i += 4) {
-              if (i + 3 < coords.length) {
-                // First control point is reflection of last control point
-                const cp1x = 2 * currentX - lastControlX;
-                const cp1y = 2 * currentY - lastControlY;
-                const cp2x = type === "S" ? coords[i] : currentX + coords[i];
-                const cp2y = type === "S" ? coords[i + 1] : currentY + coords[i + 1];
-                const endX = type === "S" ? coords[i + 2] : currentX + coords[i + 2];
-                const endY = type === "S" ? coords[i + 3] : currentY + coords[i + 3];
-                
-                // Approximate Bézier curve with multiple points
-                const numPoints = 10;
-                for (let t = 0; t <= 1; t += 1 / numPoints) {
-                  const x = Math.pow(1-t, 3) * currentX + 3 * Math.pow(1-t, 2) * t * cp1x + 
-                           3 * (1-t) * t * t * cp2x + t * t * t * endX;
-                  const y = Math.pow(1-t, 3) * currentY + 3 * Math.pow(1-t, 2) * t * cp1y + 
-                           3 * (1-t) * t * t * cp2y + t * t * t * endY;
-                  points.push({ x: x, y: y });
-                }
-                
-                lastControlX = cp2x;
-                lastControlY = cp2y;
-                currentX = endX;
-                currentY = endY;
-              }
-            }
-            break;
-            
-          case "q": // Quadratic Bézier curve
-            for (let i = 0; i < coords.length; i += 4) {
-              if (i + 3 < coords.length) {
-                const cpx = type === "Q" ? coords[i] : currentX + coords[i];
-                const cpy = type === "Q" ? coords[i + 1] : currentY + coords[i + 1];
-                const endX = type === "Q" ? coords[i + 2] : currentX + coords[i + 2];
-                const endY = type === "Q" ? coords[i + 3] : currentY + coords[i + 3];
-                
-                // Approximate quadratic Bézier curve
-                const numPoints = 8;
-                for (let t = 0; t <= 1; t += 1 / numPoints) {
-                  const x = (1-t) * (1-t) * currentX + 2 * (1-t) * t * cpx + t * t * endX;
-                  const y = (1-t) * (1-t) * currentY + 2 * (1-t) * t * cpy + t * t * endY;
-                  points.push({ x: x, y: y });
-                }
-                
-                lastControlX = cpx;
-                lastControlY = cpy;
-                currentX = endX;
-                currentY = endY;
-              }
-            }
-            break;
-            
-          case "a": // Elliptical arc - simplified approximation
-            for (let i = 0; i < coords.length; i += 7) {
-              if (i + 6 < coords.length) {
-                // For now, approximate arc with a straight line
-                // Full arc implementation would be quite complex
-                const endX = type === "A" ? coords[i + 5] : currentX + coords[i + 5];
-                const endY = type === "A" ? coords[i + 6] : currentY + coords[i + 6];
-                
-                // Simple approximation - draw multiple points along arc
-                const numPoints = 15;
-                for (let j = 1; j <= numPoints; j++) {
-                  const t = j / numPoints;
-                  const x = currentX + t * (endX - currentX);
-                  const y = currentY + t * (endY - currentY);
-                  points.push({ x: x, y: y });
-                }
-                
-                currentX = endX;
-                currentY = endY;
-              }
-            }
-            break;
-            
-          case "z": // Close path
-            // Don't add extra points, just note that path is closed
-            break;
-        }
-      }
-    }
-  
-    return points;
-  }
-  
-  function calculateBoundingBoxForParts(parts) {
-    if (!parts || parts.length === 0) {
-      return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
-    }
-  
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  
-    // Helper to apply a candidate bounds
-    function includeBounds(b) {
-      if (!b) return;
-      if (isFinite(b.minX) && isFinite(b.minY) && isFinite(b.maxX) && isFinite(b.maxY)) {
-        minX = Math.min(minX, b.minX);
-        minY = Math.min(minY, b.minY);
-        maxX = Math.max(maxX, b.maxX);
-        maxY = Math.max(maxY, b.maxY);
-      }
-    }
 
-    // Compute bounds per part, preferring shape parameters when available
-    for (let part of parts) {
-      let b = null;
-      const sp = part.shapeParams;
-      switch (part.elementType) {
-        case 'circle':
-          if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.r === 'number') {
-            b = { minX: sp.cx - sp.r, minY: sp.cy - sp.r, maxX: sp.cx + sp.r, maxY: sp.cy + sp.r };
-          }
-          break;
-        case 'ellipse':
-          if (sp && typeof sp.cx === 'number' && typeof sp.cy === 'number' && typeof sp.rx === 'number' && typeof sp.ry === 'number') {
-            b = { minX: sp.cx - sp.rx, minY: sp.cy - sp.ry, maxX: sp.cx + sp.rx, maxY: sp.cy + sp.ry };
-          }
-          break;
-        case 'rect':
-          if (sp && typeof sp.x === 'number' && typeof sp.y === 'number' && typeof sp.w === 'number' && typeof sp.h === 'number') {
-            b = { minX: sp.x, minY: sp.y, maxX: sp.x + sp.w, maxY: sp.y + sp.h };
-          }
-          break;
-        case 'line':
-          if (sp && typeof sp.x1 === 'number' && typeof sp.y1 === 'number' && typeof sp.x2 === 'number' && typeof sp.y2 === 'number') {
-            b = { minX: Math.min(sp.x1, sp.x2), minY: Math.min(sp.y1, sp.y2), maxX: Math.max(sp.x1, sp.x2), maxY: Math.max(sp.y1, sp.y2) };
-          }
-          break;
-        case 'polygon':
-        case 'polyline':
-          if (sp && Array.isArray(sp.coords) && sp.coords.length >= 2) {
-            for (let i = 0; i < sp.coords.length; i += 2) {
-              const x = sp.coords[i];
-              const y = sp.coords[i + 1];
-              includeBounds({ minX: x, minY: y, maxX: x, maxY: y });
-            }
-            continue; // already included all points
-          }
-          break;
-      }
-
-      if (!b) {
-        const points = getPathPoints(part.pathData);
-        for (let point of points) {
-          if (!isNaN(point.x) && !isNaN(point.y)) {
-            includeBounds({ minX: point.x, minY: point.y, maxX: point.x, maxY: point.y });
-          }
+    if (!b) {
+      const points = getPathPoints(part.pathData);
+      for (let point of points) {
+        if (!isNaN(point.x) && !isNaN(point.y)) {
+          includeBounds({ minX: point.x, minY: point.y, maxX: point.x, maxY: point.y });
         }
-      } else {
-        includeBounds(b);
-      }
-    }
-  
-    if (minX !== Infinity && maxX !== -Infinity) {
-      const bbox = {
-        minX: minX,
-        minY: minY,
-        maxX: maxX,
-        maxY: maxY,
-        width: maxX - minX,
-        height: maxY - minY,
-      };
-      
-      svgDebugLog('Calculated bounding box:', bbox);
-      return bbox;
-    } else {
-      console.warn('No valid points found, using default bounding box');
-      return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
-    }
-  }
-  
-  function updateSVGPartsList() {
-    const container = select("#svg-parts-list");
-    container.html(""); // Clear existing content
-    
-    if (svgParts.length === 0) {
-      const emptyMsg = createDiv("No parts loaded");
-      emptyMsg.parent(container);
-      emptyMsg.style("color", "#888");
-      emptyMsg.style("font-style", "italic");
-      return;
-    }
-  
-    // Create horizontal button layout
-    const partsContainer = createDiv();
-    partsContainer.parent(container);
-    partsContainer.class("parts-button-container");
-  
-    svgParts.forEach((part, index) => {
-      const partButton = createButton(part.name);
-      partButton.parent(partsContainer);
-      
-      partButton.class("part-button");
-      
-      if (part.selected) {
-        partButton.addClass("active");
-      }
-      
-      // Add color indicators as borders for all buttons
-      let colorIndicators = "";
-      if (part.strokeSettings.enabled) {
-        colorIndicators += `border-left: 8px solid rgb(${part.strokeSettings.color.join(',')});`;
-      }
-      if (part.fillSettings.enabled) {
-        colorIndicators += `border-right: 8px solid rgb(${part.fillSettings.color.join(',')});`;
-      }
-      
-      if (colorIndicators) {
-        partButton.elt.style.cssText += colorIndicators;
-      }
-      
-      partButton.mousePressed((event) => { event && event.stopPropagation && event.stopPropagation(); selectPart(index, event || window.event); });
-    });
-  }
-  
-  function selectPart(index, event) {
-    if (index < 0 || index >= svgParts.length) return;
-    
-    const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey || event.shiftKey);
-    
-    if (isCtrlOrCmd) {
-      // Multi-select mode: toggle selection
-      const isSelected = selectedPartIndices.includes(index);
-      if (isSelected) {
-        // Remove from selection
-        selectedPartIndices = selectedPartIndices.filter(i => i !== index);
-        svgParts[index].selected = false;
-      } else {
-        // Add to selection
-        selectedPartIndices.push(index);
-        svgParts[index].selected = true;
       }
     } else {
-      // Single select mode: clear all and select this one
-      svgParts.forEach(part => part.selected = false);
-      selectedPartIndices = [index];
+      includeBounds(b);
+    }
+  }
+
+  if (minX !== Infinity && maxX !== -Infinity) {
+    const bbox = {
+      minX: minX,
+      minY: minY,
+      maxX: maxX,
+      maxY: maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+
+    svgDebugLog("Calculated bounding box:", bbox);
+    return bbox;
+  } else {
+    console.warn("No valid points found, using default bounding box");
+    return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
+  }
+}
+
+function updateSVGPartsList() {
+  const container = select("#svg-parts-list");
+  container.html(""); // Clear existing content
+
+  if (svgParts.length === 0) {
+    const emptyMsg = createDiv("No parts loaded");
+    emptyMsg.parent(container);
+    emptyMsg.style("color", "#888");
+    emptyMsg.style("font-style", "italic");
+    return;
+  }
+
+  // Create horizontal button layout
+  const partsContainer = createDiv();
+  partsContainer.parent(container);
+  partsContainer.class("parts-button-container");
+
+  svgParts.forEach((part, index) => {
+    const partButton = createButton(part.name);
+    partButton.parent(partsContainer);
+
+    partButton.class("part-button");
+
+    if (part.selected) {
+      partButton.addClass("active");
+    }
+
+    // Add color indicators as borders for all buttons
+    let colorIndicators = "";
+    if (part.strokeSettings.enabled) {
+      colorIndicators += `border-left: 8px solid rgb(${part.strokeSettings.color.join(",")});`;
+    }
+    if (part.fillSettings.enabled) {
+      colorIndicators += `border-right: 8px solid rgb(${part.fillSettings.color.join(",")});`;
+    }
+
+    if (colorIndicators) {
+      partButton.elt.style.cssText += colorIndicators;
+    }
+
+    partButton.mousePressed((event) => {
+      event && event.stopPropagation && event.stopPropagation();
+      selectPart(index, event || window.event);
+    });
+  });
+}
+
+function selectPart(index, event) {
+  if (index < 0 || index >= svgParts.length) return;
+
+  const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey || event.shiftKey);
+
+  if (isCtrlOrCmd) {
+    // Multi-select mode: toggle selection
+    const isSelected = selectedPartIndices.includes(index);
+    if (isSelected) {
+      // Remove from selection
+      selectedPartIndices = selectedPartIndices.filter((i) => i !== index);
+      svgParts[index].selected = false;
+    } else {
+      // Add to selection
+      selectedPartIndices.push(index);
       svgParts[index].selected = true;
     }
-    
-    // Update UI based on selection
-    if (selectedPartIndices.length === 1) {
-      updatePartSettings(svgParts[selectedPartIndices[0]]);
-    } else if (selectedPartIndices.length > 1) {
-      // Show first part settings; edits propagate to all selected
-      updatePartSettings(svgParts[selectedPartIndices[0]], true);
-    } else {
-      // No selection: clear settings
-      updatePartSettings(null);
-    }
-    
-    updateSVGPartsList();
-    updateInfoTable();
-    redraw();
+  } else {
+    // Single select mode: clear all and select this one
+    svgParts.forEach((part) => (part.selected = false));
+    selectedPartIndices = [index];
+    svgParts[index].selected = true;
   }
-  
-  function selectAllParts() {
-    if (svgParts.length === 0) return;
-    
-    // Select all parts
-    selectedPartIndices = svgParts.map((_, index) => index);
-    svgParts.forEach(part => part.selected = true);
-    
-    // Update UI: show first part's settings and propagate edits to all
-    if (selectedPartIndices.length >= 1) {
-      updatePartSettings(svgParts[selectedPartIndices[0]], true);
-    }
-    
-    updateSVGPartsList();
-    updateInfoTable();
-    redraw();
+
+  // Update UI based on selection
+  if (selectedPartIndices.length === 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]]);
+  } else if (selectedPartIndices.length > 1) {
+    // Show first part settings; edits propagate to all selected
+    updatePartSettings(svgParts[selectedPartIndices[0]], true);
+  } else {
+    // No selection: clear settings
+    updatePartSettings(null);
   }
+
+  updateSVGPartsList();
+  updateInfoTable();
+  redraw();
+}
+
+function selectAllParts() {
+  if (svgParts.length === 0) return;
+
+  // Select all parts
+  selectedPartIndices = svgParts.map((_, index) => index);
+  svgParts.forEach((part) => (part.selected = true));
+
+  // Update UI: show first part's settings and propagate edits to all
+  if (selectedPartIndices.length >= 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]], true);
+  }
+
+  updateSVGPartsList();
+  updateInfoTable();
+  redraw();
+}

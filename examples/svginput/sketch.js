@@ -1,7 +1,6 @@
 // SVG Object-Based Input Example for p5.embroider
 // This example demonstrates loading SVGs as structured objects with individual settings
 
-
 let selectedPartIndices = []; // Array of selected part indices for multiple selection
 let drawMode = "p5";
 
@@ -11,13 +10,11 @@ let globalSettings = {
   outputHeight: 100,
   lockAspectRatio: true,
   outlineOffset: 2,
-  outlineType: 'convex',
+  outlineType: "convex",
 };
 
 let boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
 let outputWidthControl, outputHeightControl;
-
-
 
 // Preview-only pan/zoom (does not affect recorded embroidery)
 let previewScale = 1;
@@ -66,34 +63,33 @@ function setup() {
 
   // Use noLoop since embroidery only needs to render when changed
   //noLoop();
-  
 
   createUI();
-  
+
   // Initialize info display
   updateInfoDisplay();
-  
+
   // Size canvas to fit the preview window after UI loads
   setTimeout(() => {
     resizeCanvasToPreviewWindow();
   }, 100);
-  
+
   // Load default SVG
   loadPreset(1);
 }
 
 function resizeCanvasToPreviewWindow() {
-  const canvasWrapper = document.getElementById('canvas-wrapper');
+  const canvasWrapper = document.getElementById("canvas-wrapper");
   if (!canvasWrapper) return;
-  
+
   const wrapperRect = canvasWrapper.getBoundingClientRect();
   const availableWidth = wrapperRect.width - 0; // Leave some padding
   const availableHeight = wrapperRect.height - 0; // Leave some padding
-  
+
   // Use the smaller dimension to maintain a square canvas that fits
   const canvasSize = Math.min(availableWidth, availableHeight);
   const finalSize = Math.max(canvasSize, 300); // Minimum size of 300px
-  
+
   //resizeCanvas(finalSize, finalSize);
   resizeCanvas(availableWidth, availableHeight);
   redraw();
@@ -165,19 +161,18 @@ function pointInRect(px, py, r) {
   return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
 }
 
-
 // Default settings for different stitch modes
 const STROKE_MODE_DEFAULTS = {
   straight: { weight: 1, stitchLength: 2 },
   zigzag: { weight: 3, stitchLength: 0.8 },
   lines: { weight: 1.5, stitchLength: 1.5 },
-  sashiko: { weight: 2, stitchLength: 4 }
+  sashiko: { weight: 2, stitchLength: 4 },
 };
 
 const FILL_MODE_DEFAULTS = {
   tatami: { stitchLength: 3, rowSpacing: 0.8 },
   satin: { stitchLength: 1, rowSpacing: 0.4 },
-  spiral: { stitchLength: 2, rowSpacing: 1 }
+  spiral: { stitchLength: 2, rowSpacing: 1 },
 };
 
 function applyStrokeModeDefaults(part, mode) {
@@ -196,26 +191,25 @@ function applyFillModeDefaults(part, mode) {
   }
 }
 
-
 function setupMainTabs() {
   // Get all main tab buttons and add click handlers
-  const mainTabButtons = document.querySelectorAll('.main-tab-button');
-  const mainTabPanes = document.querySelectorAll('.main-tab-pane');
-  
-  mainTabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const targetTab = button.getAttribute('data-tab');
-      
+  const mainTabButtons = document.querySelectorAll(".main-tab-button");
+  const mainTabPanes = document.querySelectorAll(".main-tab-pane");
+
+  mainTabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetTab = button.getAttribute("data-tab");
+
       // Remove active class from all buttons and panes
-      mainTabButtons.forEach(btn => btn.classList.remove('active'));
-      mainTabPanes.forEach(pane => pane.classList.remove('active'));
-      
+      mainTabButtons.forEach((btn) => btn.classList.remove("active"));
+      mainTabPanes.forEach((pane) => pane.classList.remove("active"));
+
       // Add active class to clicked button and corresponding pane
-      button.classList.add('active');
-      document.getElementById(`${targetTab}-tab`).classList.add('active');
-      
+      button.classList.add("active");
+      document.getElementById(`${targetTab}-tab`).classList.add("active");
+
       // Update info table when Info tab is activated
-      if (targetTab === 'info') {
+      if (targetTab === "info") {
         updateInfoTable();
       }
     });
@@ -223,16 +217,15 @@ function setupMainTabs() {
 }
 
 function updateCanvasTitle(filename) {
-  const titleElement = document.getElementById('canvas-title');
+  const titleElement = document.getElementById("canvas-title");
   if (titleElement) {
     if (filename) {
       titleElement.textContent = `SVG2Embroider - ${filename}`;
     } else {
-      titleElement.textContent = 'SVG2Embroider';
+      titleElement.textContent = "SVG2Embroider";
     }
   }
 }
-
 
 function createUI() {
   // Get container elements
@@ -313,18 +306,18 @@ function createUI() {
     .class("small secondary")
     .mousePressed(() => {
       // Create hidden file input
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = '.svg,image/svg+xml';
-      fileInput.style.display = 'none';
-      
-      fileInput.addEventListener('change', (e) => {
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".svg,image/svg+xml";
+      fileInput.style.display = "none";
+
+      fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (file) {
           handleSVGFileUpload(file);
         }
       });
-      
+
       document.body.appendChild(fileInput);
       fileInput.click();
       document.body.removeChild(fileInput);
@@ -342,18 +335,17 @@ function createUI() {
 
   // SVG input
   svgInput = createTextAreaControl(svgInputContainer, "", "Paste your SVG code here...", 150);
-  
+
   createButton("Load SVG")
     .parent(svgButtonsContainer)
     .class("primary")
     .mousePressed(() => loadSVGFromTextArea());
-  
+
   createButton("Add SVG Parts")
     .parent(svgButtonsContainer)
     .class("secondary")
     .mousePressed(() => loadSVGFromTextArea(true));
-  
-  
+
   createButton("Clear")
     .parent(svgButtonsContainer)
     .class("secondary")
@@ -388,7 +380,7 @@ function createUI() {
       }
       updateInfoTable();
       redraw();
-    }
+    },
   );
 
   outputHeightControl = createSliderControl(
@@ -410,7 +402,7 @@ function createUI() {
       }
       updateInfoTable();
       redraw();
-    }
+    },
   );
 
   createCheckboxControl(dimensionControlsContainer, "Lock Aspect Ratio", globalSettings.lockAspectRatio, (checked) => {
@@ -485,18 +477,18 @@ function createUI() {
     .class("secondary")
     .mousePressed(() => {
       // Create hidden file input
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = '.svg,image/svg+xml';
-      fileInput.style.display = 'none';
-      
-      fileInput.addEventListener('change', (e) => {
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".svg,image/svg+xml";
+      fileInput.style.display = "none";
+
+      fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         if (file) {
           handleSVGFileUpload(file);
         }
       });
-      
+
       document.body.appendChild(fileInput);
       fileInput.click();
       document.body.removeChild(fileInput);
@@ -560,8 +552,8 @@ function draw() {
 
   for (let i = 0; i < svgParts.length; i++) {
     const part = svgParts[i];
-    
-    if (typeof part.draw === 'function') {
+
+    if (typeof part.draw === "function") {
       part.draw(scaleFactor, offsetX, offsetY);
     } else {
       // Fallback to existing inline logic if draw is unavailable
@@ -572,10 +564,7 @@ function draw() {
         const cx0 = frame.base.cx0;
         const cy0 = frame.base.cy0;
         push();
-        translate(
-          offsetX + (cx0 + (part.tx || 0)) * scaleFactor,
-          offsetY + (cy0 + (part.ty || 0)) * scaleFactor
-        );
+        translate(offsetX + (cx0 + (part.tx || 0)) * scaleFactor, offsetY + (cy0 + (part.ty || 0)) * scaleFactor);
         rotate(part.rotation || 0);
         scale(part.sx || 1, part.sy || 1);
         beginShape();
@@ -585,7 +574,8 @@ function draw() {
           const ly = (point.y - cy0) * scaleFactor;
           vertex(lx, ly);
         }
-        if (part.closed) endShape(CLOSE); else endShape();
+        if (part.closed) endShape(CLOSE);
+        else endShape();
         pop();
       }
     }
@@ -619,7 +609,18 @@ function draw() {
 
 // Draw a visual highlight for selected parts in preview only (not recorded)
 function drawSelectedOverlay(params) {
-  const { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth, canvasHeight, previewScale, previewPanX, previewPanY } = params;
+  const {
+    scaleFactor,
+    offsetX,
+    offsetY,
+    centerOffsetX,
+    centerOffsetY,
+    canvasWidth,
+    canvasHeight,
+    previewScale,
+    previewPanX,
+    previewPanY,
+  } = params;
   if (!selectedPartIndices || selectedPartIndices.length === 0) return;
   push();
   noFill();
@@ -667,7 +668,8 @@ function drawSelectedOverlay(params) {
           const sp = modelPointToScreenPx(part, point.x, point.y, frame);
           vertex(sp.x, sp.y);
         }
-        if (part.closed) endShape(CLOSE); else endShape();
+        if (part.closed) endShape(CLOSE);
+        else endShape();
       }
     }
   }
@@ -705,16 +707,16 @@ function drawSelectedOverlay(params) {
     // Draw corner and edge handles
     const hs = Math.max(6, 8 / previewScale);
     const corners = [
-      { x: -wPix/2, y: -hPix/2, type: 'corner', id: 'nw' },
-      { x:  wPix/2, y: -hPix/2, type: 'corner', id: 'ne' },
-      { x:  wPix/2, y:  hPix/2, type: 'corner', id: 'se' },
-      { x: -wPix/2, y:  hPix/2, type: 'corner', id: 'sw' },
+      { x: -wPix / 2, y: -hPix / 2, type: "corner", id: "nw" },
+      { x: wPix / 2, y: -hPix / 2, type: "corner", id: "ne" },
+      { x: wPix / 2, y: hPix / 2, type: "corner", id: "se" },
+      { x: -wPix / 2, y: hPix / 2, type: "corner", id: "sw" },
     ];
     const edges = [
-      { x: 0, y: -hPix/2, type: 'edge', id: 'top' },
-      { x:  wPix/2, y: 0, type: 'edge', id: 'right' },
-      { x: 0, y:  hPix/2, type: 'edge', id: 'bottom' },
-      { x: -wPix/2, y: 0, type: 'edge', id: 'left' },
+      { x: 0, y: -hPix / 2, type: "edge", id: "top" },
+      { x: wPix / 2, y: 0, type: "edge", id: "right" },
+      { x: 0, y: hPix / 2, type: "edge", id: "bottom" },
+      { x: -wPix / 2, y: 0, type: "edge", id: "left" },
     ];
 
     // Corner handles
@@ -754,7 +756,10 @@ function drawSelectedOverlay(params) {
     pop();
   } else if (selectedPartIndices.length > 1) {
     // Group frame around all selected parts (screen-space axis-aligned box)
-    let minPX = Infinity, minPY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
+    let minPX = Infinity,
+      minPY = Infinity,
+      maxPX = -Infinity,
+      maxPY = -Infinity;
     for (const idx of selectedPartIndices) {
       const part = svgParts[idx];
       if (!part || !part.visible) continue;
@@ -787,22 +792,34 @@ function drawSelectedOverlay(params) {
       // Handles
       const hs = Math.max(6, 8 / previewScale);
       const corners = [
-        { x: -wPix/2, y: -hPix/2 },
-        { x:  wPix/2, y: -hPix/2 },
-        { x:  wPix/2, y:  hPix/2 },
-        { x: -wPix/2, y:  hPix/2 },
+        { x: -wPix / 2, y: -hPix / 2 },
+        { x: wPix / 2, y: -hPix / 2 },
+        { x: wPix / 2, y: hPix / 2 },
+        { x: -wPix / 2, y: hPix / 2 },
       ];
       const edges = [
-        { x: 0, y: -hPix/2 },
-        { x:  wPix/2, y: 0 },
-        { x: 0, y:  hPix/2 },
-        { x: -wPix/2, y: 0 },
+        { x: 0, y: -hPix / 2 },
+        { x: wPix / 2, y: 0 },
+        { x: 0, y: hPix / 2 },
+        { x: -wPix / 2, y: 0 },
       ];
       fill(255);
       stroke(0, 150, 255);
-      for (const c of corners) { push(); translate(c.x, c.y); rectMode(CENTER); rect(0, 0, hs, hs); pop(); }
+      for (const c of corners) {
+        push();
+        translate(c.x, c.y);
+        rectMode(CENTER);
+        rect(0, 0, hs, hs);
+        pop();
+      }
       stroke(0, 100, 200);
-      for (const e of edges) { push(); translate(e.x, e.y); rectMode(CENTER); rect(0, 0, hs*0.7, hs*0.7); pop(); }
+      for (const e of edges) {
+        push();
+        translate(e.x, e.y);
+        rectMode(CENTER);
+        rect(0, 0, hs * 0.7, hs * 0.7);
+        pop();
+      }
 
       // Rotation handle on +X
       const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
@@ -824,7 +841,10 @@ function drawSelectedOverlay(params) {
 function computeEditFrame(part) {
   // Base bbox in mm
   const base = getPathPoints(part.pathData);
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    maxX = -Infinity,
+    maxY = -Infinity;
   for (const p of base) {
     if (isNaN(p.x) || isNaN(p.y)) continue;
     minX = Math.min(minX, p.x);
@@ -875,7 +895,7 @@ function mouseDragged() {
   }
 
   if (keyIsDown(SHIFT)) {
-    const dy = (height-mouseY) - (height-pmouseY);
+    const dy = height - mouseY - (height - pmouseY);
     const factor = Math.max(0.001, 1 + dy * 0.0005);
     const oldScale = previewScale;
     const newScale = constrain(oldScale * factor, minPreviewScale, maxPreviewScale);
@@ -888,8 +908,8 @@ function mouseDragged() {
       const cy = height / 2;
 
       // Current world position under mouse (pre-scale change)
-      const worldX = ((mouseX - coX - cx - previewPanX) / oldScale) + cx;
-      const worldY = ((mouseY - coY - cy - previewPanY) / oldScale) + cy;
+      const worldX = (mouseX - coX - cx - previewPanX) / oldScale + cx;
+      const worldY = (mouseY - coY - cy - previewPanY) / oldScale + cy;
 
       // Update pan to keep mouse-anchored zoom
       previewPanX -= (oldScale - newScale) * (worldX - cx);
@@ -907,16 +927,29 @@ function mouseDragged() {
       const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
       const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
       const scaleFactor = Math.min(scaleXmm, scaleYmm);
-      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
-      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const offsetX =
+        (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY =
+        (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
       const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
       const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
-      const changed = part.mouseDraggedPixel(mouseX, mouseY, {
-        scaleFactor, offsetX, offsetY,
-        centerOffsetX, centerOffsetY,
-        canvasWidth: width, canvasHeight: height,
-        previewScale, previewPanX, previewPanY
-      }, { shiftKey: keyIsDown(SHIFT), altKey: keyIsDown(ALT) });
+      const changed = part.mouseDraggedPixel(
+        mouseX,
+        mouseY,
+        {
+          scaleFactor,
+          offsetX,
+          offsetY,
+          centerOffsetX,
+          centerOffsetY,
+          canvasWidth: width,
+          canvasHeight: height,
+          previewScale,
+          previewPanX,
+          previewPanY,
+        },
+        { shiftKey: keyIsDown(SHIFT), altKey: keyIsDown(ALT) },
+      );
       if (changed) {
         handled = true;
         // Keep transform UI in sync while dragging
@@ -928,17 +961,22 @@ function mouseDragged() {
     const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
     const scaleFactor = Math.min(scaleXmm, scaleYmm);
     const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
-    const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+    const offsetY =
+      (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
     const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
     const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
     // Convert mouse to model
     const toModel = (mx, my) => {
-      const cx = width / 2, cy = height / 2;
+      const cx = width / 2,
+        cy = height / 2;
       const outPxX = cx + (mx - centerOffsetX - cx - previewPanX) / Math.max(1e-6, previewScale);
       const outPxY = cy + (my - centerOffsetY - cy - previewPanY) / Math.max(1e-6, previewScale);
       const outMmX = outPxX / mmToPixel(1);
       const outMmY = outPxY / mmToPixel(1);
-      return { x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor), y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor) };
+      return {
+        x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor),
+        y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor),
+      };
     };
     const mm = toModel(mouseX, mouseY);
     const vx = mm.x - groupDrag.groupCenter.x;
@@ -950,11 +988,17 @@ function mouseDragged() {
       // uniform enforced by same ratio applied to both axes
     }
     // Rotation only when groupDrag.type is rotate; corners/edges scale only
-    const deltaAng = (groupDrag.type === 'rotate')
-      ? (keyIsDown(SHIFT) ? (() => { const step = radians(15); return Math.round((ang - groupDrag.startAngle)/step)*step; })() : (ang - groupDrag.startAngle))
-      : 0;
+    const deltaAng =
+      groupDrag.type === "rotate"
+        ? keyIsDown(SHIFT)
+          ? (() => {
+              const step = radians(15);
+              return Math.round((ang - groupDrag.startAngle) / step) * step;
+            })()
+          : ang - groupDrag.startAngle
+        : 0;
     // Apply to each part
-    groupDrag.parts.forEach(info => {
+    groupDrag.parts.forEach((info) => {
       const p = svgParts[info.index];
       // New center from scaling around group center
       const dx0 = info.cx0 - groupDrag.groupCenter.x;
@@ -977,14 +1021,13 @@ function mouseDragged() {
         p.sx = Math.max(0.01, info.sx0 * scaleRatio);
         p.sy = Math.max(0.01, info.sy0 * scaleRatio);
       }
-      if (groupDrag.type === 'rotate') {
+      if (groupDrag.type === "rotate") {
         p.rotation = info.rot0 + deltaAng;
       }
     });
     handled = true;
     updatePartSettings(svgParts[selectedPartIndices[0]]);
-  }
-  else if (isPanning) {
+  } else if (isPanning) {
     // Pan follows mouse drag
     const dx = mouseX - pmouseX;
     const dy = mouseY - pmouseY;
@@ -1039,14 +1082,20 @@ function mousePressed() {
       const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
       const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
       const scaleFactor = Math.min(scaleXmm, scaleYmm);
-      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
-      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const offsetX =
+        (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY =
+        (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
       const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
       const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
       // Compute screen-space AABB of all selected parts
-      let minPX = Infinity, minPY = Infinity, maxPX = -Infinity, maxPY = -Infinity;
+      let minPX = Infinity,
+        minPY = Infinity,
+        maxPX = -Infinity,
+        maxPY = -Infinity;
       const mapPoint = (part, mx, my, frame) => {
-        const cx0 = frame.base.cx0, cy0 = frame.base.cy0;
+        const cx0 = frame.base.cx0,
+          cy0 = frame.base.cy0;
         const cosA = part.rotation ? Math.cos(part.rotation) : 1;
         const sinA = part.rotation ? Math.sin(part.rotation) : 0;
         const dx = (mx - cx0) * (part.sx || 1);
@@ -1057,7 +1106,8 @@ function mousePressed() {
         const outMmY = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
         const px0 = mmToPixel(outMmX);
         const py0 = mmToPixel(outMmY);
-        const cx = width / 2, cy = height / 2;
+        const cx = width / 2,
+          cy = height / 2;
         return {
           x: centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX,
           y: centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY,
@@ -1071,8 +1121,10 @@ function mousePressed() {
         for (const q of pts) {
           const sp = mapPoint(p, q.x, q.y, frame);
           if (!isNaN(sp.x) && !isNaN(sp.y)) {
-            minPX = Math.min(minPX, sp.x); minPY = Math.min(minPY, sp.y);
-            maxPX = Math.max(maxPX, sp.x); maxPY = Math.max(maxPY, sp.y);
+            minPX = Math.min(minPX, sp.x);
+            minPY = Math.min(minPY, sp.y);
+            maxPX = Math.max(maxPX, sp.x);
+            maxPY = Math.max(maxPY, sp.y);
           }
         }
       }
@@ -1085,46 +1137,77 @@ function mousePressed() {
         const handleHit = (mx, my, hx, hy, size) => Math.abs(mx - hx) <= size && Math.abs(my - hy) <= size;
         // Corners
         const corners = [
-          { x: gx - wPix/2, y: gy - hPix/2, id: 'corner' },
-          { x: gx + wPix/2, y: gy - hPix/2, id: 'corner' },
-          { x: gx + wPix/2, y: gy + hPix/2, id: 'corner' },
-          { x: gx - wPix/2, y: gy + hPix/2, id: 'corner' },
+          { x: gx - wPix / 2, y: gy - hPix / 2, id: "corner" },
+          { x: gx + wPix / 2, y: gy - hPix / 2, id: "corner" },
+          { x: gx + wPix / 2, y: gy + hPix / 2, id: "corner" },
+          { x: gx - wPix / 2, y: gy + hPix / 2, id: "corner" },
         ];
         let pickedGroup = false;
         for (const c of corners) {
-          if (handleHit(mouseX, mouseY, c.x, c.y, hs)) { groupDrag.type = 'corner'; pickedGroup = true; break; }
+          if (handleHit(mouseX, mouseY, c.x, c.y, hs)) {
+            groupDrag.type = "corner";
+            pickedGroup = true;
+            break;
+          }
         }
         // Rotation handle on +X
         if (!pickedGroup) {
           const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
-          const rx = gx + rDist, ry = gy;
-          if (Math.hypot(mouseX - rx, mouseY - ry) <= Math.max(hs*0.8, 10)) { groupDrag.type = 'rotate'; pickedGroup = true; }
+          const rx = gx + rDist,
+            ry = gy;
+          if (Math.hypot(mouseX - rx, mouseY - ry) <= Math.max(hs * 0.8, 10)) {
+            groupDrag.type = "rotate";
+            pickedGroup = true;
+          }
         }
         // Body move (requires 'm')
         if (!pickedGroup && moveKeyHeld) {
-          if (mouseX >= gx - wPix/2 && mouseX <= gx + wPix/2 && mouseY >= gy - hPix/2 && mouseY <= gy + hPix/2) {
-            groupDrag.type = 'move'; pickedGroup = true;
+          if (
+            mouseX >= gx - wPix / 2 &&
+            mouseX <= gx + wPix / 2 &&
+            mouseY >= gy - hPix / 2 &&
+            mouseY <= gy + hPix / 2
+          ) {
+            groupDrag.type = "move";
+            pickedGroup = true;
           }
         }
         if (pickedGroup) {
           // Initialize group drag snapshot
           const toModel = (mx, my) => {
-            const cx = width / 2, cy = height / 2;
+            const cx = width / 2,
+              cy = height / 2;
             const outPxX = cx + (mx - centerOffsetX - cx - previewPanX) / Math.max(1e-6, previewScale);
             const outPxY = cy + (my - centerOffsetY - cy - previewPanY) / Math.max(1e-6, previewScale);
             const outMmX = outPxX / mmToPixel(1);
             const outMmY = outPxY / mmToPixel(1);
-            return { x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor), y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor) };
+            return {
+              x: (outMmX - offsetX) / Math.max(1e-6, scaleFactor),
+              y: (outMmY - offsetY) / Math.max(1e-6, scaleFactor),
+            };
           };
-          const selectedParts = selectedPartIndices.map(i => svgParts[i]);
-          let gcx = 0, gcy = 0;
+          const selectedParts = selectedPartIndices.map((i) => svgParts[i]);
+          let gcx = 0,
+            gcy = 0;
           const infos = [];
           selectedParts.forEach((p, idxSel) => {
             const frame = computeEditFrame(p);
-            infos.push({ index: selectedPartIndices[idxSel], tx0: p.tx||0, ty0: p.ty||0, sx0: p.sx||1, sy0: p.sy||1, rot0: p.rotation||0, cx0: frame.centerMm.x, cy0: frame.centerMm.y, base: frame.base });
-            gcx += frame.centerMm.x; gcy += frame.centerMm.y;
+            infos.push({
+              index: selectedPartIndices[idxSel],
+              tx0: p.tx || 0,
+              ty0: p.ty || 0,
+              sx0: p.sx || 1,
+              sy0: p.sy || 1,
+              rot0: p.rotation || 0,
+              cx0: frame.centerMm.x,
+              cy0: frame.centerMm.y,
+              base: frame.base,
+            });
+            gcx += frame.centerMm.x;
+            gcy += frame.centerMm.y;
           });
-          gcx /= selectedParts.length; gcy /= selectedParts.length;
+          gcx /= selectedParts.length;
+          gcy /= selectedParts.length;
           groupDrag.active = true;
           groupDrag.groupCenter = { x: gcx, y: gcy };
           groupDrag.parts = infos;
@@ -1144,16 +1227,29 @@ function mousePressed() {
       const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
       const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
       const scaleFactor = Math.min(scaleXmm, scaleYmm);
-      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
-      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+      const offsetX =
+        (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY =
+        (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
       const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
       const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
-      const picked = part.mousePressedPixel(mouseX, mouseY, {
-        scaleFactor, offsetX, offsetY,
-        centerOffsetX, centerOffsetY,
-        canvasWidth: width, canvasHeight: height,
-        previewScale, previewPanX, previewPanY
-      }, { allowBodyMove: moveKeyHeld });
+      const picked = part.mousePressedPixel(
+        mouseX,
+        mouseY,
+        {
+          scaleFactor,
+          offsetX,
+          offsetY,
+          centerOffsetX,
+          centerOffsetY,
+          canvasWidth: width,
+          canvasHeight: height,
+          previewScale,
+          previewPanX,
+          previewPanY,
+        },
+        { allowBodyMove: moveKeyHeld },
+      );
       if (picked) {
         if (selectedPartIndices.length === 1) {
           editDrag.active = true;
@@ -1161,18 +1257,44 @@ function mousePressed() {
           return false;
         } else {
           // Initialize group drag
-          const modelStart = svgParts[idx]._pixelToModel ? svgParts[idx]._pixelToModel(mouseX, mouseY, { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY, canvasWidth: width, canvasHeight: height, previewScale, previewPanX, previewPanY }) : null;
+          const modelStart = svgParts[idx]._pixelToModel
+            ? svgParts[idx]._pixelToModel(mouseX, mouseY, {
+                scaleFactor,
+                offsetX,
+                offsetY,
+                centerOffsetX,
+                centerOffsetY,
+                canvasWidth: width,
+                canvasHeight: height,
+                previewScale,
+                previewPanX,
+                previewPanY,
+              })
+            : null;
           const partsInfo = [];
-          let gx = 0, gy = 0;
-          selectedPartIndices.forEach(i => {
+          let gx = 0,
+            gy = 0;
+          selectedPartIndices.forEach((i) => {
             const p = svgParts[i];
             const frame = computeEditFrame(p);
-            partsInfo.push({ index: i, tx0: p.tx||0, ty0: p.ty||0, sx0: p.sx||1, sy0: p.sy||1, rot0: p.rotation||0, cx0: frame.centerMm.x, cy0: frame.centerMm.y, base: frame.base });
-            gx += frame.centerMm.x; gy += frame.centerMm.y;
+            partsInfo.push({
+              index: i,
+              tx0: p.tx || 0,
+              ty0: p.ty || 0,
+              sx0: p.sx || 1,
+              sy0: p.sy || 1,
+              rot0: p.rotation || 0,
+              cx0: frame.centerMm.x,
+              cy0: frame.centerMm.y,
+              base: frame.base,
+            });
+            gx += frame.centerMm.x;
+            gy += frame.centerMm.y;
           });
-          gx /= selectedPartIndices.length; gy /= selectedPartIndices.length;
+          gx /= selectedPartIndices.length;
+          gy /= selectedPartIndices.length;
           groupDrag.active = true;
-          groupDrag.type = picked ? (svgParts[idx]._drag && svgParts[idx]._drag.type) : 'move';
+          groupDrag.type = picked ? svgParts[idx]._drag && svgParts[idx]._drag.type : "move";
           groupDrag.startMouseModel = modelStart ? { x: modelStart.modelX, y: modelStart.modelY } : { x: gx, y: gy };
           groupDrag.groupCenter = { x: gx, y: gy };
           groupDrag.parts = partsInfo;
@@ -1203,7 +1325,7 @@ function mouseReleased() {
   editDrag.active = false;
   if (selectedPartIndices.length === 1) {
     const part = svgParts[selectedPartIndices[0]];
-    if (part && typeof part.mouseReleased === 'function') part.mouseReleased();
+    if (part && typeof part.mouseReleased === "function") part.mouseReleased();
   }
   groupDrag.active = false;
   isPanning = false;
@@ -1226,8 +1348,8 @@ function mouseWheel(event) {
     const coY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
     const cx = width / 2;
     const cy = height / 2;
-    const worldX = ((mouseX - coX - cx - previewPanX) / oldScale) + cx;
-    const worldY = ((mouseY - coY - cy - previewPanY) / oldScale) + cy;
+    const worldX = (mouseX - coX - cx - previewPanX) / oldScale + cx;
+    const worldY = (mouseY - coY - cy - previewPanY) / oldScale + cy;
 
     previewPanX -= (oldScale - newScale) * (worldX - cx);
     previewPanY -= (oldScale - newScale) * (worldY - cy);
@@ -1256,18 +1378,36 @@ function updateHoverHitTest() {
   for (let i = svgParts.length - 1; i >= 0; i--) {
     const part = svgParts[i];
     if (!part || part.visible === false) continue;
-    const hit = (typeof part.hitTestPixel === 'function')
-      ? part.hitTestPixel(mouseX, mouseY, {
-          scaleFactor, offsetX, offsetY,
-          centerOffsetX, centerOffsetY,
-          canvasWidth: width, canvasHeight: height,
-          previewScale, previewPanX, previewPanY
-        }, { handlePx: Math.max(6, 8 / previewScale), rotationHandleOffsetPx: Math.max(20, 30 / previewScale), allowBodyMove: true })
-      : { type: null };
-    if (hit && hit.type) { hoverPartIndex = i; break; }
+    const hit =
+      typeof part.hitTestPixel === "function"
+        ? part.hitTestPixel(
+            mouseX,
+            mouseY,
+            {
+              scaleFactor,
+              offsetX,
+              offsetY,
+              centerOffsetX,
+              centerOffsetY,
+              canvasWidth: width,
+              canvasHeight: height,
+              previewScale,
+              previewPanX,
+              previewPanY,
+            },
+            {
+              handlePx: Math.max(6, 8 / previewScale),
+              rotationHandleOffsetPx: Math.max(20, 30 / previewScale),
+              allowBodyMove: true,
+            },
+          )
+        : { type: null };
+    if (hit && hit.type) {
+      hoverPartIndex = i;
+      break;
+    }
   }
 }
-
 
 function applyPartSettings(part) {
   // Apply stroke settings
@@ -1378,12 +1518,11 @@ function applyPartSettings(part) {
   }
 }
 
-
 function clearSelection() {
   // Clear all selections
   selectedPartIndices = [];
-  svgParts.forEach(part => part.selected = false);
-  
+  svgParts.forEach((part) => (part.selected = false));
+
   // Update UI
   updatePartSettings(null);
   updateSVGPartsList();
@@ -1394,41 +1533,70 @@ function clearSelection() {
 function updateMultiPartSettings() {
   const container = select("#part-settings");
   container.html(""); // Clear existing content
-  
+
   if (selectedPartIndices.length === 0) return;
   // Group Transform (collapsible)
-  const groupTransformSec = createCollapsibleSection(container, 'Group Transform', true);
+  const groupTransformSec = createCollapsibleSection(container, "Group Transform", true);
 
   // Compute current group center and representative transform (not unique)
-  let gcx = 0, gcy = 0;
-  selectedParts.forEach(p => { const f = computeEditFrame(p); gcx += f.centerMm.x; gcy += f.centerMm.y; });
-  gcx /= selectedParts.length; gcy /= selectedParts.length;
+  let gcx = 0,
+    gcy = 0;
+  selectedParts.forEach((p) => {
+    const f = computeEditFrame(p);
+    gcx += f.centerMm.x;
+    gcy += f.centerMm.y;
+  });
+  gcx /= selectedParts.length;
+  gcy /= selectedParts.length;
 
-  const txInput = createInput(gcx.toFixed(2), 'number');
-  const tyInput = createInput(gcy.toFixed(2), 'number');
-  const sxInput = createInput('1.000', 'number');
-  const syInput = createInput('1.000', 'number');
-  const rotInput = createInput('0.0', 'number');
-  ;[txInput,tyInput].forEach(inp=>{ inp.attribute('step','0.1'); inp.style('width','80px'); });
-  ;[sxInput,syInput].forEach(inp=>{ inp.attribute('step','0.01'); inp.style('width','80px'); });
-  rotInput.attribute('step','0.1'); rotInput.style('width','80px');
+  const txInput = createInput(gcx.toFixed(2), "number");
+  const tyInput = createInput(gcy.toFixed(2), "number");
+  const sxInput = createInput("1.000", "number");
+  const syInput = createInput("1.000", "number");
+  const rotInput = createInput("0.0", "number");
+  [txInput, tyInput].forEach((inp) => {
+    inp.attribute("step", "0.1");
+    inp.style("width", "80px");
+  });
+  [sxInput, syInput].forEach((inp) => {
+    inp.attribute("step", "0.01");
+    inp.style("width", "80px");
+  });
+  rotInput.attribute("step", "0.1");
+  rotInput.style("width", "80px");
 
-  const row1 = createDiv(); row1.parent(groupTransformSec.content); row1.addClass('form-row');
-  const row2 = createDiv(); row2.parent(groupTransformSec.content); row2.addClass('form-row');
-  const makeLabeled = (row, label, input) => { const wrap = createDiv(); wrap.parent(row); wrap.addClass('form-field'); const lab = createDiv(label); lab.parent(wrap); lab.addClass('control-label'); input.parent(wrap); input.addClass('value-input'); };
-  makeLabeled(row1,'X',txInput); makeLabeled(row1,'Y',tyInput);
-  makeLabeled(row2,'Scale X',sxInput); makeLabeled(row2,'Scale Y',syInput); makeLabeled(row2,'Rotate',rotInput);
+  const row1 = createDiv();
+  row1.parent(groupTransformSec.content);
+  row1.addClass("form-row");
+  const row2 = createDiv();
+  row2.parent(groupTransformSec.content);
+  row2.addClass("form-row");
+  const makeLabeled = (row, label, input) => {
+    const wrap = createDiv();
+    wrap.parent(row);
+    wrap.addClass("form-field");
+    const lab = createDiv(label);
+    lab.parent(wrap);
+    lab.addClass("control-label");
+    input.parent(wrap);
+    input.addClass("value-input");
+  };
+  makeLabeled(row1, "X", txInput);
+  makeLabeled(row1, "Y", tyInput);
+  makeLabeled(row2, "Scale X", sxInput);
+  makeLabeled(row2, "Scale Y", syInput);
+  makeLabeled(row2, "Rotate", rotInput);
 
   const applyGroup = () => {
     const ntx = parseFloat(txInput.value());
     const nty = parseFloat(tyInput.value());
     const nsx = Math.max(0.01, parseFloat(sxInput.value()));
     const nsy = Math.max(0.01, parseFloat(syInput.value()));
-    const nrot = (parseFloat(rotInput.value())||0) * Math.PI/180;
+    const nrot = ((parseFloat(rotInput.value()) || 0) * Math.PI) / 180;
     // Apply translation by delta to each part center
-    const dx = (isNaN(ntx)?gcx:ntx) - gcx;
-    const dy = (isNaN(nty)?gcy:nty) - gcy;
-    selectedParts.forEach(p => {
+    const dx = (isNaN(ntx) ? gcx : ntx) - gcx;
+    const dy = (isNaN(nty) ? gcy : nty) - gcy;
+    selectedParts.forEach((p) => {
       const f = computeEditFrame(p);
       const newCx = f.centerMm.x + dx;
       const newCy = f.centerMm.y + dy;
@@ -1438,22 +1606,26 @@ function updateMultiPartSettings() {
       p.sy = p.sy * nsy;
       p.rotation = p.rotation + nrot;
     });
-    updateSVGPartsList(); updateInfoTable(); redraw();
+    updateSVGPartsList();
+    updateInfoTable();
+    redraw();
   };
-  txInput.changed(applyGroup); tyInput.changed(applyGroup);
-  sxInput.changed(applyGroup); syInput.changed(applyGroup); rotInput.changed(applyGroup);
-
+  txInput.changed(applyGroup);
+  tyInput.changed(applyGroup);
+  sxInput.changed(applyGroup);
+  syInput.changed(applyGroup);
+  rotInput.changed(applyGroup);
 
   // Get common values for controls
-  const selectedParts = selectedPartIndices.map(i => svgParts[i]);
-  
+  const selectedParts = selectedPartIndices.map((i) => svgParts[i]);
+
   // Common stroke enable state
-  const allStrokeEnabled = selectedParts.every(part => part.strokeSettings.enabled);
-  const someStrokeEnabled = selectedParts.some(part => part.strokeSettings.enabled);
-  
-  // Common fill enable state  
-  const allFillEnabled = selectedParts.every(part => part.fillSettings.enabled);
-  const someFillEnabled = selectedParts.some(part => part.fillSettings.enabled);
+  const allStrokeEnabled = selectedParts.every((part) => part.strokeSettings.enabled);
+  const someStrokeEnabled = selectedParts.some((part) => part.strokeSettings.enabled);
+
+  // Common fill enable state
+  const allFillEnabled = selectedParts.every((part) => part.fillSettings.enabled);
+  const someFillEnabled = selectedParts.some((part) => part.fillSettings.enabled);
 
   // Stroke settings section header
   const strokeHeader = createDiv("Stroke Settings");
@@ -1465,7 +1637,7 @@ function updateMultiPartSettings() {
 
   // Stroke settings
   createCheckboxControl(container, "Enable Stroke", allStrokeEnabled, (enabled) => {
-    selectedParts.forEach(part => {
+    selectedParts.forEach((part) => {
       part.strokeSettings.enabled = enabled;
     });
     updateMultiPartSettings(); // Refresh UI
@@ -1481,7 +1653,7 @@ function updateMultiPartSettings() {
     // Common stroke color
     const commonStrokeColor = selectedParts[0].strokeSettings.color;
     createColorControl(strokeControlsDiv, "Stroke Color", commonStrokeColor, (color) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.strokeSettings.enabled) {
           part.strokeSettings.color = color;
         }
@@ -1493,27 +1665,33 @@ function updateMultiPartSettings() {
 
     // Common stroke mode
     const commonStrokeMode = selectedParts[0].strokeSettings.mode;
-    createSelectControl(strokeControlsDiv, "Stroke Mode", {
-      straight: "straight",
-      zigzag: "zigzag", 
-      lines: "lines",
-      sashiko: "sashiko"
-    }, commonStrokeMode, (value) => {
-      selectedParts.forEach(part => {
-        if (part.strokeSettings.enabled) {
-          part.strokeSettings.mode = value;
-          applyStrokeModeDefaults(part, value);
-        }
-      });
-      updateMultiPartSettings(); // Refresh UI to show new values
-      updateInfoTable();
-      redraw();
-    });
+    createSelectControl(
+      strokeControlsDiv,
+      "Stroke Mode",
+      {
+        straight: "straight",
+        zigzag: "zigzag",
+        lines: "lines",
+        sashiko: "sashiko",
+      },
+      commonStrokeMode,
+      (value) => {
+        selectedParts.forEach((part) => {
+          if (part.strokeSettings.enabled) {
+            part.strokeSettings.mode = value;
+            applyStrokeModeDefaults(part, value);
+          }
+        });
+        updateMultiPartSettings(); // Refresh UI to show new values
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     // Common stroke weight
     const commonStrokeWeight = selectedParts[0].strokeSettings.weight;
     createSliderControl(strokeControlsDiv, "Stroke Weight", 0.5, 10, commonStrokeWeight, 0.5, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.strokeSettings.enabled) {
           part.strokeSettings.weight = value;
         }
@@ -1525,7 +1703,7 @@ function updateMultiPartSettings() {
     // Common stroke stitch length
     const commonStrokeStitchLength = selectedParts[0].strokeSettings.stitchLength;
     createSliderControl(strokeControlsDiv, "Stroke Stitch Length", 0.1, 10, commonStrokeStitchLength, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.strokeSettings.enabled) {
           part.strokeSettings.stitchLength = value;
         }
@@ -1537,7 +1715,7 @@ function updateMultiPartSettings() {
     // Common stroke min stitch length
     const commonStrokeMinStitchLength = selectedParts[0].strokeSettings.minStitchLength;
     createSliderControl(strokeControlsDiv, "Min Stitch Length", 0.1, 5, commonStrokeMinStitchLength, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.strokeSettings.enabled) {
           part.strokeSettings.minStitchLength = value;
         }
@@ -1549,7 +1727,7 @@ function updateMultiPartSettings() {
     // Common stroke resample noise
     const commonStrokeResampleNoise = selectedParts[0].strokeSettings.resampleNoise;
     createSliderControl(strokeControlsDiv, "Resample Noise", 0.0, 2, commonStrokeResampleNoise, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.strokeSettings.enabled) {
           part.strokeSettings.resampleNoise = value;
         }
@@ -1569,7 +1747,7 @@ function updateMultiPartSettings() {
 
   // Fill settings
   createCheckboxControl(container, "Enable Fill", allFillEnabled, (enabled) => {
-    selectedParts.forEach(part => {
+    selectedParts.forEach((part) => {
       part.fillSettings.enabled = enabled;
     });
     updateMultiPartSettings(); // Refresh UI
@@ -1585,7 +1763,7 @@ function updateMultiPartSettings() {
     // Common fill color
     const commonFillColor = selectedParts[0].fillSettings.color;
     createColorControl(fillControlsDiv, "Fill Color", commonFillColor, (color) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.fillSettings.enabled) {
           part.fillSettings.color = color;
         }
@@ -1597,26 +1775,32 @@ function updateMultiPartSettings() {
 
     // Common fill mode
     const commonFillMode = selectedParts[0].fillSettings.mode;
-    createSelectControl(fillControlsDiv, "Fill Mode", {
-      tatami: "Tatami",
-      satin: "Satin",
-      spiral: "Spiral"
-    }, commonFillMode, (value) => {
-      selectedParts.forEach(part => {
-        if (part.fillSettings.enabled) {
-          part.fillSettings.mode = value;
-          applyFillModeDefaults(part, value);
-        }
-      });
-      updateMultiPartSettings(); // Refresh UI to show new values
-      updateInfoTable();
-      redraw();
-    });
+    createSelectControl(
+      fillControlsDiv,
+      "Fill Mode",
+      {
+        tatami: "Tatami",
+        satin: "Satin",
+        spiral: "Spiral",
+      },
+      commonFillMode,
+      (value) => {
+        selectedParts.forEach((part) => {
+          if (part.fillSettings.enabled) {
+            part.fillSettings.mode = value;
+            applyFillModeDefaults(part, value);
+          }
+        });
+        updateMultiPartSettings(); // Refresh UI to show new values
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     // Common fill stitch length
     const commonFillStitchLength = selectedParts[0].fillSettings.stitchLength;
     createSliderControl(fillControlsDiv, "Fill Stitch Length", 0.5, 10, commonFillStitchLength, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.fillSettings.enabled) {
           part.fillSettings.stitchLength = value;
         }
@@ -1628,7 +1812,7 @@ function updateMultiPartSettings() {
     // Common row spacing
     const commonRowSpacing = selectedParts[0].fillSettings.rowSpacing;
     createSliderControl(fillControlsDiv, "Row Spacing", 0.2, 5, commonRowSpacing, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.fillSettings.enabled) {
           part.fillSettings.rowSpacing = value;
         }
@@ -1640,7 +1824,7 @@ function updateMultiPartSettings() {
     // Common fill min stitch length
     const commonFillMinStitchLength = selectedParts[0].fillSettings.minStitchLength;
     createSliderControl(fillControlsDiv, "Min Stitch Length", 0.1, 5, commonFillMinStitchLength, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.fillSettings.enabled) {
           part.fillSettings.minStitchLength = value;
         }
@@ -1652,7 +1836,7 @@ function updateMultiPartSettings() {
     // Common fill resample noise
     const commonFillResampleNoise = selectedParts[0].fillSettings.resampleNoise;
     createSliderControl(fillControlsDiv, "Resample Noise", 0.0, 2, commonFillResampleNoise, 0.1, (value) => {
-      selectedParts.forEach(part => {
+      selectedParts.forEach((part) => {
         if (part.fillSettings.enabled) {
           part.fillSettings.resampleNoise = value;
         }
@@ -1671,12 +1855,12 @@ function updateMultiPartSettings() {
   outlineHeader.style("border-bottom", "1px solid #ddd");
 
   // Common outline enable state
-  const allOutlineEnabled = selectedParts.every(part => part.addToOutline);
-  const someOutlineEnabled = selectedParts.some(part => part.addToOutline);
+  const allOutlineEnabled = selectedParts.every((part) => part.addToOutline);
+  const someOutlineEnabled = selectedParts.some((part) => part.addToOutline);
 
   // Add to outline control for multiple parts
   createCheckboxControl(container, "Add to Outline", allOutlineEnabled, (addToOutline) => {
-    selectedParts.forEach(part => {
+    selectedParts.forEach((part) => {
       part.addToOutline = addToOutline;
       togglePartOutline(part, addToOutline);
     });
@@ -1687,17 +1871,23 @@ function updateMultiPartSettings() {
 
   // Outline type selection
   if (!globalSettings.outlineType) {
-    globalSettings.outlineType = 'convex'; // Default to convex
+    globalSettings.outlineType = "convex"; // Default to convex
   }
-  
-  createSelectControl(container, "Outline Type", {
-    convex: "Convex Hull",
-    bounding: "Bounding Box",
-    scale: "Scaled Path"
-  }, globalSettings.outlineType, (value) => {
-    globalSettings.outlineType = value;
-    updateOutlinesForOffset(); // Auto-update all outlines when type changes
-  });
+
+  createSelectControl(
+    container,
+    "Outline Type",
+    {
+      convex: "Convex Hull",
+      bounding: "Bounding Box",
+      scale: "Scaled Path",
+    },
+    globalSettings.outlineType,
+    (value) => {
+      globalSettings.outlineType = value;
+      updateOutlinesForOffset(); // Auto-update all outlines when type changes
+    },
+  );
 
   // Outline offset control with automatic outline updates
   createSliderControl(container, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
@@ -1709,7 +1899,7 @@ function updateMultiPartSettings() {
 function updatePartSettings(part, propagateToSelection = false) {
   const container = select("#part-settings");
   container.html(""); // Clear existing content
-  
+
   if (!part) {
     const msg = createDiv("Select a part to edit its settings");
     msg.parent(container);
@@ -1736,77 +1926,183 @@ function updatePartSettings(part, propagateToSelection = false) {
   nameInput.style("border-radius", "4px");
   nameInput.style("font-size", "14px");
   nameInput.style("margin-bottom", "0px");
-  
+
   nameInput.changed(() => {
     part.name = nameInput.value();
     updateSVGPartsList(); // Update the button text
     updateInfoTable(); // Update the info table
   });
 
-  // Transform controls (collapsible)
-  const transformSec = createCollapsibleSection(container, 'Transform', true);
+  // Size subsection (Width/Height + Lock Aspect + Scale X/Y)
+  const sizeSec = createCollapsibleSection(container, "Size", true);
+  (function(){
+    const fsz = computeEditFrame(part);
+    // Width/Height
+    const sizeRow = createDiv(); sizeRow.parent(sizeSec.content); sizeRow.class('form-row');
+    const sizeFieldW = createDiv(); sizeFieldW.parent(sizeRow); sizeFieldW.addClass('form-field');
+    const sizeLabW = createDiv('Width'); sizeLabW.parent(sizeFieldW); sizeLabW.addClass('control-label');
+    const sizeInputW = createInput((fsz.widthMm || 0).toFixed(2), 'number'); sizeInputW.parent(sizeFieldW); sizeInputW.addClass('value-input'); sizeInputW.attribute('step','0.1'); sizeInputW.style('width','80px');
+    const sizeFieldH = createDiv(); sizeFieldH.parent(sizeRow); sizeFieldH.addClass('form-field');
+    const sizeLabH = createDiv('Height'); sizeLabH.parent(sizeFieldH); sizeLabH.addClass('control-label');
+    const sizeInputH = createInput((fsz.heightMm || 0).toFixed(2), 'number'); sizeInputH.parent(sizeFieldH); sizeInputH.addClass('value-input'); sizeInputH.attribute('step','0.1'); sizeInputH.style('width','80px');
 
-  const txInput = createInput((part.tx || 0).toFixed(2), 'number');
-  const tyInput = createInput((part.ty || 0).toFixed(2), 'number');
-  const sxInput = createInput((part.sx || 1).toFixed(3), 'number');
-  const syInput = createInput((part.sy || 1).toFixed(3), 'number');
-  const rotInput = createInput(((part.rotation || 0) * 180 / Math.PI).toFixed(1), 'number');
+    // Lock Aspect aligned with W/H
+    const lockField = createDiv(); lockField.parent(sizeRow); lockField.addClass('form-field');
+    let lockAspect = true;
+    createCheckboxControl(lockField, 'Lock Aspect', lockAspect, (checked) => { lockAspect = checked; });
+
+    const stopEvtLocal = (elt) => { ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => { elt.addEventListener(evt, (e) => { e.stopPropagation(); }); }); };
+    stopEvtLocal(sizeInputW.elt); stopEvtLocal(sizeInputH.elt);
+
+    const applySize = (source) => {
+      let vw = parseFloat(sizeInputW.value());
+      let vh = parseFloat(sizeInputH.value());
+      let hasW = !isNaN(vw);
+      let hasH = !isNaN(vh);
+      if (lockAspect && (hasW ^ hasH)) {
+        // compute live ratio from current frame
+        const fcur = computeEditFrame(part);
+        const ratio = (fcur.heightMm || 1) / Math.max(1e-6, fcur.widthMm || 1);
+        if (hasW && !hasH && source === 'w') { vh = vw * ratio; sizeInputH.value(vh.toFixed(2)); hasH = true; }
+        if (hasH && !hasW && source === 'h') { const wr = 1 / Math.max(1e-6, ratio); vw = vh * wr; sizeInputW.value(vw.toFixed(2)); hasW = true; }
+      }
+      if (!hasW && !hasH) return;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => {
+        const f = computeEditFrame(p);
+        const base = f.base;
+        if (hasW) { const baseW = Math.max(1e-6, base.w0); p.sx = Math.max(0.01, vw / baseW); }
+        if (hasH) { const baseH = Math.max(1e-6, base.h0); p.sy = Math.max(0.01, vh / baseH); }
+      });
+      updateSVGPartsList(); updateInfoTable(); redraw();
+    };
+    sizeInputW.changed(() => applySize('w'));
+    sizeInputH.changed(() => applySize('h'));
+
+    // Scale X/Y
+    const scaleRow = createDiv(); scaleRow.parent(sizeSec.content); scaleRow.class('form-row');
+    const scxField = createDiv(); scxField.parent(scaleRow); scxField.addClass('form-field');
+    const scxLab = createDiv('Scale X'); scxLab.parent(scxField); scxLab.addClass('control-label');
+    const scxInput = createInput((part.sx || 1).toFixed(3), 'number'); scxInput.parent(scxField); scxInput.addClass('value-input'); scxInput.attribute('step','0.01'); scxInput.attribute('min','0.01'); scxInput.style('width','80px');
+    const scyField = createDiv(); scyField.parent(scaleRow); scyField.addClass('form-field');
+    const scyLab = createDiv('Scale Y'); scyLab.parent(scyField); scyLab.addClass('control-label');
+    const scyInput = createInput((part.sy || 1).toFixed(3), 'number'); scyInput.parent(scyField); scyInput.addClass('value-input'); scyInput.attribute('step','0.01'); scyInput.attribute('min','0.01'); scyInput.style('width','80px');
+    stopEvtLocal(scxInput.elt); stopEvtLocal(scyInput.elt);
+    const applyScale = () => {
+      const nsx = parseFloat(scxInput.value());
+      const nsy = parseFloat(scyInput.value());
+      const hasSX = !isNaN(nsx);
+      const hasSY = !isNaN(nsy);
+      if (!hasSX && !hasSY) return;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => {
+        if (hasSX) p.sx = Math.max(0.01, nsx);
+        if (hasSY) p.sy = Math.max(0.01, nsy);
+      });
+      updateInfoTable(); redraw();
+    };
+    scxInput.changed(applyScale);
+    scyInput.changed(applyScale);
+  })();
+
+  // Transform controls (collapsible)
+  const transformSec = createCollapsibleSection(container, "Transform", true);
+
+  // Position controls under Transform
+  (function(){
+    const frameForPos = computeEditFrame(part);
+    const posRow = createDiv(); posRow.parent(transformSec.content); posRow.class('form-row');
+    const posFieldX = createDiv(); posFieldX.parent(posRow); posFieldX.addClass('form-field');
+    const posLabX = createDiv('Position X'); posLabX.parent(posFieldX); posLabX.addClass('control-label');
+    const posInputX = createInput((frameForPos.centerMm.x || 0).toFixed(2), 'number'); posInputX.parent(posFieldX); posInputX.addClass('value-input'); posInputX.attribute('step','0.1'); posInputX.style('width','80px');
+    const posFieldY = createDiv(); posFieldY.parent(posRow); posFieldY.addClass('form-field');
+    const posLabY = createDiv('Position Y'); posLabY.parent(posFieldY); posLabY.addClass('control-label');
+    const posInputY = createInput((frameForPos.centerMm.y || 0).toFixed(2), 'number'); posInputY.parent(posFieldY); posInputY.addClass('value-input'); posInputY.attribute('step','0.1'); posInputY.style('width','80px');
+    const stopEvtPos = (elt) => { ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => { elt.addEventListener(evt, (e) => { e.stopPropagation(); }); }); };
+    stopEvtPos(posInputX.elt); stopEvtPos(posInputY.elt);
+    const applyPosition = () => {
+      const vx = parseFloat(posInputX.value());
+      const vy = parseFloat(posInputY.value());
+      if (isNaN(vx) || isNaN(vy)) return;
+      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
+      applyTo.forEach(p => {
+        const f = computeEditFrame(p);
+        const base = f.base;
+        p.tx = vx - base.cx0;
+        p.ty = vy - base.cy0;
+      });
+      updateSVGPartsList(); updateInfoTable(); redraw();
+    };
+    posInputX.changed(applyPosition);
+    posInputY.changed(applyPosition);
+  })();
+
+  const txInput = createInput((part.tx || 0).toFixed(2), "number");
+  const tyInput = createInput((part.ty || 0).toFixed(2), "number");
+  const rotInput = createInput((((part.rotation || 0) * 180) / Math.PI).toFixed(1), "number");
 
   // Steps for smoother editing
-  txInput.attribute('step', '0.1');
-  tyInput.attribute('step', '0.1');
-  sxInput.attribute('step', '0.01');
-  syInput.attribute('step', '0.01');
-  rotInput.attribute('step', '0.1');
+  txInput.attribute("step", "0.1");
+  tyInput.attribute("step", "0.1");
+  rotInput.attribute("step", "0.1");
 
   // Set reasonable min/max to allow spinner to work
-  txInput.attribute('min', '-100000');
-  txInput.attribute('max', '100000');
-  tyInput.attribute('min', '-100000');
-  tyInput.attribute('max', '100000');
-  sxInput.attribute('min', '0.01');
-  sxInput.attribute('max', '1000');
-  syInput.attribute('min', '0.01');
-  syInput.attribute('max', '1000');
-  rotInput.attribute('min', '-3600');
-  rotInput.attribute('max', '3600');
+  txInput.attribute("min", "-100000");
+  txInput.attribute("max", "100000");
+  tyInput.attribute("min", "-100000");
+  tyInput.attribute("max", "100000");
+  rotInput.attribute("min", "-3600");
+  rotInput.attribute("max", "3600");
 
   // Prevent canvas/global handlers from hijacking input events
   const shieldEvents = (elt) => {
-    ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => {
+    ["keydown", "keyup", "keypress", "wheel", "mousedown"].forEach((evt) => {
       elt.addEventListener(evt, (e) => {
         e.stopPropagation();
       });
     });
   };
-  [txInput, tyInput, sxInput, syInput, rotInput].forEach(inp => {
+  [txInput, tyInput, rotInput].forEach((inp) => {
     // Compact width per request
-    inp.style('width', '80px');
+    inp.style("width", "80px");
     shieldEvents(inp.elt);
   });
 
-  const row1 = createDiv(); row1.parent(transformSec.content); row1.class('form-row');
-  const row2 = createDiv(); row2.parent(transformSec.content); row2.class('form-row');
+  const row1 = createDiv();
+  row1.parent(transformSec.content);
+  row1.class("form-row");
+  const row2 = createDiv();
+  row2.parent(transformSec.content);
+  row2.class("form-row");
 
   const makeLabeled = (row, label, input, unit) => {
-    const wrap = createDiv(); wrap.parent(row); wrap.class('form-field');
-    const lab = createDiv(label); lab.parent(wrap); lab.class('control-label');
-    input.parent(wrap); input.class('value-input');
+    const wrap = createDiv();
+    wrap.parent(row);
+    wrap.class("form-field");
+    const lab = createDiv(label);
+    lab.parent(wrap);
+    lab.class("control-label");
+    input.parent(wrap);
+    input.class("value-input");
     // No unit labels requested
   };
 
   // X and Y in the same row, no units
-  makeLabeled(row1, 'X', txInput);
-  makeLabeled(row1, 'Y', tyInput);
-  makeLabeled(row2, 'Scale X', sxInput);
-  makeLabeled(row2, 'Scale Y', syInput);
-  makeLabeled(row2, 'Rotate', rotInput);
+  makeLabeled(row1, "X", txInput);
+  makeLabeled(row1, "Y", tyInput);
+  makeLabeled(row2, "Rotate", rotInput);
 
-  const btnRow = createDiv(); btnRow.parent(transformSec.content); btnRow.style('margin','8px 0 16px');
-  const resetBtn = createButton('Reset Transform');
+  const btnRow = createDiv();
+  btnRow.parent(transformSec.content);
+  btnRow.style("margin", "8px 0 16px");
+  const resetBtn = createButton("Reset Transform");
   resetBtn.parent(btnRow);
   resetBtn.mousePressed(() => {
-    part.tx = 0; part.ty = 0; part.sx = 1; part.sy = 1; part.rotation = 0;
+    part.tx = 0;
+    part.ty = 0;
+    part.sx = 1;
+    part.sy = 1;
+    part.rotation = 0;
     updatePartSettings(part, propagateToSelection);
     updateInfoTable();
     redraw();
@@ -1814,7 +2110,7 @@ function updatePartSettings(part, propagateToSelection = false) {
 
   const parseOrNull = (el) => {
     const s = el.value();
-    if (s === '' || s === '-' || s === '.' || s === '-.') return null;
+    if (s === "" || s === "-" || s === "." || s === "-.") return null;
     const v = parseFloat(s);
     return isNaN(v) ? null : v;
   };
@@ -1822,20 +2118,24 @@ function updatePartSettings(part, propagateToSelection = false) {
   const applyChanges = (finalize = false) => {
     const txv = parseOrNull(txInput);
     const tyv = parseOrNull(tyInput);
-    const sxv = parseOrNull(sxInput);
-    const syv = parseOrNull(syInput);
     const rtv = parseOrNull(rotInput);
 
     let changed = false;
-    const applyTo = propagateToSelection && selectedPartIndices.length > 1
-      ? selectedPartIndices.map(i => svgParts[i])
-      : [part];
-    applyTo.forEach(p => {
-      if (txv !== null) { p.tx = txv; changed = true; }
-      if (tyv !== null) { p.ty = tyv; changed = true; }
-      if (sxv !== null) { p.sx = Math.max(0.01, sxv); changed = true; }
-      if (syv !== null) { p.sy = Math.max(0.01, syv); changed = true; }
-      if (rtv !== null) { p.rotation = rtv * Math.PI / 180; changed = true; }
+    const applyTo =
+      propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+    applyTo.forEach((p) => {
+      if (txv !== null) {
+        p.tx = txv;
+        changed = true;
+      }
+      if (tyv !== null) {
+        p.ty = tyv;
+        changed = true;
+      }
+      if (rtv !== null) {
+        p.rotation = (rtv * Math.PI) / 180;
+        changed = true;
+      }
     });
     if (changed || finalize) {
       updateInfoTable();
@@ -1846,23 +2146,20 @@ function updatePartSettings(part, propagateToSelection = false) {
   // Live update on input when valid; always commit on change (blur/enter)
   txInput.input(() => applyChanges(false));
   tyInput.input(() => applyChanges(false));
-  sxInput.input(() => applyChanges(false));
-  syInput.input(() => applyChanges(false));
   rotInput.input(() => applyChanges(false));
 
   txInput.changed(() => applyChanges(true));
   tyInput.changed(() => applyChanges(true));
-  sxInput.changed(() => applyChanges(true));
-  syInput.changed(() => applyChanges(true));
   rotInput.changed(() => applyChanges(true));
 
   // Stroke settings (collapsible)
-  const strokeSec = createCollapsibleSection(container, 'Stroke Settings', true);
+  const strokeSec = createCollapsibleSection(container, "Stroke Settings", true);
 
-  // Stroke settings
-  createCheckboxControl(container, "Enable Stroke", part.strokeSettings.enabled, (enabled) => {
-    const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-    applyTo.forEach(p => p.strokeSettings.enabled = enabled);
+  // Move Enable Stroke to be the first control inside Stroke section
+  createCheckboxControl(strokeSec.content, "Enable Stroke", part.strokeSettings.enabled, (enabled) => {
+    const applyTo =
+      propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+    applyTo.forEach((p) => (p.strokeSettings.enabled = enabled));
     updatePartSettings(part, propagateToSelection); // Refresh the UI to show/hide elements
     updateInfoTable();
     redraw();
@@ -1872,58 +2169,96 @@ function updatePartSettings(part, propagateToSelection = false) {
   const strokeControlsDiv = createDiv();
   strokeControlsDiv.parent(strokeSec.content);
   strokeControlsDiv.id("stroke-controls");
-   
 
   if (part.strokeSettings.enabled) {
     strokeControlsDiv.style("display", "block");
-    
+
     createColorControl(strokeControlsDiv, "Stroke Color", part.strokeSettings.color, (color) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.strokeSettings.color = color);
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => (p.strokeSettings.color = color));
       updateSVGPartsList();
       updateInfoTable();
       redraw();
     });
-    createSelectControl(strokeControlsDiv, "Stroke Mode", {
-      straight: "straight",
-      zigzag: "zigzag", 
-      lines: "lines",
-      sashiko: "sashiko"
-    }, part.strokeSettings.mode, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => { p.strokeSettings.mode = value; applyStrokeModeDefaults(p, value); });
-      updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
-      updateInfoTable();
-      redraw();
-    });
+    createSelectControl(
+      strokeControlsDiv,
+      "Stroke Mode",
+      {
+        straight: "straight",
+        zigzag: "zigzag",
+        lines: "lines",
+        sashiko: "sashiko",
+      },
+      part.strokeSettings.mode,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => {
+          p.strokeSettings.mode = value;
+          applyStrokeModeDefaults(p, value);
+        });
+        updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     createSliderControl(strokeControlsDiv, "Stroke Weight", 0.5, 10, part.strokeSettings.weight, 0.5, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.strokeSettings.weight = value);
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => (p.strokeSettings.weight = value));
       updateInfoTable();
       redraw();
     });
 
-    createSliderControl(strokeControlsDiv, "Stroke Stitch Length", 0.1, 10, part.strokeSettings.stitchLength, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.strokeSettings.stitchLength = value);
-      updateInfoTable();
-      redraw();
-    });
+    createSliderControl(
+      strokeControlsDiv,
+      "Stroke Stitch Length",
+      0.1,
+      10,
+      part.strokeSettings.stitchLength,
+      0.1,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => (p.strokeSettings.stitchLength = value));
+        updateInfoTable();
+        redraw();
+      },
+    );
 
-    createSliderControl(strokeControlsDiv, "Min Stitch Length", 0.1, 5, part.strokeSettings.minStitchLength, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.strokeSettings.minStitchLength = value);
-      updateInfoTable();
-      redraw();
-    });
+    createSliderControl(
+      strokeControlsDiv,
+      "Min Stitch Length",
+      0.1,
+      5,
+      part.strokeSettings.minStitchLength,
+      0.1,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => (p.strokeSettings.minStitchLength = value));
+        updateInfoTable();
+        redraw();
+      },
+    );
 
-    createSliderControl(strokeControlsDiv, "Resample Noise", 0.0, 2, part.strokeSettings.resampleNoise, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.strokeSettings.resampleNoise = value);
-      updateInfoTable();
-      redraw();
-    });
+    createSliderControl(
+      strokeControlsDiv,
+      "Resample Noise",
+      0.0,
+      2,
+      part.strokeSettings.resampleNoise,
+      0.1,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => (p.strokeSettings.resampleNoise = value));
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     // Path closure control
     createCheckboxControl(strokeControlsDiv, "Close Path", part.closed, (closed) => {
@@ -1932,19 +2267,18 @@ function updatePartSettings(part, propagateToSelection = false) {
       updateInfoTable();
       redraw();
     });
-
- 
   } else {
     strokeControlsDiv.style("display", "none");
   }
 
   // Fill settings (collapsible)
-  const fillSec = createCollapsibleSection(container, 'Fill Settings', false);
+  const fillSec = createCollapsibleSection(container, "Fill Settings", false);
 
   // Fill settings
   createCheckboxControl(container, "Enable Fill", part.fillSettings.enabled, (enabled) => {
-    const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-    applyTo.forEach(p => p.fillSettings.enabled = enabled);
+    const applyTo =
+      propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+    applyTo.forEach((p) => (p.fillSettings.enabled = enabled));
     updatePartSettings(part, propagateToSelection); // Refresh the UI to show/hide elements
     updateInfoTable();
     redraw();
@@ -1957,51 +2291,82 @@ function updatePartSettings(part, propagateToSelection = false) {
 
   if (part.fillSettings.enabled) {
     fillControlsDiv.style("display", "block");
-    
+
     createColorControl(fillControlsDiv, "Fill Color", part.fillSettings.color, (color) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.fillSettings.color = color);
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => (p.fillSettings.color = color));
       updateSVGPartsList();
       updateInfoTable();
       redraw();
     });
 
-    createSelectControl(fillControlsDiv, "Fill Mode", {
-      tatami: "Tatami",
-      satin: "Satin",
-      spiral: "Spiral"
-    }, part.fillSettings.mode, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => { p.fillSettings.mode = value; applyFillModeDefaults(p, value); });
-      updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
-      updateInfoTable();
-      redraw();
-    });
+    createSelectControl(
+      fillControlsDiv,
+      "Fill Mode",
+      {
+        tatami: "Tatami",
+        satin: "Satin",
+        spiral: "Spiral",
+      },
+      part.fillSettings.mode,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => {
+          p.fillSettings.mode = value;
+          applyFillModeDefaults(p, value);
+        });
+        updatePartSettings(part, propagateToSelection); // Refresh UI to show new values
+        updateInfoTable();
+        redraw();
+      },
+    );
 
-    createSliderControl(fillControlsDiv, "Fill Stitch Length", 0.5, 10, part.fillSettings.stitchLength, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.fillSettings.stitchLength = value);
-      updateInfoTable();
-      redraw();
-    });
+    createSliderControl(
+      fillControlsDiv,
+      "Fill Stitch Length",
+      0.5,
+      10,
+      part.fillSettings.stitchLength,
+      0.1,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => (p.fillSettings.stitchLength = value));
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     createSliderControl(fillControlsDiv, "Row Spacing", 0.2, 5, part.fillSettings.rowSpacing, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.fillSettings.rowSpacing = value);
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => (p.fillSettings.rowSpacing = value));
       updateInfoTable();
       redraw();
     });
 
-    createSliderControl(fillControlsDiv, "Min Stitch Length", 0.1, 5, part.fillSettings.minStitchLength, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.fillSettings.minStitchLength = value);
-      updateInfoTable();
-      redraw();
-    });
+    createSliderControl(
+      fillControlsDiv,
+      "Min Stitch Length",
+      0.1,
+      5,
+      part.fillSettings.minStitchLength,
+      0.1,
+      (value) => {
+        const applyTo =
+          propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+        applyTo.forEach((p) => (p.fillSettings.minStitchLength = value));
+        updateInfoTable();
+        redraw();
+      },
+    );
 
     createSliderControl(fillControlsDiv, "Resample Noise", 0.0, 2, part.fillSettings.resampleNoise, 0.1, (value) => {
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => p.fillSettings.resampleNoise = value);
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => (p.fillSettings.resampleNoise = value));
       updateInfoTable();
       redraw();
     });
@@ -2009,28 +2374,37 @@ function updatePartSettings(part, propagateToSelection = false) {
     fillControlsDiv.style("display", "none");
   }
 
-
   // Outline settings (collapsible)
-  const outlineSec = createCollapsibleSection(container, 'Outline Settings', false);
-   // Add to outline control with automatic outline creation/removal
- createCheckboxControl(outlineSec.content, "Add to Outline", part.addToOutline, (addToOutline) => {
-  const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-  applyTo.forEach(p => { p.addToOutline = addToOutline; togglePartOutline(p, addToOutline); });
-});
+  const outlineSec = createCollapsibleSection(container, "Outline Settings", false);
+  // Add to outline control with automatic outline creation/removal
+  createCheckboxControl(outlineSec.content, "Add to Outline", part.addToOutline, (addToOutline) => {
+    const applyTo =
+      propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+    applyTo.forEach((p) => {
+      p.addToOutline = addToOutline;
+      togglePartOutline(p, addToOutline);
+    });
+  });
 
   // Outline type selection
   if (!globalSettings.outlineType) {
-    globalSettings.outlineType = 'convex'; // Default to convex
+    globalSettings.outlineType = "convex"; // Default to convex
   }
-  
-  createSelectControl(outlineSec.content, "Outline Type", {
-    convex: "Convex Hull",
-    bounding: "Bounding Box",
-    scale: "Scaled Path"
-  }, globalSettings.outlineType, (value) => {
-    globalSettings.outlineType = value;
-    updateOutlinesForOffset(); // Auto-update all outlines when type changes
-  });
+
+  createSelectControl(
+    outlineSec.content,
+    "Outline Type",
+    {
+      convex: "Convex Hull",
+      bounding: "Bounding Box",
+      scale: "Scaled Path",
+    },
+    globalSettings.outlineType,
+    (value) => {
+      globalSettings.outlineType = value;
+      updateOutlinesForOffset(); // Auto-update all outlines when type changes
+    },
+  );
 
   // Outline offset control with automatic outline updates
   createSliderControl(outlineSec.content, "Outline Offset", 0.5, 20, globalSettings.outlineOffset, 0.1, (value) => {
@@ -2042,9 +2416,9 @@ function updatePartSettings(part, propagateToSelection = false) {
 function updateInfoDisplay() {
   const container = select("#info-display");
   if (!container) return;
-  
+
   container.html(""); // Clear existing content
-  
+
   if (svgParts.length === 0) {
     const msg = createDiv("No SVG parts loaded");
     msg.parent(container);
@@ -2060,11 +2434,12 @@ function updateInfoDisplay() {
 }
 
 function updateInfoTable() {
-  const container = document.getElementById('info-display');
+  const container = document.getElementById("info-display");
   if (!container) return;
 
   if (svgParts.length === 0) {
-    container.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: var(--space-4);">No SVG parts loaded</p>';
+    container.innerHTML =
+      '<p style="text-align: center; color: var(--text-muted); padding: var(--space-4);">No SVG parts loaded</p>';
     return;
   }
 
@@ -2086,35 +2461,31 @@ function updateInfoTable() {
       <tbody>
   `;
 
-  svgParts.forEach(part => {
-    const strokeColor = part.strokeSettings.enabled 
-      ? `rgb(${part.strokeSettings.color.join(',')})` 
-      : 'transparent';
-    const fillColor = part.fillSettings.enabled 
-      ? `rgb(${part.fillSettings.color.join(',')})` 
-      : 'transparent';
+  svgParts.forEach((part) => {
+    const strokeColor = part.strokeSettings.enabled ? `rgb(${part.strokeSettings.color.join(",")})` : "transparent";
+    const fillColor = part.fillSettings.enabled ? `rgb(${part.fillSettings.color.join(",")})` : "transparent";
 
     tableHTML += `
       <tr>
         <td class="part-name">${part.name}</td>
-        <td>${part.isOutline ? 'outline' : part.elementType}</td>
+        <td>${part.isOutline ? "outline" : part.elementType}</td>
         <td>
           <div class="color-cell">
             <div class="color-swatch" style="background-color: ${strokeColor}"></div>
-            <span>${part.strokeSettings.enabled ? part.strokeSettings.mode : 'none'}</span>
+            <span>${part.strokeSettings.enabled ? part.strokeSettings.mode : "none"}</span>
           </div>
         </td>
         <td>
           <div class="color-cell">
             <div class="color-swatch" style="background-color: ${fillColor}"></div>
-            <span>${part.fillSettings.enabled ? part.fillSettings.mode : 'none'}</span>
+            <span>${part.fillSettings.enabled ? part.fillSettings.mode : "none"}</span>
           </div>
         </td>
-        <td>${part.strokeSettings.enabled ? part.strokeSettings.mode : (part.fillSettings.enabled ? part.fillSettings.mode : 'none')}</td>
-        <td>${part.strokeSettings.enabled ? part.strokeSettings.stitchLength.toFixed(1) + 'mm' : (part.fillSettings.enabled ? part.fillSettings.stitchLength.toFixed(1) + 'mm' : '-')}</td>
-        <td>${part.strokeSettings.enabled ? part.strokeSettings.weight.toFixed(1) + 'mm' : '-'}</td>
-        <td>${part.visible ? '✓' : '✗'}</td>
-        <td>${part.addToOutline ? '✓' : '✗'}</td>
+        <td>${part.strokeSettings.enabled ? part.strokeSettings.mode : part.fillSettings.enabled ? part.fillSettings.mode : "none"}</td>
+        <td>${part.strokeSettings.enabled ? part.strokeSettings.stitchLength.toFixed(1) + "mm" : part.fillSettings.enabled ? part.fillSettings.stitchLength.toFixed(1) + "mm" : "-"}</td>
+        <td>${part.strokeSettings.enabled ? part.strokeSettings.weight.toFixed(1) + "mm" : "-"}</td>
+        <td>${part.visible ? "✓" : "✗"}</td>
+        <td>${part.addToOutline ? "✓" : "✗"}</td>
       </tr>
     `;
   });
@@ -2146,11 +2517,11 @@ function updateInfoTable() {
         </tr>
         <tr>
           <td>Outline Type</td>
-          <td>${globalSettings.outlineType === 'convex' ? 'Convex Hull' : globalSettings.outlineType === 'bounding' ? 'Bounding Box' : 'Scaled Path'}</td>
+          <td>${globalSettings.outlineType === "convex" ? "Convex Hull" : globalSettings.outlineType === "bounding" ? "Bounding Box" : "Scaled Path"}</td>
         </tr>
         <tr>
           <td>Lock Aspect Ratio</td>
-          <td>${globalSettings.lockAspectRatio ? '✓' : '✗'}</td>
+          <td>${globalSettings.lockAspectRatio ? "✓" : "✗"}</td>
         </tr>
       </tbody>
     </table>
@@ -2199,15 +2570,17 @@ function setup() {
     rowSpacing: ${part.fillSettings.rowSpacing}
   });
   
-  ${part.strokeSettings.enabled 
-    ? `stroke(${part.strokeSettings.color[0]}, ${part.strokeSettings.color[1]}, ${part.strokeSettings.color[2]});
+  ${
+    part.strokeSettings.enabled
+      ? `stroke(${part.strokeSettings.color[0]}, ${part.strokeSettings.color[1]}, ${part.strokeSettings.color[2]});
   strokeWeight(${part.strokeSettings.weight});`
-    : "noStroke();"
+      : "noStroke();"
   }
   
-  ${part.fillSettings.enabled 
-    ? `fill(${part.fillSettings.color[0]}, ${part.fillSettings.color[1]}, ${part.fillSettings.color[2]});`
-    : "noFill();"
+  ${
+    part.fillSettings.enabled
+      ? `fill(${part.fillSettings.color[0]}, ${part.fillSettings.color[1]}, ${part.fillSettings.color[2]});`
+      : "noFill();"
   }
   
   `;
@@ -2217,9 +2590,11 @@ function setup() {
       const scaleX = globalSettings.outputWidth / boundingBox.width;
       const scaleY = globalSettings.outputHeight / boundingBox.height;
       const scaleFactor = Math.min(scaleX, scaleY);
-      
-      const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
-      const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+
+      const offsetX =
+        (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+      const offsetY =
+        (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
 
       switch (part.elementType) {
         case "circle":
@@ -2252,7 +2627,7 @@ function setup() {
         default:
           code += `beginShape();`;
           const points = getPathPoints(part.pathData);
-          points.forEach(point => {
+          points.forEach((point) => {
             const scaledX = ((point.x - boundingBox.minX) / boundingBox.width) * globalSettings.outputWidth;
             const scaledY = ((point.y - boundingBox.minY) / boundingBox.height) * globalSettings.outputHeight;
             code += `\n  vertex(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)});`;
@@ -2262,14 +2637,14 @@ function setup() {
     } else {
       code += `beginShape();`;
       const points = getPathPoints(part.pathData);
-      points.forEach(point => {
+      points.forEach((point) => {
         const scaledX = ((point.x - boundingBox.minX) / boundingBox.width) * globalSettings.outputWidth;
         const scaledY = ((point.y - boundingBox.minY) / boundingBox.height) * globalSettings.outputHeight;
         code += `\n  vertex(${scaledX.toFixed(1)}, ${scaledY.toFixed(1)});`;
       });
       code += `\n  endShape${part.closed ? "(CLOSE)" : "()"}`;
     }
-    
+
     code += `\n`;
   });
 
@@ -2279,11 +2654,11 @@ function setup() {
 }`;
 
   // Create and download file
-  const blob = new Blob([code], { type: 'text/javascript' });
+  const blob = new Blob([code], { type: "text/javascript" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'embroidery_sketch.js';
+  a.download = "embroidery_sketch.js";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -2299,15 +2674,13 @@ function exportSVG() {
   let svgContent = `<svg width="${globalSettings.outputWidth}" height="${globalSettings.outputHeight}" xmlns="http://www.w3.org/2000/svg">
 `;
 
-  svgParts.forEach(part => {
+  svgParts.forEach((part) => {
     if (!part.visible) return;
-    
-    const strokeColor = part.strokeSettings.enabled ? 
-      `rgb(${part.strokeSettings.color.join(',')})` : 'none';
-    const fillColor = part.fillSettings.enabled ? 
-      `rgb(${part.fillSettings.color.join(',')})` : 'none';
+
+    const strokeColor = part.strokeSettings.enabled ? `rgb(${part.strokeSettings.color.join(",")})` : "none";
+    const fillColor = part.fillSettings.enabled ? `rgb(${part.fillSettings.color.join(",")})` : "none";
     const strokeWidth = part.strokeSettings.enabled ? part.strokeSettings.weight : 0;
-    
+
     if (part.shapeParams) {
       const params = part.shapeParams;
       switch (part.elementType) {
@@ -2328,15 +2701,15 @@ function exportSVG() {
       svgContent += `  <path d="${part.pathData}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>\n`;
     }
   });
-  
+
   svgContent += `</svg>`;
-  
+
   // Create and download file
-  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'design.svg';
+  a.download = "design.svg";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -2346,37 +2719,37 @@ function exportSVG() {
 function createOutlineForPart(originalPart) {
   // Create a unique outline for this specific part
   const outlineId = `outline_${originalPart.id}_${globalSettings.outlineOffset}`;
-  
+
   // Check if outline already exists for this part with this offset
-  const existingOutline = svgParts.find(part => part.id === outlineId);
+  const existingOutline = svgParts.find((part) => part.id === outlineId);
   if (existingOutline) {
     return existingOutline; // Already exists, return existing
   }
-  
+
   console.log(`Creating outline for ${originalPart.name} with offset ${globalSettings.outlineOffset}mm`);
-  
+
   // Convert original part path to stitch data points
   const originalPoints = getPathPoints(originalPart.pathData);
   if (originalPoints.length === 0) {
     console.warn(`No points found for part ${originalPart.name}, cannot create outline`);
     return null;
   }
-  
+
   // Use embroideryOutlineFromPath to create outline points
-  const outlineType = globalSettings.outlineType || 'convex';
+  const outlineType = globalSettings.outlineType || "convex";
   const outlinePoints = embroideryOutlineFromPath(
-    originalPoints, 
-    globalSettings.outlineOffset, 
+    originalPoints,
+    globalSettings.outlineOffset,
     null, // Don't add to threads automatically
     outlineType, // Use selected outline type
-    false // Don't apply transform here
+    false, // Don't apply transform here
   );
-  
+
   if (outlinePoints.length === 0) {
     console.warn(`Failed to create outline points for part ${originalPart.name}`);
     return null;
   }
-  
+
   // Convert outline points back to SVG path data
   let outlinePathData = "";
   if (outlinePoints.length > 0) {
@@ -2387,7 +2760,7 @@ function createOutlineForPart(originalPart) {
     // Close the outline path
     outlinePathData += " Z";
   }
-  
+
   const outlinePart = {
     id: outlineId,
     name: `${originalPart.name} Outline (${globalSettings.outlineOffset}mm)`,
@@ -2418,9 +2791,9 @@ function createOutlineForPart(originalPart) {
     },
     visible: true,
     selected: false,
-    addToOutline: false
+    addToOutline: false,
   };
-  
+
   svgParts.push(outlinePart);
   console.log(`Outline created for ${originalPart.name} with ${outlinePoints.length} points`);
   return outlinePart;
@@ -2428,11 +2801,9 @@ function createOutlineForPart(originalPart) {
 
 function removeOutlineForPart(originalPart) {
   // Remove all outlines for this part
-  const outlinesToRemove = svgParts.filter(part => 
-    part.isOutline && part.sourcePartId === originalPart.id
-  );
-  
-  outlinesToRemove.forEach(outline => {
+  const outlinesToRemove = svgParts.filter((part) => part.isOutline && part.sourcePartId === originalPart.id);
+
+  outlinesToRemove.forEach((outline) => {
     const index = svgParts.indexOf(outline);
     if (index > -1) {
       svgParts.splice(index, 1);
@@ -2443,18 +2814,18 @@ function removeOutlineForPart(originalPart) {
 
 function updateOutlinesForOffset() {
   // Get all parts that should have outlines
-  const partsWithOutlines = svgParts.filter(part => !part.isOutline && part.addToOutline);
-  
+  const partsWithOutlines = svgParts.filter((part) => !part.isOutline && part.addToOutline);
+
   // Remove all existing outlines
-  partsWithOutlines.forEach(part => {
+  partsWithOutlines.forEach((part) => {
     removeOutlineForPart(part);
   });
-  
+
   // Create new outlines with current offset
-  partsWithOutlines.forEach(part => {
+  partsWithOutlines.forEach((part) => {
     createOutlineForPart(part);
   });
-  
+
   if (partsWithOutlines.length > 0) {
     updateSVGPartsList();
     updateInfoTable();
@@ -2468,7 +2839,7 @@ function togglePartOutline(part, shouldHaveOutline) {
   } else {
     removeOutlineForPart(part);
   }
-  
+
   updateSVGPartsList();
   updateInfoTable();
   redraw();
@@ -2476,17 +2847,17 @@ function togglePartOutline(part, shouldHaveOutline) {
 
 function exportOutlineSVG() {
   // Get parts that have "Add to Outline" enabled
-  const outlineParts = svgParts.filter(part => part.addToOutline);
-  
+  const outlineParts = svgParts.filter((part) => part.addToOutline);
+
   if (outlineParts.length === 0) {
     console.warn("No parts selected for outline export");
     return;
   }
-  
+
   let svgContent = `<svg width="${globalSettings.outputWidth}" height="${globalSettings.outputHeight}" xmlns="http://www.w3.org/2000/svg">
 `;
 
-  outlineParts.forEach(part => {
+  outlineParts.forEach((part) => {
     if (part.shapeParams) {
       const params = part.shapeParams;
       switch (part.elementType) {
@@ -2507,15 +2878,15 @@ function exportOutlineSVG() {
       svgContent += `  <path d="${part.pathData}" fill="none" stroke="red" stroke-width="1"/>\n`;
     }
   });
-  
+
   svgContent += `</svg>`;
-  
+
   // Create and download file
-  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'outline.svg';
+  a.download = "outline.svg";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -2527,17 +2898,17 @@ function clearCanvas() {
   selectedPartIndices = [];
   svgInput.value("");
   boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
-  
+
   // Clear UI panels
   select("#svg-parts-list").html("");
   select("#part-settings").html("");
-  
+
   // Update info table
   updateInfoTable();
-  
+
   // Reset title
   updateCanvasTitle();
-  
+
   redraw();
 }
 
@@ -2548,12 +2919,12 @@ function exportObjectsAsJSON(filename) {
       tool: "p5.embroider SVG Object Importer",
       outputDimensions: {
         width: globalSettings.outputWidth,
-        height: globalSettings.outputHeight
-      }
+        height: globalSettings.outputHeight,
+      },
     },
     globalSettings: globalSettings,
     boundingBox: boundingBox,
-    parts: svgParts
+    parts: svgParts,
   };
 
   const jsonString = JSON.stringify(exportData, null, 2);
@@ -2572,11 +2943,14 @@ function exportObjectsAsJSON(filename) {
 // Helper function to copy text to clipboard
 function copyToClipboard(text) {
   try {
-    navigator.clipboard.writeText(text).then(() => {
-      console.log("Code copied to clipboard!");
-    }).catch((err) => {
-      console.error("Failed to copy code: ", err);
-    });
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        console.log("Code copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy code: ", err);
+      });
   } catch (err) {
     console.error("Clipboard not available: ", err);
   }
@@ -2603,12 +2977,12 @@ function createSliderControl(container, label, min, max, defaultValue, step, cal
   const valueInput = createInput(defaultValue.toFixed(1));
   valueInput.parent(sliderContainer);
   valueInput.class("value-input");
-  valueInput.attribute('type', 'number');
-  valueInput.attribute('min', min);
-  valueInput.attribute('max', max);
-  valueInput.attribute('step', step);
+  valueInput.attribute("type", "number");
+  valueInput.attribute("min", min);
+  valueInput.attribute("max", max);
+  valueInput.attribute("step", step);
 
-  const mmLabel = createSpan('mm');
+  const mmLabel = createSpan("mm");
   mmLabel.parent(sliderContainer);
   mmLabel.class("unit-label");
 
@@ -2727,31 +3101,31 @@ function createTextAreaControl(container, label, placeholder, height) {
 function createCollapsibleSection(parent, title, initiallyOpen = true) {
   const section = createDiv();
   section.parent(parent);
-  section.addClass('collapsible-section');
+  section.addClass("collapsible-section");
 
   const header = createDiv(title);
   header.parent(section);
-  header.addClass('collapsible-header');
-  header.style('cursor', 'pointer');
-  header.style('user-select', 'none');
-  header.style('font-weight', '600');
-  header.style('margin', '16px 0 8px 0');
-  header.style('padding-bottom', '8px');
-  header.style('border-bottom', '1px solid #ddd');
+  header.addClass("collapsible-header");
+  header.style("cursor", "pointer");
+  header.style("user-select", "none");
+  header.style("font-weight", "600");
+  header.style("margin", "16px 0 8px 0");
+  header.style("padding-bottom", "8px");
+  header.style("border-bottom", "1px solid #ddd");
 
-  const indicator = createSpan(initiallyOpen ? '▾' : '▸');
+  const indicator = createSpan(initiallyOpen ? "▾" : "▸");
   indicator.parent(header);
-  indicator.style('float', 'right');
-  indicator.style('color', '#888');
+  indicator.style("float", "right");
+  indicator.style("color", "#888");
 
   const content = createDiv();
   content.parent(section);
-  if (!initiallyOpen) content.style('display', 'none');
+  if (!initiallyOpen) content.style("display", "none");
 
   header.mousePressed(() => {
-    const visible = content.elt.style.display !== 'none';
-    content.style('display', visible ? 'none' : 'block');
-    indicator.html(visible ? '▸' : '▾');
+    const visible = content.elt.style.display !== "none";
+    content.style("display", visible ? "none" : "block");
+    indicator.html(visible ? "▸" : "▾");
   });
 
   return { section, header, content };
@@ -2760,20 +3134,20 @@ function createCollapsibleSection(parent, title, initiallyOpen = true) {
 function keyPressed() {
   // Ignore global keybinds when editing a form element
   const ae = document.activeElement;
-  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
   if (key === "l" || key === "L") {
     loadSVGFromTextArea();
   } else if (key === "c" || key === "C") {
     clearCanvas();
-  } else if (key === 'm' || key === 'M') {
+  } else if (key === "m" || key === "M") {
     moveKeyHeld = true;
   }
 }
 
 function keyReleased() {
   const ae = document.activeElement;
-  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-  if (key === 'm' || key === 'M') {
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
+  if (key === "m" || key === "M") {
     moveKeyHeld = false;
   }
 }
@@ -2785,8 +3159,8 @@ function exportOutline() {
   }
 
   // Filter parts that are actual outline parts (not the original parts)
-  const outlineParts = svgParts.filter(part => part.isOutline === true);
-  
+  const outlineParts = svgParts.filter((part) => part.isOutline === true);
+
   if (outlineParts.length === 0) {
     console.warn("No outline parts found. Use the 'Add to Outline' checkbox in part settings to create outlines.");
     return;
@@ -2800,8 +3174,8 @@ function exportOutline() {
   outlineParts.forEach((part, index) => {
     if (part.visible) {
       // For outline export, we typically want just the stroke/outline
-      let attributes = '';
-      
+      let attributes = "";
+
       // Use stroke color if available, otherwise use a default outline color
       if (part.strokeSettings.enabled && part.strokeSettings.color) {
         const [r, g, b] = part.strokeSettings.color;
@@ -2810,34 +3184,32 @@ function exportOutline() {
         // Default outline color (black)
         attributes += ' stroke="black"';
       }
-      
+
       // Set stroke width for outline
       const strokeWidth = part.strokeSettings.enabled ? part.strokeSettings.weight : 2;
       attributes += ` stroke-width="${strokeWidth}"`;
-      
+
       // No fill for outline export
       attributes += ' fill="none"';
-      
+
       // Convert path data to SVG path element
       svgContent += `\n  <path d="${part.pathData}"${attributes}/>`;
     }
   });
 
-  svgContent += '\n</svg>';
+  svgContent += "\n</svg>";
 
   // Create download link
-  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  const blob = new Blob([svgContent], { type: "image/svg+xml" });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = 'outline_export.svg';
-  a.textContent = 'Download Outline SVG';
+  a.download = "outline_export.svg";
+  a.textContent = "Download Outline SVG";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   console.log(`Outline exported successfully with ${outlineParts.length} outline parts`);
 }
-
-
