@@ -1209,9 +1209,9 @@ function setDebugMode(enabled) {
 
         // If we're changing to a different thread and have existing stitches,
         // add a thread trim command at the current position
-        if (_strokeThreadIndex !== threadIndex && _stitchData.threads[_strokeThreadIndex] !== undefined) {
-          trimThread();
-        }
+        // if (_strokeThreadIndex !== threadIndex && _stitchData.threads[_strokeThreadIndex] !== undefined) {
+        //   trimThread();
+        // }
 
         // Set the current thread index
         _strokeThreadIndex = threadIndex;
@@ -4156,6 +4156,8 @@ function setDebugMode(enabled) {
       // Check if the last run has any stitches
       if (!lastRun || lastRun.length === 0) {
         console.warn("trimThread: No stitches to trim for thread", threadIndex);
+        console.trace("Call stack for trimThread:"); // Add this line
+  
         return; // No stitches to trim
       }
 
