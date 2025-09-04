@@ -11,6 +11,8 @@ let globalSettings = {
   lockAspectRatio: true,
   outlineOffset: 2,
   outlineType: "convex",
+  dpi: 96,
+  adobeDPI: false,
 };
 
 let boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
@@ -336,6 +338,27 @@ function createUI() {
   // SVG input
   svgInput = createTextAreaControl(svgInputContainer, "", "Paste your SVG code here...", 150);
 
+  // Adobe checkbox in SVG Input area
+  (function () {
+    const adobeRow = createDiv();
+    adobeRow.parent(svgInputContainer);
+    adobeRow.addClass && adobeRow.addClass("form-row");
+    const adobeWrap = createDiv();
+    adobeWrap.parent(adobeRow);
+    adobeWrap.addClass && adobeWrap.addClass("form-field");
+    const adobeCheckbox = createCheckboxControl(adobeWrap, "Adobe (72 dpi)", !!globalSettings.adobeDPI, (checked) => {
+      globalSettings.adobeDPI = checked;
+      if (checked) {
+        globalSettings.dpi = 72;
+      }
+      if (svgInput && svgInput.value && svgInput.value().trim()) {
+        loadSVGFromTextArea(false);
+      }
+      updateInfoTable();
+      redraw();
+    });
+  })();
+
   createButton("Load SVG")
     .parent(svgButtonsContainer)
     .class("primary")
@@ -361,6 +384,43 @@ function createUI() {
   }
 
   // Dimension controls
+  // DPI before Width and Height sliders
+  const dpiRow = createDiv();
+  dpiRow.parent(dimensionControlsContainer);
+  dpiRow.addClass && dpiRow.addClass("form-row");
+  const dpiWrap = createDiv();
+  dpiWrap.parent(dpiRow);
+  dpiWrap.addClass && dpiWrap.addClass("form-field");
+  const dpiLabel = createDiv("DPI");
+  dpiLabel.parent(dpiWrap);
+  dpiLabel.addClass && dpiLabel.addClass("control-label");
+  const dpiInput = createInput(String(globalSettings.dpi || 96), "number");
+  dpiInput.parent(dpiWrap);
+  dpiInput.addClass && dpiInput.addClass("value-input");
+  dpiInput.attribute("step", "1");
+  dpiInput.attribute("min", "36");
+  dpiInput.attribute("max", "600");
+  dpiInput.style && dpiInput.style("width", "80px");
+  const stopEvtDpi = (elt) => {
+    ["keydown", "keyup", "keypress", "wheel", "mousedown"].forEach((evt) => {
+      elt.addEventListener(evt, (e) => e.stopPropagation());
+    });
+  };
+  stopEvtDpi(dpiInput.elt);
+  dpiInput.changed(() => {
+    const v = parseFloat(dpiInput.value());
+    if (!isNaN(v) && v > 0) {
+      globalSettings.dpi = Math.max(1, Math.min(1000, Math.round(v)));
+      if (globalSettings.dpi !== 72 && globalSettings.adobeDPI) {
+        globalSettings.adobeDPI = false;
+      }
+      if (svgInput && svgInput.value && svgInput.value().trim()) {
+        loadSVGFromTextArea(false);
+      }
+      updateInfoTable();
+      redraw();
+    }
+  });
   outputWidthControl = createSliderControl(
     dimensionControlsContainer,
     "Width (mm)",
@@ -426,6 +486,8 @@ function createUI() {
     .style("margin", "16px 0 8px 0")
     .style("padding-bottom", "8px")
     .style("border-bottom", "1px solid #ddd");
+
+  // (DPI UI moved elsewhere per request)
 
   createButton("Export DST")
     .parent(dimensionControlsContainer)
@@ -2510,6 +2572,14 @@ function updateInfoTable() {
         <tr>
           <td>Output Height</td>
           <td>${globalSettings.outputHeight}mm</td>
+        </tr>
+        <tr>
+          <td>DPI</td>
+          <td>${globalSettings.dpi || 96}</td>
+        </tr>
+        <tr>
+          <td>Adobe Mode</td>
+          <td>${globalSettings.adobeDPI ? "✓ (72 dpi)" : "✗"}</td>
         </tr>
         <tr>
           <td>Outline Offset</td>

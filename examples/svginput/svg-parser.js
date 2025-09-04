@@ -841,55 +841,79 @@ function createSVGPartObject(element, index, cssStyles = {}) {
   svgDebugLog(`Creating SVG part object for ${tagName} element:`, element);
 
   // Store original shape parameters and convert to path data
+  const dpi = (typeof globalSettings !== "undefined" && globalSettings && globalSettings.dpi) || 96;
+
   switch (tagName) {
-    case "path":
-      pathData = element.getAttribute("d");
+    case "path": {
+      const d = element.getAttribute("d");
+      pathData = d || "";
+      // Convert to mm by sampling points and reconstructing a polyline path
+      if (pathData) {
+        const sampled = getPathPoints(pathData) || [];
+        if (sampled.length > 0) {
+          const ptsMm = sampled.map((p) => ({ x: px2mm(p.x), y: px2mm(p.y) }));
+          let rebuilt = `M ${ptsMm[0].x} ${ptsMm[0].y}`;
+          for (let i = 1; i < ptsMm.length; i++) {
+            rebuilt += ` L ${ptsMm[i].x} ${ptsMm[i].y}`;
+          }
+          const hadClose = /[Zz]/.test(d);
+          if (hadClose) rebuilt += " Z";
+          pathData = rebuilt;
+        }
+      }
       break;
+    }
     case "circle":
-      const cx = parseFloat(element.getAttribute("cx") || 0);
-      const cy = parseFloat(element.getAttribute("cy") || 0);
-      const r = parseFloat(element.getAttribute("r") || 0);
+      const cx = px2mm(parseFloat(element.getAttribute("cx") || 0));
+      const cy = px2mm(parseFloat(element.getAttribute("cy") || 0));
+      const r = px2mm(parseFloat(element.getAttribute("r") || 0));
       if (r > 0) {
         shapeParams = { cx, cy, r };
         pathData = `M ${cx - r} ${cy} A ${r} ${r} 0 1 1 ${cx + r} ${cy} A ${r} ${r} 0 1 1 ${cx - r} ${cy} Z`;
       }
       break;
     case "rect":
-      const x = parseFloat(element.getAttribute("x") || 0);
-      const y = parseFloat(element.getAttribute("y") || 0);
-      const w = parseFloat(element.getAttribute("width") || 0);
-      const h = parseFloat(element.getAttribute("height") || 0);
+      const x = px2mm(parseFloat(element.getAttribute("x") || 0));
+      const y = px2mm(parseFloat(element.getAttribute("y") || 0));
+      const w = px2mm(parseFloat(element.getAttribute("width") || 0));
+      const h = px2mm(parseFloat(element.getAttribute("height") || 0));
       if (w > 0 && h > 0) {
         shapeParams = { x, y, w, h };
         pathData = `M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`;
       }
       break;
     case "ellipse":
-      const ex = parseFloat(element.getAttribute("cx") || 0);
-      const ey = parseFloat(element.getAttribute("cy") || 0);
-      const rx = parseFloat(element.getAttribute("rx") || 0);
-      const ry = parseFloat(element.getAttribute("ry") || 0);
+      const ex = px2mm(parseFloat(element.getAttribute("cx") || 0));
+      const ey = px2mm(parseFloat(element.getAttribute("cy") || 0));
+      const rx = px2mm(parseFloat(element.getAttribute("rx") || 0));
+      const ry = px2mm(parseFloat(element.getAttribute("ry") || 0));
       if (rx > 0 && ry > 0) {
         shapeParams = { cx: ex, cy: ey, rx, ry };
         pathData = `M ${ex - rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex + rx} ${ey} A ${rx} ${ry} 0 1 1 ${ex - rx} ${ey} Z`;
       }
       break;
     case "line":
-      const x1 = parseFloat(element.getAttribute("x1") || 0);
-      const y1 = parseFloat(element.getAttribute("y1") || 0);
-      const x2 = parseFloat(element.getAttribute("x2") || 0);
-      const y2 = parseFloat(element.getAttribute("y2") || 0);
+      const x1 = px2mm(parseFloat(element.getAttribute("x1") || 0));
+      const y1 = px2mm(parseFloat(element.getAttribute("y1") || 0));
+      const x2 = px2mm(parseFloat(element.getAttribute("x2") || 0));
+      const y2 = px2mm(parseFloat(element.getAttribute("y2") || 0));
       shapeParams = { x1, y1, x2, y2 };
       pathData = `M ${x1} ${y1} L ${x2} ${y2}`;
       break;
     case "polygon":
     case "polyline":
       const points = element.getAttribute("points") || "";
-      const coords = points
+      const coordsPx = points
         .trim()
         .split(/[\s,]+/)
         .map(parseFloat);
-      if (coords.length >= 4) {
+      if (coordsPx.length >= 4) {
+        const coords = [];
+        for (let i = 0; i < coordsPx.length; i += 2) {
+          const px = px2mm(coordsPx[i]);
+          const py = px2mm(coordsPx[i + 1]);
+          coords.push(px, py);
+        }
         shapeParams = { coords, closed: tagName === "polygon" };
         pathData = `M ${coords[0]} ${coords[1]}`;
         for (let i = 2; i < coords.length; i += 2) {
@@ -907,7 +931,7 @@ function createSVGPartObject(element, index, cssStyles = {}) {
   // Parse SVG attributes for colors with improved handling
   const stroke = element.getAttribute("stroke");
   const fill = element.getAttribute("fill");
-  const strokeWidth = parseFloat(element.getAttribute("stroke-width")) || 2;
+  const strokeWidthPx = parseFloat(element.getAttribute("stroke-width")) || 2;
 
   // Also check for style attribute which might contain fill/stroke
   const styleAttr = element.getAttribute("style");
@@ -951,7 +975,8 @@ function createSVGPartObject(element, index, cssStyles = {}) {
   // Use CSS values if available, otherwise fall back to style attributes, then direct attributes
   const finalFill = cssFill || fill || styleFill;
   const finalStroke = cssStroke || stroke || styleStroke;
-  const finalStrokeWidth = cssStrokeWidth || strokeWidth || styleStrokeWidth || 2;
+  const finalStrokeWidth = cssStrokeWidth || strokeWidthPx || styleStrokeWidth || 2;
+  const finalStrokeWidthMm = px2mm(finalStrokeWidth);
 
   svgDebugLog(`Element ${tagName} color parsing:`, {
     directFill: fill,
@@ -993,7 +1018,7 @@ function createSVGPartObject(element, index, cssStyles = {}) {
     strokeSettings: {
       enabled: hasStroke || hasNoColors, // Enable stroke if explicitly set or no colors specified
       color: parseColor(finalStroke) || [128, 128, 128], // Gray default stroke
-      weight: finalStrokeWidth,
+      weight: finalStrokeWidthMm,
       mode: "straight",
       stitchLength: 2,
       minStitchLength: 0.5,
