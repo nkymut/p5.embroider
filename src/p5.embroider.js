@@ -3,6 +3,16 @@ import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
 import { 
+  mmToPixel,
+  pixelToMm,
+  px2mm,
+  mm2px,
+  inchToMm,
+  mmToInch,
+  inchToPixel,
+  pixelToInch
+} from "./utils/unit-conversion.js";
+import { 
   drawGrid, 
   drawHoopGuides, 
   drawHoop,
@@ -5001,6 +5011,8 @@ function setDebugMode(enabled) {
   global.drawStitches = p5embroidery.drawStitches;
   global.mmToPixel = mmToPixel;
   global.pixelToMm = pixelToMm;
+  global.px2mm = px2mm;
+  global.mm2px = mm2px;
   global.setStrokeMode = p5embroidery.setStrokeMode;
   global.setStrokeJoin = p5embroidery.setStrokeJoin;
   global.STROKE_MODE = STROKE_MODE;
@@ -5521,47 +5533,6 @@ function setDebugMode(enabled) {
   }
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
-/**
- * Converts millimeters to pixels.
- * @method mmToPixel
- * @for p5
- * @param {Number} mm - Millimeters
- * @param {Number} [dpi=96] - Dots per inch
- * @return {Number} Pixels
- * @example
- *
- *
- * function setup() {
- *   let pixels = mmToPixel(10); // Convert 10mm to pixels
- *   if(_DEBUG) console.log(pixels);
- * }
- *
- *
- */
-function mmToPixel(mm, dpi = 96) {
-  return (mm / 25.4) * dpi;
-}
-
-/**
- * Converts pixels to millimeters.
- * @method pixelToMm
- * @for p5
- * @param {Number} pixels - Pixels
- * @param {Number} [dpi=96] - Dots per inch
- * @return {Number} Millimeters
- * @example
- *
- *
- * function setup() {
- *   let mm = pixelToMm(100); // Convert 100 pixels to mm
- *   if(_DEBUG) console.log(mm);
- * }
- *
- *
- */
-function pixelToMm(pixels, dpi = 96) {
-  return (pixels * 25.4) / dpi;
-}
 
 /**
  * Creates straight line stitches from an array of path points
