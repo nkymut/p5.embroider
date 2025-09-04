@@ -18,15 +18,18 @@ let globalSettings = {
 let boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
 let outputWidthControl, outputHeightControl;
 
-// Preview-only pan/zoom (does not affect recorded embroidery)
-let previewScale = 1;
-let previewPanX = 0;
-let previewPanY = 0;
-let minPreviewScale = 0.5;
-let maxPreviewScale = 5;
-let isDraggingScale = false;
+// Preview viewport is now handled by shared preview-viewport utility
 let isPreviewInteracting = false;
-let isPanning = false;
+
+// Helper function to get current viewport state as variables (for compatibility)
+function getViewportVars() {
+  const state = getPreviewState();
+  return {
+    previewScale: state.scale,
+    previewPanX: state.panX,
+    previewPanY: state.panY
+  };
+}
 let hoverPartIndex = -1;
 let lastMousePos = { x: 0, y: 0 };
 let moveKeyHeld = false; // true while 'm' is held
@@ -101,67 +104,7 @@ function windowResized() {
   resizeCanvasToPreviewWindow();
 }
 
-// ----- Preview UI overlay -----
-function getPreviewUIRects() {
-  const margin = 40;
-  const sliderWidth = 10;
-  const knobHeight = 14;
-  const recenterSize = 24;
-  const recenterX = width - margin - recenterSize;
-  const recenterY = margin;
-  const spacing = 8;
-  // Center slider under recenter button
-  const sliderX = recenterX + (recenterSize - sliderWidth) / 2;
-  const sliderY = recenterY + recenterSize + spacing;
-  const sliderHeight = Math.max(100, height - sliderY - margin);
-
-  return {
-    sliderTrack: { x: sliderX, y: sliderY, w: sliderWidth, h: sliderHeight },
-    sliderKnob: { x: sliderX - 4, y: sliderY, w: sliderWidth + 8, h: knobHeight }, // y updated when drawing
-    recenter: { x: recenterX, y: recenterY, w: recenterSize, h: recenterSize },
-  };
-}
-
-function drawPreviewUIOverlay() {
-  const ui = getPreviewUIRects();
-  noStroke();
-
-  // Recenter button
-  fill(245);
-  rect(ui.recenter.x, ui.recenter.y, ui.recenter.w, ui.recenter.h, 4);
-  fill(50);
-  const cx = ui.recenter.x + ui.recenter.w / 2;
-  const cy = ui.recenter.y + ui.recenter.h / 2;
-  rect(cx - 6, cy - 1, 12, 2, 1);
-  rect(cx - 1, cy - 6, 2, 12, 1);
-
-  // Slider track
-  fill(235);
-  rect(ui.sliderTrack.x, ui.sliderTrack.y, ui.sliderTrack.w, ui.sliderTrack.h, 4);
-
-  // Slider knob position based on previewScale
-  const t = map(previewScale, minPreviewScale, maxPreviewScale, 1, 0, true);
-  const knobY = ui.sliderTrack.y + t * (ui.sliderTrack.h - 14);
-  fill(80);
-  rect(ui.sliderTrack.x - 4, knobY, ui.sliderTrack.w + 8, 14, 6);
-}
-
-function updateScaleFromMouse(my) {
-  const ui = getPreviewUIRects();
-  const t = constrain((my - ui.sliderTrack.y) / (ui.sliderTrack.h - 14), 0, 1);
-  const targetScale = lerp(maxPreviewScale, minPreviewScale, t);
-
-  const oldScale = previewScale;
-  const newScale = constrain(targetScale, minPreviewScale, maxPreviewScale);
-  if (newScale !== oldScale) {
-    // Anchor zoom to drawing center (no pan adjustment)
-    previewScale = newScale;
-  }
-}
-
-function pointInRect(px, py, r) {
-  return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
-}
+// Old preview UI functions removed - now using shared preview-viewport utility
 
 // Default settings for different stitch modes
 const STROKE_MODE_DEFAULTS = {
@@ -584,18 +527,19 @@ function draw() {
   }
 
   // Hover hit-test updates
-  updateHoverHitTest();
+  //updateHoverHitTest();
 
-  // Apply preview-only transforms (visual only)
-  push();
+  // Setup preview viewport before beginRecord
+  setupPreviewViewport({
+    scale: 1,
+    minScale: 0.5,
+    maxScale: 5
+  });
+
   // Center the embroidery output area in the canvas
   const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
   const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
   translate(centerOffsetX, centerOffsetY);
-  // Apply pan and zoom around canvas center
-  translate(width / 2 + previewPanX, height / 2 + previewPanY);
-  scale(previewScale);
-  translate(-width / 2, -height / 2);
 
   // Start embroidery recording (recorded geometry not affected by above transforms)
   beginRecord(this);
@@ -646,8 +590,7 @@ function draw() {
   pop();
   endRecord();
 
-  // Remove preview-only transforms
-  pop();
+
 
   // Draw selection highlight in screen space (apply full mapping from model to screen)
   const _centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
@@ -660,13 +603,18 @@ function draw() {
     centerOffsetY: _centerOffsetY,
     canvasWidth: width,
     canvasHeight: height,
-    previewScale,
-    previewPanX,
-    previewPanY,
   });
 
+    // Remove preview-only transforms
+    pop();
+  // End preview viewport
+  endPreviewViewport();
+
   // UI overlay (drawn in screen space)
-  drawPreviewUIOverlay();
+  drawPreviewControls({
+    showSlider: true,
+    showResetButton: true
+  });
 }
 
 // Draw a visual highlight for selected parts in preview only (not recorded)
@@ -677,23 +625,22 @@ function drawSelectedOverlay(params) {
     offsetY,
     centerOffsetX,
     centerOffsetY,
-    canvasWidth,
-    canvasHeight,
-    previewScale,
-    previewPanX,
-    previewPanY,
   } = params;
+  
   if (!selectedPartIndices || selectedPartIndices.length === 0) return;
+  
+  // Draw overlays in the transformed coordinate space
+  // The viewport transformation is already applied, so we work in world coordinates
   push();
   noFill();
 
-  // Keep overlay thickness constant on screen regardless of previewScale
-  const outerW = Math.max(1, 4 / previewScale);
-  const innerW = Math.max(1, 2 / previewScale);
+  // Keep overlay thickness constant on screen
+  const viewportState = getPreviewState();
+  const outerW = Math.max(1, 4 / viewportState.scale);
+  const innerW = Math.max(1, 2 / viewportState.scale);
 
-  // Helper to draw one outline pass with given stroke
-  // Convert model point (SVG coords) through part transform and output mapping to screen px
-  function modelPointToScreenPx(part, mx, my, frame) {
+  // Helper to convert model point to world coordinates (no screen conversion needed)
+  function modelPointToWorldPx(part, mx, my, frame) {
     const cx0 = frame.base.cx0;
     const cy0 = frame.base.cy0;
     const cosA = part.rotation ? Math.cos(part.rotation) : 1;
@@ -704,13 +651,9 @@ function drawSelectedOverlay(params) {
     const ry = dx * sinA + dy * cosA;
     const outMmX = offsetX + (rx + cx0 + (part.tx || 0)) * scaleFactor;
     const outMmY = offsetY + (ry + cy0 + (part.ty || 0)) * scaleFactor;
-    const px0 = mmToPixel(outMmX);
-    const py0 = mmToPixel(outMmY);
-    const cx = canvasWidth / 2;
-    const cy = canvasHeight / 2;
-    const sx = centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX;
-    const sy = centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY;
-    return { x: sx, y: sy };
+    const px = mmToPixel(outMmX);
+    const py = mmToPixel(outMmY);
+    return { x: px, y: py };
   }
 
   function drawOutlinePass(strokeColor, weight) {
@@ -727,7 +670,7 @@ function drawSelectedOverlay(params) {
       if (points.length >= 2) {
         beginShape();
         for (const point of points) {
-          const sp = modelPointToScreenPx(part, point.x, point.y, frame);
+          const sp = modelPointToWorldPx(part, point.x, point.y, frame);
           vertex(sp.x, sp.y);
         }
         if (part.closed) endShape(CLOSE);
@@ -744,17 +687,13 @@ function drawSelectedOverlay(params) {
   if (selectedPartIndices.length === 1) {
     const part = svgParts[selectedPartIndices[0]];
     const frame = computeEditFrame(part);
-    // Center in screen space
+    // Center in world coordinates (transformation is already applied)
     const centerMmX = offsetX + frame.centerMm.x * scaleFactor;
     const centerMmY = offsetY + frame.centerMm.y * scaleFactor;
-    const px0 = mmToPixel(centerMmX);
-    const py0 = mmToPixel(centerMmY);
-    const cx = canvasWidth / 2;
-    const cy = canvasHeight / 2;
-    const px = centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX;
-    const py = centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY;
-    const wPix = mmToPixel(frame.widthMm * scaleFactor) * previewScale;
-    const hPix = mmToPixel(frame.heightMm * scaleFactor) * previewScale;
+    const px = mmToPixel(centerMmX);
+    const py = mmToPixel(centerMmY);
+    const wPix = mmToPixel(frame.widthMm * scaleFactor);
+    const hPix = mmToPixel(frame.heightMm * scaleFactor);
     const rot = frame.rotation;
 
     push();
@@ -762,12 +701,12 @@ function drawSelectedOverlay(params) {
     rotate(rot);
     rectMode(CENTER);
     stroke(0, 150, 255, 220);
-    strokeWeight(Math.max(1, 2 / previewScale));
+    strokeWeight(Math.max(1, 2 / viewportState.scale));
     noFill();
     rect(0, 0, wPix, hPix);
 
     // Draw corner and edge handles
-    const hs = Math.max(6, 8 / previewScale);
+    const hs = Math.max(6, 8 / viewportState.scale);
     const corners = [
       { x: -wPix / 2, y: -hPix / 2, type: "corner", id: "nw" },
       { x: wPix / 2, y: -hPix / 2, type: "corner", id: "ne" },
@@ -804,16 +743,16 @@ function drawSelectedOverlay(params) {
     }
 
     // Rotation handle
-    const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
+    const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / viewportState.scale);
     const rx = rDist * Math.cos(0);
     const ry = rDist * Math.sin(0);
     stroke(0, 150, 255);
-    strokeWeight(Math.max(1, 1 / previewScale));
+    strokeWeight(Math.max(1, 1 / viewportState.scale));
     line(0, 0, rx, ry);
     fill(100, 200, 255);
     stroke(0, 150, 255);
-    strokeWeight(Math.max(1, 2 / previewScale));
-    ellipse(rx, ry, Math.max(8, 10 / previewScale), Math.max(8, 10 / previewScale));
+    strokeWeight(Math.max(1, 2 / viewportState.scale));
+    ellipse(rx, ry, Math.max(8, 10 / viewportState.scale), Math.max(8, 10 / viewportState.scale));
 
     pop();
   } else if (selectedPartIndices.length > 1) {
@@ -828,7 +767,7 @@ function drawSelectedOverlay(params) {
       const frame = computeEditFrame(part);
       const points = getPathPoints(part.pathData);
       for (const pt of points) {
-        const sp = modelPointToScreenPx(part, pt.x, pt.y, frame);
+        const sp = modelPointToWorldPx(part, pt.x, pt.y, frame);
         if (!isNaN(sp.x) && !isNaN(sp.y)) {
           minPX = Math.min(minPX, sp.x);
           minPY = Math.min(minPY, sp.y);
@@ -847,12 +786,12 @@ function drawSelectedOverlay(params) {
       translate(gx, gy);
       rectMode(CENTER);
       stroke(0, 150, 255, 220);
-      strokeWeight(Math.max(1, 2 / previewScale));
+      strokeWeight(Math.max(1, 2 / viewportState.scale));
       noFill();
       rect(0, 0, wPix, hPix);
 
       // Handles
-      const hs = Math.max(6, 8 / previewScale);
+      const hs = Math.max(6, 8 / viewportState.scale);
       const corners = [
         { x: -wPix / 2, y: -hPix / 2 },
         { x: wPix / 2, y: -hPix / 2 },
@@ -884,14 +823,14 @@ function drawSelectedOverlay(params) {
       }
 
       // Rotation handle on +X
-      const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / previewScale);
+      const rDist = Math.max(wPix, hPix) / 2 + Math.max(20, 30 / viewportState.scale);
       stroke(0, 150, 255);
-      strokeWeight(Math.max(1, 1 / previewScale));
+      strokeWeight(Math.max(1, 1 / viewportState.scale));
       line(0, 0, rDist, 0);
       fill(100, 200, 255);
       stroke(0, 150, 255);
-      strokeWeight(Math.max(1, 2 / previewScale));
-      ellipse(rDist, 0, Math.max(8, 10 / previewScale), Math.max(8, 10 / previewScale));
+      strokeWeight(Math.max(1, 2 / viewportState.scale));
+      ellipse(rDist, 0, Math.max(8, 10 / viewportState.scale), Math.max(8, 10 / viewportState.scale));
       pop();
     }
   }
@@ -944,42 +883,18 @@ function computeEditFrame(part) {
 
 // Interactive preview controls
 function mouseDragged() {
-  let handled = false;
-
-  // Only handle interactions if initiated within canvas or dragging slider
-  if (!isPreviewInteracting && !isDraggingScale) {
-    return;
+  // Handle slider dragging (only for canvas area)
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    handlePreviewControlsDragged(mouseY);
   }
 
-  if (isDraggingScale) {
-    updateScaleFromMouse(mouseY);
-    handled = true;
+  // Handle panning (only for canvas area)
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    handlePreviewPan();
   }
 
-  if (keyIsDown(SHIFT)) {
-    const dy = height - mouseY - (height - pmouseY);
-    const factor = Math.max(0.001, 1 + dy * 0.0005);
-    const oldScale = previewScale;
-    const newScale = constrain(oldScale * factor, minPreviewScale, maxPreviewScale);
-
-    if (newScale !== oldScale) {
-      // Zoom toward mouse: adjust pan so the point under the cursor stays fixed
-      const coX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
-      const coY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
-      const cx = width / 2;
-      const cy = height / 2;
-
-      // Current world position under mouse (pre-scale change)
-      const worldX = (mouseX - coX - cx - previewPanX) / oldScale + cx;
-      const worldY = (mouseY - coY - cy - previewPanY) / oldScale + cy;
-
-      // Update pan to keep mouse-anchored zoom
-      previewPanX -= (oldScale - newScale) * (worldX - cx);
-      previewPanY -= (oldScale - newScale) * (worldY - cy);
-      previewScale = newScale;
-    }
-    handled = true;
-  }
+  // Get current viewport state for compatibility with existing code
+  const { previewScale, previewPanX, previewPanY } = getViewportVars();
 
   // Edit drag: move/scale/rotate selected part in pixel domain
   if (editDrag.active && selectedPartIndices.length === 1) {
@@ -1089,41 +1004,23 @@ function mouseDragged() {
     });
     handled = true;
     updatePartSettings(svgParts[selectedPartIndices[0]]);
-  } else if (isPanning) {
-    // Pan follows mouse drag
-    const dx = mouseX - pmouseX;
-    const dy = mouseY - pmouseY;
-    previewPanX += dx;
-    previewPanY += dy;
-    handled = true;
   }
 
-  if (handled) {
-    redraw();
-    return false;
-  }
+  redraw();
 }
 
 function mousePressed() {
   // Mark interaction as inside-canvas only if press is within canvas bounds
   isPreviewInteracting = mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height;
 
-  // Check recenter button
-  const ui = getPreviewUIRects();
-  if (pointInRect(mouseX, mouseY, ui.recenter)) {
-    previewPanX = 0;
-    previewPanY = 0;
+  // First check if the mouse press was handled by the preview controls (only for canvas area)
+  if (isPreviewInteracting && handlePreviewControlsPressed(mouseX, mouseY)) {
     redraw();
-    return false;
+    return;
   }
 
-  // Check slider track
-  if (pointInRect(mouseX, mouseY, ui.sliderTrack)) {
-    isDraggingScale = true;
-    updateScaleFromMouse(mouseY);
-    redraw();
-    return false;
-  }
+  // Get current viewport state for compatibility with existing code
+  const { previewScale, previewPanX, previewPanY } = getViewportVars();
 
   // // If hovering a part, select it
   // if (hoverPartIndex >= 0) {
@@ -1371,9 +1268,7 @@ function mousePressed() {
   }
   // Otherwise, start panning only if inside canvas; don't block UI inputs
   if (isPreviewInteracting) {
-    isPanning = true;
-    lastMousePos.x = mouseX;
-    lastMousePos.y = mouseY;
+    startPreviewPan();
     editDrag.active = false;
     editDrag.type = null;
     return false;
@@ -1382,7 +1277,8 @@ function mousePressed() {
 }
 
 function mouseReleased() {
-  isDraggingScale = false;
+  handlePreviewControlsReleased();
+  stopPreviewPan();
   isPreviewInteracting = false;
   editDrag.active = false;
   if (selectedPartIndices.length === 1) {
@@ -1390,38 +1286,17 @@ function mouseReleased() {
     if (part && typeof part.mouseReleased === "function") part.mouseReleased();
   }
   groupDrag.active = false;
-  isPanning = false;
 }
 
 function mouseWheel(event) {
-  // Only zoom when the cursor is inside the canvas area
-  if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) {
-    return;
-  }
-
-  // Exponential scaling factor from wheel delta (smooth and always positive)
-  const factor = Math.exp(-event.deltaY * 0.0015);
-  const oldScale = previewScale;
-  const newScale = constrain(oldScale * factor, minPreviewScale, maxPreviewScale);
-
-  if (newScale !== oldScale) {
-    // Zoom toward mouse: keep point under cursor stationary
-    const coX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
-    const coY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
-    const cx = width / 2;
-    const cy = height / 2;
-    const worldX = (mouseX - coX - cx - previewPanX) / oldScale + cx;
-    const worldY = (mouseY - coY - cy - previewPanY) / oldScale + cy;
-
-    previewPanX -= (oldScale - newScale) * (worldX - cx);
-    previewPanY -= (oldScale - newScale) * (worldY - cy);
-    previewScale = newScale;
-
+  // Only handle zoom if mouse is over canvas area, not UI panels
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    handlePreviewZoom(event);
     redraw();
+    return false;
   }
-
-  // Prevent page scroll
-  return false;
+  // Allow default scrolling behavior for UI panels
+  return true;
 }
 
 function updateHoverHitTest() {
