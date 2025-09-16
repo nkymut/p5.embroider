@@ -15,8 +15,8 @@ export class SVGWriter {
       dpi: 300,
       hoopSize: { width: 100, height: 100 },
       margins: { top: 15, right: 15, bottom: 15, left: 15 },
-      showGuides: true,
-      showHoop: true,
+      showGuides: false,
+      showHoop: false,
       lifeSize: true,
     };
   }

@@ -113,7 +113,7 @@ function setDebugMode(enabled) {
   // Embroidery settings
   const _embroiderySettings = {
     stitchLength: 3, // mm
-    stitchWidth: 0,
+    stitchWidth: 0.2,
     minStitchLength: 1, // mm
     resampleNoise: 0, // 0-1 range
     minimumPathLength: 0,
