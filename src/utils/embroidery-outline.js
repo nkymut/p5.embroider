@@ -7,6 +7,202 @@
 // of this file as they are utilities needed by the outline functions
 
 /**
+ * Creates and exports an outline from a specified thread index with the given offset.
+ * @param {number} threadIndex - Index of the thread to create outline from
+ * @param {number} offsetDistance - Distance in mm to offset the outline
+ * @param {string} filename - Output filename with extension (supports .png, .svg, .gcode, .dst)
+ * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding', 'scale')
+ * @param {Object} embroideryState - Current embroidery state object
+ * @returns {Promise<boolean>} Promise that resolves to true if export was successful
+ * @example
+ * // Export outline of thread 0 with 5mm offset as SVG
+ * exportOutline(0, 5, "outline.svg", "convex", getEmbroideryState());
+ * 
+ * // Export outline of thread 1 with 10mm offset as G-code
+ * exportOutline(1, 10, "cut-outline.gcode", "bounding", getEmbroideryState());
+ */
+export async function exportOutline(threadIndex, offsetDistance, filename, outlineType = "convex", embroideryState) {
+  const { 
+    _recording, 
+    _stitchData, 
+    _DEBUG 
+  } = embroideryState;
+
+  if (!_stitchData.threads || _stitchData.threads.length === 0) {
+    console.warn("🪡 p5.embroider says: No embroidery data found to create outline");
+    return false;
+  }
+
+  if (threadIndex < 0 || threadIndex >= _stitchData.threads.length) {
+    console.warn(`🪡 p5.embroider says: Invalid thread index ${threadIndex}. Available threads: 0-${_stitchData.threads.length - 1}`);
+    return false;
+  }
+
+  // Extract file extension to determine export format
+  const extension = filename.split('.').pop().toLowerCase();
+  const supportedFormats = ['png', 'svg', 'gcode', 'dst'];
+  
+  if (!supportedFormats.includes(extension)) {
+    console.warn(`🪡 p5.embroider says: Unsupported format '${extension}'. Supported formats: ${supportedFormats.join(', ')}`);
+    return false;
+  }
+
+  if (_DEBUG) {
+    console.log(`Creating outline from thread ${threadIndex} with ${offsetDistance}mm offset`);
+    console.log(`Export format: ${extension}`);
+    console.log(`Outline type: ${outlineType}`);
+  }
+
+  // Collect all stitch points from the specified thread
+  const threadPoints = [];
+  const thread = _stitchData.threads[threadIndex];
+  
+  if (thread.runs && Array.isArray(thread.runs)) {
+    for (const run of thread.runs) {
+      if (Array.isArray(run)) {
+        for (const stitch of run) {
+          if (stitch && typeof stitch.x === 'number' && typeof stitch.y === 'number') {
+            threadPoints.push({ x: stitch.x, y: stitch.y });
+          }
+        }
+      }
+    }
+  }
+
+  if (threadPoints.length === 0) {
+    console.warn(`🪡 p5.embroider says: No valid stitch points found in thread ${threadIndex}`);
+    return false;
+  }
+
+  // Create outline based on type
+  let outlinePoints = [];
+  switch (outlineType) {
+    case "bounding":
+      outlinePoints = createBoundingBoxOutline(threadPoints, offsetDistance);
+      break;
+    case "scale":
+      outlinePoints = createScaledOutline(threadPoints, offsetDistance);
+      break;
+    case "convex":
+    default:
+      outlinePoints = createConvexHullOutline(threadPoints, offsetDistance);
+      break;
+  }
+
+  if (outlinePoints.length === 0) {
+    console.warn("🪡 p5.embroider says: Failed to create outline");
+    return false;
+  }
+
+  if (_DEBUG) {
+    console.log(`Generated outline with ${outlinePoints.length} points`);
+  }
+
+  // Create a temporary embroidery data structure for the outline
+  const outlineEmbroideryData = {
+    width: _stitchData.width,
+    height: _stitchData.height,
+    pixelsPerUnit: _stitchData.pixelsPerUnit,
+    threads: [{
+      color: { r: 0, g: 0, b: 0 }, // Black outline
+      weight: 0.2,
+      runs: []
+    }]
+  };
+
+  // Convert outline to stitches using the embroidery state functions
+  const { convertVerticesToStitches, _strokeSettings } = embroideryState;
+  const outlineStitches = convertVerticesToStitches(
+    outlinePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
+    _strokeSettings,
+  );
+
+  if (outlineStitches.length > 0) {
+    outlineEmbroideryData.threads[0].runs.push(outlineStitches);
+  }
+
+  // Export in the specified format
+  try {
+    switch (extension) {
+      case 'dst':
+        return await exportOutlineDST(outlineEmbroideryData, filename, embroideryState);
+      case 'gcode':
+        return await exportOutlineGCODE(outlineEmbroideryData, filename, embroideryState);
+      case 'svg':
+        return await exportOutlineSVG(outlineEmbroideryData, filename, embroideryState);
+      case 'png':
+        return await exportOutlinePNG(outlineEmbroideryData, filename, embroideryState);
+      default:
+        console.warn(`🪡 p5.embroider says: Unsupported export format: ${extension}`);
+        return false;
+    }
+  } catch (error) {
+    console.error(`🪡 p5.embroider says: Export failed:`, error);
+    return false;
+  }
+}
+
+/**
+ * Export outline as DST format
+ * @private
+ */
+async function exportOutlineDST(embroideryData, filename, embroideryState) {
+  // Access the DST export functionality from the main embroidery system
+  if (typeof window !== 'undefined' && window.exportEmbroidery) {
+    window.exportEmbroidery(filename, embroideryData);
+    return true;
+  } else {
+    console.warn("🪡 p5.embroider says: DST export not available");
+    return false;
+  }
+}
+
+/**
+ * Export outline as G-code format
+ * @private
+ */
+async function exportOutlineGCODE(embroideryData, filename, embroideryState) {
+  // Access the G-code export functionality from the main embroidery system
+  if (typeof window !== 'undefined' && window.exportGcode) {
+    window.exportGcode(filename, embroideryData);
+    return true;
+  } else {
+    console.warn("🪡 p5.embroider says: G-code export not available");
+    return false;
+  }
+}
+
+/**
+ * Export outline as SVG format
+ * @private
+ */
+async function exportOutlineSVG(embroideryData, filename, embroideryState) {
+  // Access the SVG export functionality from the main embroidery system
+  if (typeof window !== 'undefined' && window.exportSVG) {
+    window.exportSVG(filename, embroideryData);
+    return true;
+  } else {
+    console.warn("🪡 p5.embroider says: SVG export not available");
+    return false;
+  }
+}
+
+/**
+ * Export outline as PNG format
+ * @private
+ */
+async function exportOutlinePNG(embroideryData, filename, embroideryState) {
+  // Access the PNG export functionality from the main embroidery system
+  if (typeof window !== 'undefined' && window.exportPNG) {
+    window.exportPNG(filename, embroideryData);
+    return true;
+  } else {
+    console.warn("🪡 p5.embroider says: PNG export not available");
+    return false;
+  }
+}
+
+/**
  * Creates an outline around the embroidery at a specified offset distance.
  * @param {number} offsetDistance - Distance in mm to offset the outline from the embroidery
  * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)

@@ -61,6 +61,7 @@ if (typeof window !== "undefined" && window._DEBUG !== undefined) {
 import {
   embroideryOutline,
   embroideryOutlineFromPath,
+  exportOutline,
   createConvexHullOutline,
   createBoundingBoxOutline,
   createScaledOutline,
@@ -2386,6 +2387,31 @@ function setDebugMode(enabled) {
     _strokeSettings.stitchLength = _embroiderySettings.stitchLength;
     _strokeSettings.resampleNoise = _embroiderySettings.resampleNoise;
   };
+
+  /**
+   * Sets the stitch width parameters for embroidery.
+   * @method setStitchWidth
+   * @for p5
+   * @param {Number} width - Width of the stitch in millimeters
+   * @example
+   *
+   *
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   setStitchWidth(0.2); // width 0.2mm
+   *   // Draw embroidery patterns
+   * }
+   *
+   *
+   */
+  p5embroidery.setStitchWidth = function (width) {
+    _embroiderySettings.stitchWidth = Math.max(0, width);
+    _strokeSettings.stitchWidth = _embroiderySettings.stitchWidth;
+    _fillSettings.stitchWidth = _embroiderySettings.stitchWidth;
+  };
+
+
 
   /**
    * Sets the stroke settings for embroidery.
@@ -5007,6 +5033,34 @@ function setDebugMode(enabled) {
     return validSegments;
   }
 
+  // Add exportOutline to p5embroidery object
+  p5embroidery.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
+    return await exportOutline(threadIndex, offsetDistance, filename, outlineType, getEmbroideryState());
+  };
+
+  // Add embroideryOutline to p5embroidery object
+  p5embroidery.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex") {
+    return embroideryOutline(offsetDistance, threadIndex, outlineType, getEmbroideryState());
+  };
+
+  // Add embroideryOutlineFromPath to p5embroidery object
+  p5embroidery.embroideryOutlineFromPath = function (
+    stitchDataArray,
+    offsetDistance,
+    threadIndex = _strokeThreadIndex,
+    outlineType = "convex",
+    applyTransform = true,
+  ) {
+    return embroideryOutlineFromPath(
+      stitchDataArray,
+      offsetDistance,
+      threadIndex,
+      outlineType,
+      applyTransform,
+      getEmbroideryState()
+    );
+  };
+
   // Expose public functions
   global.p5embroidery = p5embroidery;
   global.beginRecord = p5embroidery.beginRecord;
@@ -5018,6 +5072,7 @@ function setDebugMode(enabled) {
   global.exportPNG = p5embroidery.exportPNG;
   global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
   global.embroideryOutline = p5embroidery.embroideryOutline;
+  global.exportOutline = p5embroidery.exportOutline;
   global.setStitch = p5embroidery.setStitch;
   global.setDrawMode = p5embroidery.setDrawMode;
   global.drawStitches = p5embroidery.drawStitches;
@@ -5170,6 +5225,34 @@ function setDebugMode(enabled) {
       applyTransform,
       getEmbroideryState()
     );
+  };
+
+  /**
+   * Creates and exports an outline from a specified thread index with the given offset.
+   * @method exportOutline
+   * @for p5
+   * @param {number} threadIndex - Index of the thread to create outline from
+   * @param {number} offsetDistance - Distance in mm to offset the outline
+   * @param {string} filename - Output filename with extension (supports .png, .svg, .gcode, .dst)
+   * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding', 'scale')
+   * @returns {Promise<boolean>} Promise that resolves to true if export was successful
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   circle(50, 50, 20);
+   *   endRecord();
+   *   
+   *   // Export outline of thread 0 with 5mm offset as SVG
+   *   exportOutline(0, 5, "outline.svg");
+   *   
+   *   // Export outline with bounding box type as G-code
+   *   exportOutline(0, 10, "cut-outline.gcode", "bounding");
+   * }
+   */
+  global.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
+    return await exportOutline(threadIndex, offsetDistance, filename, outlineType, getEmbroideryState());
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
