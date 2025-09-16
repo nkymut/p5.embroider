@@ -18,6 +18,7 @@ export class SVGWriter {
       showGuides: false,
       showHoop: false,
       lifeSize: true,
+      centerPattern: false, // New option to control pattern centering
     };
   }
 
@@ -50,28 +51,27 @@ export class SVGWriter {
       throw new Error(`Invalid paper size: ${this.options.paperSize}`);
     }
 
-    // Calculate coordinate system
-    const mmToUnits = this.options.dpi / 25.4; // 25.4mm = 1 inch
-    const paperWidth = paper.width * mmToUnits;
-    const paperHeight = paper.height * mmToUnits;
-    const marginLeft = this.options.margins.left * mmToUnits;
-    const marginTop = this.options.margins.top * mmToUnits;
+    // Use mm as the base unit for SVG (1 SVG unit = 1mm)
+    const paperWidth = paper.width;
+    const paperHeight = paper.height;
+    const marginLeft = this.options.margins.left;
+    const marginTop = this.options.margins.top;
 
-    // Start SVG
+    // Start SVG with mm units
     this.data = [];
     this.data.push('<?xml version="1.0" encoding="UTF-8"?>');
     this.data.push(`<svg xmlns="http://www.w3.org/2000/svg" 
-      width="${paperWidth}" height="${paperHeight}" 
+      width="${paperWidth}mm" height="${paperHeight}mm" 
       viewBox="0 0 ${paperWidth} ${paperHeight}">`);
 
     // Add title and metadata
     this.addComment(`TITLE: ${title}`);
     this.addComment(`PAPER_SIZE: ${this.options.paperSize}`);
-    this.addComment(`DPI: ${this.options.dpi}`);
+    this.addComment(`COORDINATE_SYSTEM: 1 SVG unit = 1mm`);
     this.addComment(`HOOP_SIZE: ${this.options.hoopSize.width}x${this.options.hoopSize.height}mm`);
 
-    // Add coordinate system transformation
-    this.data.push(`<g transform="translate(${marginLeft}, ${marginTop}) scale(${mmToUnits}, ${mmToUnits})">`);
+    // Add coordinate system transformation (just translation, no scaling)
+    this.data.push(`<g transform="translate(${marginLeft}, ${marginTop})">`);
 
     // Draw embroidery hoop if enabled
     if (this.options.showHoop) {
@@ -182,17 +182,27 @@ export class SVGWriter {
       return;
     }
 
-    // Get pattern bounds to center it in the hoop
-    const bounds = this.getPatternBounds(stitchData);
-    const hoop = this.options.hoopSize;
-    const hoopCenterX = hoop.width / 2;
-    const hoopCenterY = hoop.height / 2;
-    const patternCenterX = bounds.x + bounds.width / 2;
-    const patternCenterY = bounds.y + bounds.height / 2;
+    // Calculate offset based on centerPattern option
+    let offsetX = 0;
+    let offsetY = 0;
 
-    // Calculate offset to center pattern in hoop
-    const offsetX = hoopCenterX - patternCenterX;
-    const offsetY = hoopCenterY - patternCenterY;
+    if (this.options.centerPattern) {
+      // Get pattern bounds to center it in the hoop
+      const bounds = this.getPatternBounds(stitchData);
+      const hoop = this.options.hoopSize;
+      const hoopCenterX = hoop.width / 2;
+      const hoopCenterY = hoop.height / 2;
+      const patternCenterX = bounds.x + bounds.width / 2;
+      const patternCenterY = bounds.y + bounds.height / 2;
+
+      // Calculate offset to center pattern in hoop
+      offsetX = hoopCenterX - patternCenterX;
+      offsetY = hoopCenterY - patternCenterY;
+      
+      this.addComment(`Pattern centered in hoop: offset(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})`);
+    } else {
+      this.addComment("Pattern exported at original coordinates");
+    }
 
     for (let threadIndex = 0; threadIndex < stitchData.threads.length; threadIndex++) {
       const thread = stitchData.threads[threadIndex];
@@ -203,7 +213,7 @@ export class SVGWriter {
       for (const run of thread.runs) {
         if (run.length < 2) continue;
 
-        // Create path for stitch run with centering offset
+        // Create path for stitch run with offset
         let pathData = `M ${run[0].x + offsetX} ${run[0].y + offsetY}`;
         for (let i = 1; i < run.length; i++) {
           pathData += ` L ${run[i].x + offsetX} ${run[i].y + offsetY}`;
@@ -213,7 +223,7 @@ export class SVGWriter {
           `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="0.1" stroke-linecap="round"/>`,
         );
 
-        // Draw red dots for each stitch point with centering offset
+        // Draw red dots for each stitch point with offset
         for (const stitch of run) {
           this.data.push(`<circle cx="${stitch.x + offsetX}" cy="${stitch.y + offsetY}" r="0.3" 
             fill="#ff0000" stroke="none" opacity="0.8"/>`);
@@ -258,11 +268,11 @@ export class SVGWriter {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      // Set canvas size based on paper size
+      // Set canvas size based on paper size and DPI
       const paper = SVGWriter.PAPER_SIZES[this.options.paperSize];
-      const mmToUnits = this.options.dpi / 25.4;
-      canvas.width = paper.width * mmToUnits;
-      canvas.height = paper.height * mmToUnits;
+      const mmToPixels = this.options.dpi / 25.4; // Convert mm to pixels for raster output
+      canvas.width = paper.width * mmToPixels;
+      canvas.height = paper.height * mmToPixels;
 
       // Create image from SVG
       const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
@@ -271,7 +281,13 @@ export class SVGWriter {
 
       return new Promise((resolve, reject) => {
         img.onload = () => {
-          ctx.drawImage(img, 0, 0);
+          // Fill with white background
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw SVG image
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
           canvas.toBlob((blob) => {
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -279,6 +295,7 @@ export class SVGWriter {
             link.click();
             setTimeout(() => {
               URL.revokeObjectURL(link.href);
+              URL.revokeObjectURL(url);
               document.body.removeChild(link);
             }, 100);
 

@@ -71,6 +71,8 @@ import {
   crossProduct
 } from './utils/embroidery-outline.js';
 
+
+
 // Expose debug control
 function setDebugMode(enabled) {
   _DEBUG = enabled;
@@ -3898,17 +3900,22 @@ function setDebugMode(enabled) {
    * @param {Object} [options.hoopSize] - Hoop size in mm {width, height}
    * @param {Object} [options.margins] - Margins in mm {top, right, bottom, left}
    * @param {boolean} [options.showGuides=true] - Show hoop guides and center marks
+   * @param {boolean} [options.centerPattern=false] - Center pattern in hoop (false = use original coordinates)
    * @param {boolean} [options.lifeSize=true] - Export at life-size scale
    * @example
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
-   *   // Draw embroidery patterns
-   *   circle(50, 50, 20);
+   *   // Draw embroidery patterns at specific coordinates
+   *   translate(100, 25); // Position at 100mm, 25mm
+   *   circle(0, 0, 20);
    *   endRecord();
+   *   
+   *   // Export at original coordinates (recommended)
    *   exportSVG('my-pattern.svg', {
    *     paperSize: 'A4',
-   *     hoopSize: {width: 100, height: 100}
+   *     hoopSize: {width: 200, height: 200},
+   *     centerPattern: false // Preserves your coordinate positioning
    *   });
    * }
    */
