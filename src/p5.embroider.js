@@ -57,6 +57,18 @@ if (typeof window !== "undefined" && window._DEBUG !== undefined) {
   _DEBUG = window._DEBUG;
 }
 
+// Import outline utilities
+import {
+  embroideryOutline,
+  embroideryOutlineFromPath,
+  createConvexHullOutline,
+  createBoundingBoxOutline,
+  createScaledOutline,
+  getConvexHull,
+  expandPolygon,
+  crossProduct
+} from './utils/embroidery-outline.js';
+
 // Expose debug control
 function setDebugMode(enabled) {
   _DEBUG = enabled;
@@ -5088,6 +5100,19 @@ function setDebugMode(enabled) {
       }
     };
 
+  // Create embroidery state object for outline functions
+  const getEmbroideryState = () => ({
+    _recording,
+    _stitchData,
+    _strokeThreadIndex,
+    _DEBUG,
+    applyCurrentTransformToPoints,
+    convertVerticesToStitches: p5embroidery.convertVerticesToStitches,
+    _strokeSettings,
+    _drawMode,
+    drawStitches
+  });
+
   /**
    * Adds an outline around the embroidery at a specified offset distance.
    * @method embroideryOutline
@@ -5106,85 +5131,7 @@ function setDebugMode(enabled) {
    * }
    */
   global.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex") {
-    if (!_recording) {
-      console.warn("🪡 p5.embroider says: embroideryOutline() can only be called while recording");
-      return;
-    }
-
-    if (!_stitchData.threads || _stitchData.threads.length === 0) {
-      console.warn("🪡 p5.embroider says: No embroidery data found to create outline");
-      return;
-    }
-
-    // Collect all stitch points from all threads and runs
-    const allPoints = [];
-    for (const thread of _stitchData.threads) {
-      for (const run of thread.runs) {
-        for (const stitch of run) {
-          // Skip invalid points and special commands
-          if (stitch.x != null && stitch.y != null && isFinite(stitch.x) && isFinite(stitch.y) && !stitch.command) {
-            allPoints.push({ x: stitch.x, y: stitch.y });
-          }
-        }
-      }
-    }
-
-    if (allPoints.length === 0) {
-      console.warn("🪡 p5.embroider says: No valid stitch points found to create outline");
-      return;
-    }
-
-    if (_DEBUG) {
-      console.log("Creating outline from", allPoints.length, "stitch points");
-      console.log("Offset distance:", offsetDistance, "mm");
-      console.log("Outline type:", outlineType);
-    }
-
-    let outlinePoints = [];
-
-    // Create outline based on type
-    switch (outlineType) {
-      case "bounding":
-        outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
-        break;
-      case "convex":
-      default:
-        outlinePoints = createConvexHullOutline(allPoints, offsetDistance);
-        break;
-    }
-
-    if (outlinePoints.length === 0) {
-      console.warn("🪡 p5.embroider says: Failed to create outline");
-      return;
-    }
-
-    // Apply current transformation to outline points
-    const transformedOutlinePoints = applyCurrentTransformToPoints(outlinePoints);
-
-    // Convert outline to stitches
-    const outlineStitches = p5embroidery.convertVerticesToStitches(
-      transformedOutlinePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
-      _strokeSettings,
-    );
-
-    if (outlineStitches.length > 0) {
-      // Ensure we have a valid thread
-      if (threadIndex >= _stitchData.threads.length) {
-        threadIndex = _strokeThreadIndex;
-      }
-
-      // Add outline stitches to the specified thread
-      _stitchData.threads[threadIndex].runs.push(outlineStitches);
-
-      // Draw outline if in visual modes
-      if (_drawMode === "stitch" || _drawMode === "realistic") {
-        drawStitches(outlineStitches, threadIndex);
-      }
-
-      if (_DEBUG) {
-        console.log("Added outline with", outlineStitches.length, "stitches to thread", threadIndex);
-      }
-    }
+    return embroideryOutline(offsetDistance, threadIndex, outlineType, getEmbroideryState());
   };
 
   /**
@@ -5215,322 +5162,15 @@ function setDebugMode(enabled) {
     outlineType = "convex",
     applyTransform = true,
   ) {
-    if (!stitchDataArray || !Array.isArray(stitchDataArray)) {
-      console.warn("🪡 p5.embroider says: embroideryOutlineFromPath() requires a valid array of stitch data");
-      return [];
-    }
-
-    if (stitchDataArray.length === 0) {
-      console.warn("🪡 p5.embroider says: No stitch data provided to create outline");
-      return [];
-    }
-
-    // Extract valid points from the stitch data array
-    const allPoints = [];
-    for (const stitch of stitchDataArray) {
-      // Handle different possible stitch data formats
-      if (stitch && typeof stitch === "object") {
-        let x, y;
-
-        // Check for direct x, y properties
-        if (stitch.x != null && stitch.y != null) {
-          x = stitch.x;
-          y = stitch.y;
-        }
-        // Check for pathData property (for SVG-style data)
-        else if (stitch.pathData && Array.isArray(stitch.pathData)) {
-          // Process pathData array - take the first valid point
-          for (const pathPoint of stitch.pathData) {
-            if (pathPoint && pathPoint.x != null && pathPoint.y != null) {
-              x = pathPoint.x;
-              y = pathPoint.y;
-              break;
-            }
-          }
-        }
-
-        // Add point if valid and not a special command
-        if (x != null && y != null && isFinite(x) && isFinite(y) && !stitch.command) {
-          allPoints.push({ x: x, y: y });
-        }
-      }
-    }
-
-    if (allPoints.length === 0) {
-      console.warn("🪡 p5.embroider says: No valid stitch points found in provided data to create outline");
-      return [];
-    }
-
-    if (_DEBUG) {
-      console.log("Creating outline from", allPoints.length, "stitch points from provided data");
-      console.log("Offset distance:", offsetDistance, "mm");
-      console.log("Outline type:", outlineType);
-    }
-
-    let outlinePoints = [];
-
-    // Create outline based on type
-    switch (outlineType) {
-      case "bounding":
-        outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
-        break;
-      case "scale":
-        outlinePoints = createScaledOutline(allPoints, offsetDistance);
-        break;
-      case "convex":
-      default:
-        outlinePoints = createConvexHullOutline(allPoints, offsetDistance);
-        break;
-    }
-
-    if (outlinePoints.length === 0) {
-      console.warn("🪡 p5.embroider says: Failed to create outline from provided data");
-      return [];
-    }
-
-    // Apply current transformation to outline points if requested and recording
-    let finalOutlinePoints = outlinePoints;
-    if (applyTransform && _recording) {
-      finalOutlinePoints = applyCurrentTransformToPoints(outlinePoints);
-    }
-
-    // If recording and thread index provided, add to embroidery data
-    if (_recording && threadIndex != null) {
-      // Convert outline to stitches
-      const outlineStitches = p5embroidery.convertVerticesToStitches(
-        finalOutlinePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
-        _strokeSettings,
-      );
-
-      if (outlineStitches.length > 0) {
-        // Ensure we have a valid thread
-        if (threadIndex >= _stitchData.threads.length) {
-          threadIndex = _strokeThreadIndex;
-        }
-
-        // Add outline stitches to the specified thread
-        _stitchData.threads[threadIndex].runs.push(outlineStitches);
-
-        // Draw outline if in visual modes
-        if (_drawMode === "stitch" || _drawMode === "realistic") {
-          drawStitches(outlineStitches, threadIndex);
-        }
-
-        if (_DEBUG) {
-          console.log("Added outline with", outlineStitches.length, "stitches to thread", threadIndex);
-        }
-      }
-    }
-
-    return finalOutlinePoints;
+    return embroideryOutlineFromPath(
+      stitchDataArray,
+      offsetDistance,
+      threadIndex,
+      outlineType,
+      applyTransform,
+      getEmbroideryState()
+    );
   };
-
-  /**
-   * Creates a convex hull outline around the given points.
-   * @private
-   */
-  function createConvexHullOutline(points, offsetDistance) {
-    // Find convex hull of all points
-    const hullPoints = getConvexHull(points);
-
-    if (hullPoints.length < 3) {
-      console.warn("Insufficient points for convex hull, falling back to bounding box");
-      return createBoundingBoxOutline(points, offsetDistance);
-    }
-
-    // Reverse the hull points to ensure clockwise ordering for outward expansion
-    const reversedHull = [...hullPoints].reverse();
-
-    // Expand the hull outward by the offset distance
-    const expandedHull = expandPolygon(reversedHull, offsetDistance);
-
-    // Close the polygon
-    if (expandedHull.length > 0) {
-      expandedHull.push({ x: expandedHull[0].x, y: expandedHull[0].y });
-    }
-
-    return expandedHull;
-  }
-
-  /**
-   * Creates a bounding box outline around the given points.
-   * @private
-   */
-  function createBoundingBoxOutline(points, offsetDistance) {
-    const bounds = getPathBounds(points);
-
-    // Expand bounds by offset distance
-    const expandedBounds = {
-      x: bounds.x - offsetDistance,
-      y: bounds.y - offsetDistance,
-      w: bounds.w + 2 * offsetDistance,
-      h: bounds.h + 2 * offsetDistance,
-    };
-
-    // Create rectangle points (clockwise)
-    return [
-      { x: expandedBounds.x, y: expandedBounds.y },
-      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y },
-      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y + expandedBounds.h },
-      { x: expandedBounds.x, y: expandedBounds.y + expandedBounds.h },
-      { x: expandedBounds.x, y: expandedBounds.y }, // Close the rectangle
-    ];
-  }
-
-  /**
-   * Creates a scaled outline by scaling the original path outward from its centroid.
-   * @private
-   */
-  function createScaledOutline(points, offsetDistance) {
-    if (points.length === 0) return [];
-
-    // Calculate the centroid of the path
-    let centroidX = 0,
-      centroidY = 0;
-    for (const point of points) {
-      centroidX += point.x;
-      centroidY += point.y;
-    }
-    centroidX /= points.length;
-    centroidY /= points.length;
-
-    // Calculate the average distance from centroid to points
-    let avgDistance = 0;
-    for (const point of points) {
-      const dx = point.x - centroidX;
-      const dy = point.y - centroidY;
-      avgDistance += Math.sqrt(dx * dx + dy * dy);
-    }
-    avgDistance /= points.length;
-
-    // Calculate scale factor to achieve the desired offset
-    // If avgDistance is 0 (all points at centroid), use a default scale
-    const scaleFactor = avgDistance > 0 ? (avgDistance + offsetDistance) / avgDistance : 1 + offsetDistance;
-
-    // Scale each point outward from the centroid
-    const scaledPoints = [];
-    for (const point of points) {
-      const dx = point.x - centroidX;
-      const dy = point.y - centroidY;
-
-      const scaledX = centroidX + dx * scaleFactor;
-      const scaledY = centroidY + dy * scaleFactor;
-
-      scaledPoints.push({ x: scaledX, y: scaledY });
-    }
-
-    // Close the path if it has more than 2 points
-    if (scaledPoints.length > 2 && scaledPoints.length > 0) {
-      const firstPoint = scaledPoints[0];
-      const lastPoint = scaledPoints[scaledPoints.length - 1];
-
-      // Only add closing point if it's not already closed
-      const distance = Math.sqrt(Math.pow(lastPoint.x - firstPoint.x, 2) + Math.pow(lastPoint.y - firstPoint.y, 2));
-
-      if (distance > 0.1) {
-        // Small threshold to avoid duplicate points
-        scaledPoints.push({ x: firstPoint.x, y: firstPoint.y });
-      }
-    }
-
-    return scaledPoints;
-  }
-
-  /**
-   * Computes the convex hull of a set of 2D points using Graham scan algorithm.
-   * @private
-   */
-  function getConvexHull(points) {
-    if (points.length < 3) return points;
-
-    // Remove duplicate points
-    const uniquePoints = [];
-    const seen = new Set();
-    for (const point of points) {
-      const key = `${Math.round(point.x * 1000)},${Math.round(point.y * 1000)}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniquePoints.push(point);
-      }
-    }
-
-    if (uniquePoints.length < 3) return uniquePoints;
-
-    // Find the bottom-most point (and left-most if tie)
-    let bottom = uniquePoints[0];
-    for (let i = 1; i < uniquePoints.length; i++) {
-      if (uniquePoints[i].y < bottom.y || (uniquePoints[i].y === bottom.y && uniquePoints[i].x < bottom.x)) {
-        bottom = uniquePoints[i];
-      }
-    }
-
-    // Sort points by polar angle with respect to bottom point
-    const sortedPoints = uniquePoints.filter((p) => p !== bottom);
-    sortedPoints.sort((a, b) => {
-      // Use p5.Vector for angle calculations
-      const vA = createVector(a.x - bottom.x, a.y - bottom.y);
-      const vB = createVector(b.x - bottom.x, b.y - bottom.y);
-
-      const angleA = vA.heading();
-      const angleB = vB.heading();
-
-      if (angleA !== angleB) {
-        return angleA - angleB;
-      }
-
-      // If angles are equal, sort by distance using p5.Vector
-      const distA = vA.magSq(); // magSq() is faster than mag() for comparisons
-      const distB = vB.magSq();
-      return distA - distB;
-    });
-
-    // Build convex hull using Graham scan
-    const hull = [bottom];
-
-    for (const point of sortedPoints) {
-      // Remove points that would create a clockwise turn
-      while (hull.length > 1 && crossProduct(hull[hull.length - 2], hull[hull.length - 1], point) <= 0) {
-        hull.pop();
-      }
-      hull.push(point);
-    }
-
-    return hull;
-  }
-
-  /**
-   * Computes the cross product to determine turn direction using p5.Vector.
-   * @private
-   */
-  function crossProduct(O, A, B) {
-    const v1 = createVector(A.x - O.x, A.y - O.y);
-    const v2 = createVector(B.x - O.x, B.y - O.y);
-    // Use p5.Vector.cross(v1, v2).z to get the z-component of the cross product
-    return p5.Vector.cross(v1, v2).z;
-  }
-
-  /**
-   * Expands a polygon outward by a specified distance.
-   * @private
-   */
-  function expandPolygon(polygon, distance) {
-    if (polygon.length < 3) return polygon;
-
-    const expandedPoints = [];
-
-    for (let i = 0; i < polygon.length; i++) {
-      const prev = polygon[(i - 1 + polygon.length) % polygon.length];
-      const curr = polygon[i];
-      const next = polygon[(i + 1) % polygon.length];
-
-      // Calculate the offset point - use true for isLeft to expand outward
-      // (works with clockwise-ordered polygons)
-      const offsetPoint = calculateOffsetCorner(prev, curr, next, distance, true);
-      expandedPoints.push(offsetPoint);
-    }
-
-    return expandedPoints;
-  }
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
 
