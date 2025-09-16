@@ -5074,6 +5074,7 @@ function setDebugMode(enabled) {
   global.embroideryOutline = p5embroidery.embroideryOutline;
   global.exportOutline = p5embroidery.exportOutline;
   global.setStitch = p5embroidery.setStitch;
+  global.setStitchWidth = p5embroidery.setStitchWidth;
   global.setDrawMode = p5embroidery.setDrawMode;
   global.drawStitches = p5embroidery.drawStitches;
   global.mmToPixel = mmToPixel;
