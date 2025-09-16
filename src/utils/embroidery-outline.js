@@ -203,14 +203,94 @@ async function exportOutlinePNG(embroideryData, filename, embroideryState) {
 }
 
 /**
+ * Exports only the specified thread path as SVG without creating an outline.
+ * @param {number} threadIndex - Index of the thread to export
+ * @param {string} filename - Output filename with .svg extension
+ * @param {Object} embroideryState - Current embroidery state object
+ * @returns {Promise<boolean>} Promise that resolves to true if export was successful
+ * @example
+ * // Export thread 0 path as SVG
+ * exportSVGFromPath(0, "thread0-path.svg", getEmbroideryState());
+ * 
+ * // Export thread 1 path as SVG
+ * exportSVGFromPath(1, "thread1-path.svg", getEmbroideryState());
+ */
+export async function exportSVGFromPath(threadIndex, filename, embroideryState) {
+  const { 
+    _stitchData, 
+    _DEBUG 
+  } = embroideryState;
+
+  if (!_stitchData.threads || _stitchData.threads.length === 0) {
+    console.warn("🪡 p5.embroider says: No embroidery data found to export");
+    return false;
+  }
+
+  if (threadIndex < 0 || threadIndex >= _stitchData.threads.length) {
+    console.warn(`🪡 p5.embroider says: Invalid thread index ${threadIndex}. Available threads: 0-${_stitchData.threads.length - 1}`);
+    return false;
+  }
+
+  // Validate filename extension
+  const extension = filename.split('.').pop().toLowerCase();
+  if (extension !== 'svg') {
+    console.warn(`🪡 p5.embroider says: Invalid file extension '${extension}'. Expected '.svg'`);
+    return false;
+  }
+
+  if (_DEBUG) {
+    console.log(`Exporting thread ${threadIndex} path as SVG: ${filename}`);
+  }
+
+  // Get the specified thread
+  const thread = _stitchData.threads[threadIndex];
+  
+  if (!thread.runs || !Array.isArray(thread.runs) || thread.runs.length === 0) {
+    console.warn(`🪡 p5.embroider says: Thread ${threadIndex} has no stitch data to export`);
+    return false;
+  }
+
+  // Create a temporary embroidery data structure with only the specified thread
+  const threadEmbroideryData = {
+    width: _stitchData.width,
+    height: _stitchData.height,
+    pixelsPerUnit: _stitchData.pixelsPerUnit,
+    threads: [thread] // Only include the specified thread
+  };
+
+  if (_DEBUG) {
+    console.log(`Thread ${threadIndex} has ${thread.runs.length} runs with total stitches:`, 
+      thread.runs.reduce((total, run) => total + (Array.isArray(run) ? run.length : 0), 0));
+  }
+
+  // Export using the existing SVG export functionality
+  try {
+    if (typeof window !== 'undefined' && window.exportSVG) {
+      window.exportSVG(filename, threadEmbroideryData);
+      if (_DEBUG) {
+        console.log(`✅ Successfully exported thread ${threadIndex} path as ${filename}`);
+      }
+      return true;
+    } else {
+      console.warn("🪡 p5.embroider says: SVG export not available");
+      return false;
+    }
+  } catch (error) {
+    console.error(`🪡 p5.embroider says: SVG export failed:`, error);
+    return false;
+  }
+}
+
+/**
  * Creates an outline around the embroidery at a specified offset distance.
  * @param {number} offsetDistance - Distance in mm to offset the outline from the embroidery
  * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)
  * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding')
+ * @param {number} [cornerRadius=0] - Corner radius in mm for bounding box outlines (only applies to 'bounding' type)
  * @param {Object} embroideryState - Current embroidery state object
  * @returns {void}
  */
-export function embroideryOutline(offsetDistance, threadIndex, outlineType = "convex", embroideryState) {
+export function embroideryOutline(offsetDistance, threadIndex, outlineType = "convex", cornerRadius = 0, embroideryState) {
   const { 
     _recording, 
     _stitchData, 
@@ -270,7 +350,7 @@ export function embroideryOutline(offsetDistance, threadIndex, outlineType = "co
   // Create outline based on type
   switch (outlineType) {
     case "bounding":
-      outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
+      outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance, cornerRadius);
       break;
     case "convex":
     default:
@@ -319,6 +399,7 @@ export function embroideryOutline(offsetDistance, threadIndex, outlineType = "co
  * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)
  * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding', 'scale')
  * @param {boolean} [applyTransform=true] - Whether to apply current transformation to the outline
+ * @param {number} [cornerRadius=0] - Corner radius in mm for bounding box outlines (only applies to 'bounding' type)
  * @param {Object} embroideryState - Current embroidery state object
  * @returns {Array} Array of outline points {x, y}
  */
@@ -328,6 +409,7 @@ export function embroideryOutlineFromPath(
   threadIndex,
   outlineType = "convex",
   applyTransform = true,
+  cornerRadius = 0,
   embroideryState
 ) {
   const { 
@@ -388,7 +470,7 @@ export function embroideryOutlineFromPath(
   // Create outline based on type
   switch (outlineType) {
     case "bounding":
-      outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance);
+      outlinePoints = createBoundingBoxOutline(allPoints, offsetDistance, cornerRadius);
       break;
     case "scale":
       outlinePoints = createScaledOutline(allPoints, offsetDistance);
@@ -474,9 +556,10 @@ export function createConvexHullOutline(points, offsetDistance) {
  * Creates a bounding box outline around the given points.
  * @param {Array<{x: number, y: number}>} points - Array of points
  * @param {number} offsetDistance - Distance to offset the outline
+ * @param {number} [cornerRadius=0] - Corner radius in mm for rounded corners
  * @returns {Array<{x: number, y: number}>} Array of outline points
  */
-export function createBoundingBoxOutline(points, offsetDistance) {
+export function createBoundingBoxOutline(points, offsetDistance, cornerRadius = 0) {
   const bounds = getPathBounds(points);
 
   // Expand bounds by offset distance
@@ -487,14 +570,55 @@ export function createBoundingBoxOutline(points, offsetDistance) {
     h: bounds.h + 2 * offsetDistance,
   };
 
-  // Create rectangle points (clockwise)
-  return [
-    { x: expandedBounds.x, y: expandedBounds.y },
-    { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y },
-    { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y + expandedBounds.h },
-    { x: expandedBounds.x, y: expandedBounds.y + expandedBounds.h },
-    { x: expandedBounds.x, y: expandedBounds.y }, // Close the rectangle
+  // If no corner radius, return simple rectangle
+  if (cornerRadius <= 0) {
+    return [
+      { x: expandedBounds.x, y: expandedBounds.y },
+      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y },
+      { x: expandedBounds.x + expandedBounds.w, y: expandedBounds.y + expandedBounds.h },
+      { x: expandedBounds.x, y: expandedBounds.y + expandedBounds.h },
+      { x: expandedBounds.x, y: expandedBounds.y }, // Close the rectangle
+    ];
+  }
+
+  // Limit corner radius to half the smaller dimension
+  const maxRadius = Math.min(expandedBounds.w, expandedBounds.h) / 2;
+  const r = Math.min(cornerRadius, maxRadius);
+
+  // Create rounded rectangle points (clockwise)
+  const outlinePoints = [];
+  const segments = 8; // Number of segments per quarter circle
+
+  // Define corner centers
+  const corners = [
+    { x: expandedBounds.x + r, y: expandedBounds.y + r }, // Top-left
+    { x: expandedBounds.x + expandedBounds.w - r, y: expandedBounds.y + r }, // Top-right
+    { x: expandedBounds.x + expandedBounds.w - r, y: expandedBounds.y + expandedBounds.h - r }, // Bottom-right
+    { x: expandedBounds.x + r, y: expandedBounds.y + expandedBounds.h - r }, // Bottom-left
   ];
+
+  // Define start angles for each corner (clockwise from top-left)
+  const startAngles = [Math.PI, Math.PI * 1.5, 0, Math.PI * 0.5];
+
+  for (let cornerIndex = 0; cornerIndex < 4; cornerIndex++) {
+    const corner = corners[cornerIndex];
+    const startAngle = startAngles[cornerIndex];
+
+    // Add corner arc points
+    for (let i = 0; i <= segments; i++) {
+      const angle = startAngle + (i / segments) * (Math.PI / 2);
+      const x = corner.x + Math.cos(angle) * r;
+      const y = corner.y + Math.sin(angle) * r;
+      outlinePoints.push({ x, y });
+    }
+  }
+
+  // Close the path
+  if (outlinePoints.length > 0) {
+    outlinePoints.push({ x: outlinePoints[0].x, y: outlinePoints[0].y });
+  }
+
+  return outlinePoints;
 }
 
 /**

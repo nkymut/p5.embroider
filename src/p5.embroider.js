@@ -62,6 +62,7 @@ import {
   embroideryOutline,
   embroideryOutlineFromPath,
   exportOutline,
+  exportSVGFromPath,
   createConvexHullOutline,
   createBoundingBoxOutline,
   createScaledOutline,
@@ -5039,8 +5040,8 @@ function setDebugMode(enabled) {
   };
 
   // Add embroideryOutline to p5embroidery object
-  p5embroidery.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex") {
-    return embroideryOutline(offsetDistance, threadIndex, outlineType, getEmbroideryState());
+  p5embroidery.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex", cornerRadius = 0) {
+    return embroideryOutline(offsetDistance, threadIndex, outlineType, cornerRadius, getEmbroideryState());
   };
 
   // Add embroideryOutlineFromPath to p5embroidery object
@@ -5050,6 +5051,7 @@ function setDebugMode(enabled) {
     threadIndex = _strokeThreadIndex,
     outlineType = "convex",
     applyTransform = true,
+    cornerRadius = 0,
   ) {
     return embroideryOutlineFromPath(
       stitchDataArray,
@@ -5057,8 +5059,14 @@ function setDebugMode(enabled) {
       threadIndex,
       outlineType,
       applyTransform,
+      cornerRadius,
       getEmbroideryState()
     );
+  };
+
+  // Add exportSVGFromPath to p5embroidery object
+  p5embroidery.exportSVGFromPath = async function (threadIndex, filename) {
+    return await exportSVGFromPath(threadIndex, filename, getEmbroideryState());
   };
 
   // Expose public functions
@@ -5073,6 +5081,7 @@ function setDebugMode(enabled) {
   global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
   global.embroideryOutline = p5embroidery.embroideryOutline;
   global.exportOutline = p5embroidery.exportOutline;
+  global.exportSVGFromPath = p5embroidery.exportSVGFromPath;
   global.setStitch = p5embroidery.setStitch;
   global.setStitchWidth = p5embroidery.setStitchWidth;
   global.setDrawMode = p5embroidery.setDrawMode;
@@ -5176,6 +5185,7 @@ function setDebugMode(enabled) {
    * @param {number} offsetDistance - Distance in mm to offset the outline from the embroidery
    * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)
    * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding')
+   * @param {number} [cornerRadius=0] - Corner radius in mm for bounding box outlines (only applies to 'bounding' type)
    * @example
    * function setup() {
    *   createCanvas(400, 400);
@@ -5183,11 +5193,12 @@ function setDebugMode(enabled) {
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   embroideryOutline(5); // Add 5mm outline around the embroidery
+   *   embroideryOutline(10, 1, "bounding", 5); // Add 10mm bounding box outline with 5mm rounded corners
    *   endRecord();
    * }
    */
-  global.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex") {
-    return embroideryOutline(offsetDistance, threadIndex, outlineType, getEmbroideryState());
+  global.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex", cornerRadius = 0) {
+    return embroideryOutline(offsetDistance, threadIndex, outlineType, cornerRadius, getEmbroideryState());
   };
 
   /**
@@ -5199,6 +5210,7 @@ function setDebugMode(enabled) {
    * @param {number} [threadIndex] - Thread index to add the outline to (defaults to current stroke thread)
    * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding', 'scale')
    * @param {boolean} [applyTransform=true] - Whether to apply current transformation to the outline
+   * @param {number} [cornerRadius=0] - Corner radius in mm for bounding box outlines (only applies to 'bounding' type)
    * @returns {Array} Array of outline points {x, y}
    * @example
    * function setup() {
@@ -5207,6 +5219,7 @@ function setDebugMode(enabled) {
    *   // Create some stitch data
    *   let pathData = [{x: 50, y: 50}, {x: 100, y: 50}, {x: 100, y: 100}];
    *   let outlinePoints = embroideryOutlineFromPath(pathData, 5); // Add 5mm outline
+   *   let roundedOutline = embroideryOutlineFromPath(pathData, 8, 0, "bounding", true, 3); // 8mm bounding box with 3mm corners
    *   // Use the outline points for further processing
    *   endRecord();
    * }
@@ -5217,6 +5230,7 @@ function setDebugMode(enabled) {
     threadIndex = _strokeThreadIndex,
     outlineType = "convex",
     applyTransform = true,
+    cornerRadius = 0,
   ) {
     return embroideryOutlineFromPath(
       stitchDataArray,
@@ -5224,6 +5238,7 @@ function setDebugMode(enabled) {
       threadIndex,
       outlineType,
       applyTransform,
+      cornerRadius,
       getEmbroideryState()
     );
   };
@@ -5254,6 +5269,39 @@ function setDebugMode(enabled) {
    */
   global.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
     return await exportOutline(threadIndex, offsetDistance, filename, outlineType, getEmbroideryState());
+  };
+
+  /**
+   * Exports only the specified thread path as SVG without creating an outline.
+   * @method exportSVGFromPath
+   * @for p5
+   * @param {number} threadIndex - Index of the thread to export
+   * @param {string} filename - Output filename with .svg extension
+   * @returns {Promise<boolean>} Promise that resolves to true if export was successful
+   * @example
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   
+   *   // Thread 0 - Red circle
+   *   stroke(255, 0, 0);
+   *   circle(50, 50, 20);
+   *   
+   *   // Thread 1 - Blue square  
+   *   stroke(0, 0, 255);
+   *   rect(30, 30, 40, 40);
+   *   
+   *   endRecord();
+   *   
+   *   // Export only thread 0 path as SVG
+   *   exportSVGFromPath(0, "thread0-path.svg");
+   *   
+   *   // Export only thread 1 path as SVG
+   *   exportSVGFromPath(1, "thread1-path.svg");
+   * }
+   */
+  global.exportSVGFromPath = async function (threadIndex, filename) {
+    return await exportSVGFromPath(threadIndex, filename, getEmbroideryState());
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
