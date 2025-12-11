@@ -41,13 +41,16 @@ function draw() {
   beginRecord(this);
   fill(0, 200, 0);
   setFillSettings({
+    stitchLength: 0.4,
+    stitchWidth: 0.4,
+    rowSpacing: 0.4,
     noise: 0.4,
   });
 
   setStitch(0.5, 0.2, 0);
   setStrokeSettings({
     strokeLength: 0.4,
-    stitchWidth: 1.8,
+    stitchWidth: 0.8,
     noise: 0.2,
   });
 

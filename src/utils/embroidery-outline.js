@@ -3,6 +3,8 @@
  * Functions for creating outlines around embroidery patterns
  */
 
+import { SVGWriter } from '../io/p5-svg-writer.js';
+
 // Note: getPathBounds and calculateOffsetCorner functions are defined at the bottom 
 // of this file as they are utilities needed by the outline functions
 
@@ -16,6 +18,7 @@
  * @param {string} filename - Output filename with extension (supports .png, .svg, .gcode, .dst)
  * @param {string} [outlineType='convex'] - Type of outline ('convex', 'bounding', 'scale')
  * @param {Object} embroideryState - Current embroidery state object
+ * @param {Object} [options={}] - Export options (paperSize, hoopSize, margins, dpi, centerPattern, etc.)
  * @returns {Promise<boolean>} Promise that resolves to true if export was successful
  * 
  * @example
@@ -27,8 +30,17 @@
  * 
  * // Export scaled outline as G-code for CNC cutting
  * exportOutline(0, 8, "cut-path.gcode", "scale", getEmbroideryState());
+ * 
+ * // Export with custom options
+ * exportOutline(0, 5, "outline.svg", "convex", getEmbroideryState(), {
+ *   paperSize: "A3",
+ *   hoopSize: { width: 150, height: 150 },
+ *   margins: { top: 20, right: 20, bottom: 20, left: 20 },
+ *   centerPattern: true,
+ *   dpi: 600
+ * });
  */
-export async function exportOutline(threadIndex, offsetDistance, filename, outlineType = "convex", embroideryState) {
+export async function exportOutline(threadIndex, offsetDistance, filename, outlineType = "convex", embroideryState, options = {}) {
   const { 
     _stitchData, 
     _DEBUG 
@@ -108,9 +120,9 @@ export async function exportOutline(threadIndex, offsetDistance, filename, outli
       case 'gcode':
         return await exportOutlinePathAsGCODE(outlinePoints, filename, embroideryState);
       case 'svg':
-        return await exportOutlinePathAsSVG(outlinePoints, filename, embroideryState);
+        return await exportOutlinePathAsSVG(outlinePoints, filename, embroideryState, options);
       case 'png':
-        return await exportOutlinePathAsPNG(outlinePoints, filename, embroideryState);
+        return await exportOutlinePathAsPNG(outlinePoints, filename, embroideryState, options);
       default:
         console.warn(`🪡 p5.embroider says: Unsupported export format: ${extension}`);
         return false;
@@ -148,21 +160,6 @@ async function exportOutlinePathAsDST(outlinePoints, filename, embroideryState) 
 }
 
 /**
- * Export outline as DST format (legacy)
- * @private
- */
-async function exportOutlineDST(embroideryData, filename, embroideryState) {
-  // Access the DST export functionality from the main embroidery system
-  if (typeof window !== 'undefined' && window.exportEmbroidery) {
-    window.exportEmbroidery(filename, embroideryData);
-    return true;
-  } else {
-    console.warn("🪡 p5.embroider says: DST export not available");
-    return false;
-  }
-}
-
-/**
  * Export outline path as G-code format
  * @private
  */
@@ -189,42 +186,47 @@ async function exportOutlinePathAsGCODE(outlinePoints, filename, embroideryState
 }
 
 /**
- * Export outline as G-code format (legacy)
- * @private
- */
-async function exportOutlineGCODE(embroideryData, filename, embroideryState) {
-  // Access the G-code export functionality from the main embroidery system
-  if (typeof window !== 'undefined' && window.exportGcode) {
-    window.exportGcode(filename, embroideryData);
-    return true;
-  } else {
-    console.warn("🪡 p5.embroider says: G-code export not available");
-    return false;
-  }
-}
-
-/**
  * Export outline path as SVG format (clean paths without stitch dots)
+ * Uses SVGWriter for proper coordinate system handling and professional output
  * @private
  */
-async function exportOutlinePathAsSVG(outlinePoints, filename, embroideryState) {
+async function exportOutlinePathAsSVG(outlinePoints, filename, embroideryState, options = {}) {
   try {
-    // Create a clean SVG with just the outline path
-    const svgContent = createCleanOutlineSVG(outlinePoints, filename);
+    // Create SVGWriter instance with appropriate settings
+    const svgWriter = new SVGWriter();
     
-    // Save the SVG file
+    // Merge user options with defaults
+    svgWriter.setOptions({
+      paperSize: options.paperSize || "A4",
+      hoopSize: options.hoopSize || { width: 100, height: 100 },
+      margins: options.margins || { top: 15, right: 15, bottom: 15, left: 15 },
+      showGuides: options.showGuides ?? false,
+      showHoop: options.showHoop ?? false,
+      centerPattern: options.centerPattern ?? true,
+      dpi: options.dpi || 300,
+      ...options // Allow overriding any option
+    });
+
+    // Validate options
+    svgWriter.validateOptions();
+    
+    // Generate SVG content using the professional SVGWriter
+    const title = filename.replace(/\.[^/.]+$/, "") || "Outline";
+    const svgContent = svgWriter.generateOutlineSVG(outlinePoints, title);
+    
+    // Save the SVG file using consistent download pattern
     const blob = new Blob([svgContent], { type: "image/svg+xml" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = filename;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    
     setTimeout(() => {
       URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
     }, 100);
     
+    console.log(`🪡 p5.embroider says: Clean outline SVG exported successfully: ${filename}`);
     return true;
   } catch (error) {
     console.error("🪡 p5.embroider says: SVG outline export failed:", error);
@@ -232,103 +234,45 @@ async function exportOutlinePathAsSVG(outlinePoints, filename, embroideryState) 
   }
 }
 
-/**
- * Creates a clean SVG with just the outline path (no stitch dots)
- * @private
- */
-function createCleanOutlineSVG(outlinePoints, title) {
-  if (!outlinePoints || outlinePoints.length === 0) {
-    throw new Error("No outline points to export");
-  }
-
-  // Calculate bounds
-  let minX = outlinePoints[0].x, maxX = outlinePoints[0].x;
-  let minY = outlinePoints[0].y, maxY = outlinePoints[0].y;
-  
-  for (const point of outlinePoints) {
-    minX = Math.min(minX, point.x);
-    maxX = Math.max(maxX, point.x);
-    minY = Math.min(minY, point.y);
-    maxY = Math.max(maxY, point.y);
-  }
-  
-  const width = maxX - minX;
-  const height = maxY - minY;
-  const margin = 10; // 10mm margin
-  
-  const svgWidth = width + 2 * margin;
-  const svgHeight = height + 2 * margin;
-  const offsetX = -minX + margin;
-  const offsetY = -minY + margin;
-
-  // Create SVG path data
-  let pathData = `M ${outlinePoints[0].x + offsetX} ${outlinePoints[0].y + offsetY}`;
-  for (let i = 1; i < outlinePoints.length; i++) {
-    pathData += ` L ${outlinePoints[i].x + offsetX} ${outlinePoints[i].y + offsetY}`;
-  }
-  pathData += ' Z'; // Close the path
-
-  // Generate clean SVG
-  const svgLines = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}mm" height="${svgHeight}mm" viewBox="0 0 ${svgWidth} ${svgHeight}">`,
-    `  <!-- ${title} - Clean Outline Export -->`,
-    `  <!-- Coordinate system: 1 SVG unit = 1mm -->`,
-    `  <!-- Outline bounds: ${width.toFixed(1)}mm x ${height.toFixed(1)}mm -->`,
-    `  <g stroke="#000000" stroke-width="0.1" fill="none" stroke-linecap="round" stroke-linejoin="round">`,
-    `    <path d="${pathData}"/>`,
-    `  </g>`,
-    `</svg>`
-  ];
-
-  return svgLines.join('\n');
-}
-
-/**
- * Export outline as SVG format (legacy - with stitch dots)
- * @private
- */
-async function exportOutlineSVG(embroideryData, filename, embroideryState) {
-  // Access the SVG export functionality from the main embroidery system
-  if (typeof window !== 'undefined' && window.exportSVG) {
-    window.exportSVG(filename, embroideryData);
-    return true;
-  } else {
-    console.warn("🪡 p5.embroider says: SVG export not available");
-    return false;
-  }
-}
 
 /**
  * Export outline path as PNG format (clean paths without stitch dots)
+ * Uses SVGWriter for proper coordinate system handling and professional output
  * @private
  */
-async function exportOutlinePathAsPNG(outlinePoints, filename, embroideryState) {
+async function exportOutlinePathAsPNG(outlinePoints, filename, embroideryState, options = {}) {
   try {
-    // Create SVG first, then convert to PNG
-    const svgContent = createCleanOutlineSVG(outlinePoints, filename);
+    // Create SVGWriter instance with appropriate settings
+    const svgWriter = new SVGWriter();
+    
+    // Merge user options with defaults
+    svgWriter.setOptions({
+      paperSize: options.paperSize || "A4",
+      hoopSize: options.hoopSize || { width: 100, height: 100 },
+      margins: options.margins || { top: 15, right: 15, bottom: 15, left: 15 },
+      showGuides: options.showGuides ?? false,
+      showHoop: options.showHoop ?? false,
+      centerPattern: options.centerPattern ?? true,
+      dpi: options.dpi || 300,
+      ...options // Allow overriding any option
+    });
+
+    // Validate options
+    svgWriter.validateOptions();
+    
+    // Generate SVG content using SVGWriter
+    const title = filename.replace(/\.[^/.]+$/, "") || "Outline";
+    const svgContent = svgWriter.generateOutlineSVG(outlinePoints, title);
     
     // Create canvas to convert SVG to PNG
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     
-    // Set canvas size (300 DPI equivalent)
-    const dpi = 300;
-    const mmToPixels = dpi / 25.4;
-    
-    // Parse SVG dimensions
-    const widthMatch = svgContent.match(/width="([^"]+)mm"/);
-    const heightMatch = svgContent.match(/height="([^"]+)mm"/);
-    
-    if (!widthMatch || !heightMatch) {
-      throw new Error("Could not parse SVG dimensions");
-    }
-    
-    const svgWidthMM = parseFloat(widthMatch[1]);
-    const svgHeightMM = parseFloat(heightMatch[1]);
-    
-    canvas.width = svgWidthMM * mmToPixels;
-    canvas.height = svgHeightMM * mmToPixels;
+    // Set canvas size based on paper size and DPI
+    const paper = SVGWriter.PAPER_SIZES[svgWriter.options.paperSize];
+    const mmToPixels = svgWriter.options.dpi / 25.4; // Convert mm to pixels for raster output
+    canvas.width = paper.width * mmToPixels;
+    canvas.height = paper.height * mmToPixels;
     
     // Create image from SVG
     const svgBlob = new Blob([svgContent], { type: "image/svg+xml" });
@@ -350,13 +294,13 @@ async function exportOutlinePathAsPNG(outlinePoints, filename, embroideryState) 
           link.download = filename;
           document.body.appendChild(link);
           link.click();
-          document.body.removeChild(link);
-          
           setTimeout(() => {
             URL.revokeObjectURL(link.href);
             URL.revokeObjectURL(url);
+            document.body.removeChild(link);
           }, 100);
           
+          console.log(`🪡 p5.embroider says: Clean outline PNG exported successfully: ${filename}`);
           resolve(true);
         }, "image/png");
       };
@@ -370,46 +314,30 @@ async function exportOutlinePathAsPNG(outlinePoints, filename, embroideryState) 
 }
 
 /**
- * Export outline as PNG format (legacy - with stitch dots)
- * @private
- */
-async function exportOutlinePNG(embroideryData, filename, embroideryState) {
-  // Access the PNG export functionality from the main embroidery system
-  if (typeof window !== 'undefined' && window.exportPNG) {
-    window.exportPNG(filename, embroideryData);
-    return true;
-  } else {
-    console.warn("🪡 p5.embroider says: PNG export not available");
-    return false;
-  }
-}
-
-/**
  * Exports only the specified thread path as SVG without creating an outline.
+ * @deprecated Use exportSVG() with threads option instead
  * @param {number} threadIndex - Index of the thread to export
  * @param {string} filename - Output filename with .svg extension
- * @param {Object} embroideryState - Current embroidery state object
+ * @param {Object} stitchData - Embroidery stitch data object
+ * @param {Object} [options={}] - Export options (paperSize, hoopSize, margins, dpi, centerPattern, stitchDots, etc.)
  * @returns {Promise<boolean>} Promise that resolves to true if export was successful
  * @example
- * // Export thread 0 path as SVG
- * exportSVGFromPath(0, "thread0-path.svg", getEmbroideryState());
+ * // Old way (deprecated):
+ * exportSVGFromPath(0, "thread0-path.svg", stitchData);
  * 
- * // Export thread 1 path as SVG
- * exportSVGFromPath(1, "thread1-path.svg", getEmbroideryState());
+ * // New way:
+ * exportSVG("thread0-path.svg", { threads: [0] });
  */
-export async function exportSVGFromPath(threadIndex, filename, embroideryState) {
-  const { 
-    _stitchData, 
-    _DEBUG 
-  } = embroideryState;
-
-  if (!_stitchData.threads || _stitchData.threads.length === 0) {
+export async function exportSVGFromPath(threadIndex, filename, stitchData, options = {}) {
+  // Validate stitchData
+  if (!stitchData || !stitchData.threads || stitchData.threads.length === 0) {
     console.warn("🪡 p5.embroider says: No embroidery data found to export");
     return false;
   }
 
-  if (threadIndex < 0 || threadIndex >= _stitchData.threads.length) {
-    console.warn(`🪡 p5.embroider says: Invalid thread index ${threadIndex}. Available threads: 0-${_stitchData.threads.length - 1}`);
+  // Validate threadIndex
+  if (threadIndex < 0 || threadIndex >= stitchData.threads.length) {
+    console.warn(`🪡 p5.embroider says: Invalid thread index ${threadIndex}. Available threads: 0-${stitchData.threads.length - 1}`);
     return false;
   }
 
@@ -420,43 +348,50 @@ export async function exportSVGFromPath(threadIndex, filename, embroideryState) 
     return false;
   }
 
-  if (_DEBUG) {
-    console.log(`Exporting thread ${threadIndex} path as SVG: ${filename}`);
-  }
-
   // Get the specified thread
-  const thread = _stitchData.threads[threadIndex];
+  const thread = stitchData.threads[threadIndex];
   
   if (!thread.runs || !Array.isArray(thread.runs) || thread.runs.length === 0) {
     console.warn(`🪡 p5.embroider says: Thread ${threadIndex} has no stitch data to export`);
     return false;
   }
 
-  // Create a temporary embroidery data structure with only the specified thread
-  const threadEmbroideryData = {
-    width: _stitchData.width,
-    height: _stitchData.height,
-    pixelsPerUnit: _stitchData.pixelsPerUnit,
-    threads: [thread] // Only include the specified thread
-  };
-
-  if (_DEBUG) {
-    console.log(`Thread ${threadIndex} has ${thread.runs.length} runs with total stitches:`, 
-      thread.runs.reduce((total, run) => total + (Array.isArray(run) ? run.length : 0), 0));
-  }
-
-  // Export using the existing SVG export functionality
   try {
-    if (typeof window !== 'undefined' && window.exportSVG) {
-      window.exportSVG(filename, threadEmbroideryData);
-      if (_DEBUG) {
-        console.log(`✅ Successfully exported thread ${threadIndex} path as ${filename}`);
-      }
-      return true;
-    } else {
-      console.warn("🪡 p5.embroider says: SVG export not available");
-      return false;
-    }
+    // Use SVGWriter with thread filtering option
+    const svgWriter = new SVGWriter();
+    svgWriter.setOptions({
+      threads: [threadIndex], // Export only this thread
+      stitchDots: options.stitchDots ?? true, // Allow hiding dots
+      paperSize: options.paperSize || "A4",
+      hoopSize: options.hoopSize || { width: 100, height: 100 },
+      margins: options.margins || { top: 15, right: 15, bottom: 15, left: 15 },
+      showGuides: options.showGuides ?? false,
+      showHoop: options.showHoop ?? false,
+      centerPattern: options.centerPattern ?? true,
+      dpi: options.dpi || 300,
+      ...options // Allow overriding any option
+    });
+
+    svgWriter.validateOptions();
+
+    // Generate and save SVG
+    const title = filename.replace(/\.[^/.]+$/, "") || `Thread ${threadIndex}`;
+    const svgContent = svgWriter.generateSVG(stitchData, title);
+
+    // Save file using consistent pattern
+    const blob = new Blob([svgContent], { type: "image/svg+xml" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+    }, 100);
+
+    console.log(`🪡 p5.embroider says: Thread ${threadIndex} path exported successfully: ${filename}`);
+    return true;
   } catch (error) {
     console.error(`🪡 p5.embroider says: SVG export failed:`, error);
     return false;
@@ -564,7 +499,7 @@ export function embroideryOutline(offsetDistance, threadIndex, outlineType = "co
     _stitchData.threads[threadIndex].runs.push(outlineStitches);
 
     // Draw outline if in visual modes
-    if (_drawMode === "stitch" || _drawMode === "realistic") {
+    if (_drawMode === "stitch" || _drawMode === "realistic" || _drawMode === "p5") {
       drawStitches(outlineStitches, threadIndex);
     }
 

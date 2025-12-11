@@ -19,6 +19,8 @@ export class SVGWriter {
       showHoop: false,
       lifeSize: true,
       centerPattern: false, // New option to control pattern centering
+      threads: null, // null = export all threads, array = export only specified thread indices
+      stitchDots: true, // Option to show/hide stitch dots
     };
   }
 
@@ -182,13 +184,27 @@ export class SVGWriter {
       return;
     }
 
+    // Filter threads if threads option is set
+    const threadsToDraw = this.options.threads 
+      ? stitchData.threads.filter((_, index) => this.options.threads.includes(index))
+      : stitchData.threads;
+
+    if (threadsToDraw.length === 0) {
+      this.addComment("No threads to draw (filtered by threads option)");
+      return;
+    }
+
     // Calculate offset based on centerPattern option
     let offsetX = 0;
     let offsetY = 0;
 
     if (this.options.centerPattern) {
-      // Get pattern bounds to center it in the hoop
-      const bounds = this.getPatternBounds(stitchData);
+      // Get pattern bounds to center it in the hoop (using filtered threads)
+      const filteredStitchData = {
+        ...stitchData,
+        threads: threadsToDraw
+      };
+      const bounds = this.getPatternBounds(filteredStitchData);
       const hoop = this.options.hoopSize;
       const hoopCenterX = hoop.width / 2;
       const hoopCenterY = hoop.height / 2;
@@ -204,8 +220,13 @@ export class SVGWriter {
       this.addComment("Pattern exported at original coordinates");
     }
 
-    for (let threadIndex = 0; threadIndex < stitchData.threads.length; threadIndex++) {
-      const thread = stitchData.threads[threadIndex];
+    // Draw filtered threads
+    for (let i = 0; i < threadsToDraw.length; i++) {
+      const thread = threadsToDraw[i];
+      // Get original thread index for color/identification
+      const originalThreadIndex = this.options.threads 
+        ? this.options.threads[i]
+        : i;
 
       // Set thread color
       const color = this.getThreadColor(thread.color);
@@ -215,18 +236,20 @@ export class SVGWriter {
 
         // Create path for stitch run with offset
         let pathData = `M ${run[0].x + offsetX} ${run[0].y + offsetY}`;
-        for (let i = 1; i < run.length; i++) {
-          pathData += ` L ${run[i].x + offsetX} ${run[i].y + offsetY}`;
+        for (let j = 1; j < run.length; j++) {
+          pathData += ` L ${run[j].x + offsetX} ${run[j].y + offsetY}`;
         }
 
         this.data.push(
           `<path d="${pathData}" fill="none" stroke="${color}" stroke-width="0.1" stroke-linecap="round"/>`,
         );
 
-        // Draw red dots for each stitch point with offset
-        for (const stitch of run) {
-          this.data.push(`<circle cx="${stitch.x + offsetX}" cy="${stitch.y + offsetY}" r="0.3" 
-            fill="#ff0000" stroke="none" opacity="0.8"/>`);
+        // Conditionally draw stitch dots based on stitchDots option
+        if (this.options.stitchDots) {
+          for (const stitch of run) {
+            this.data.push(`<circle cx="${stitch.x + offsetX}" cy="${stitch.y + offsetY}" r="0.3" 
+              fill="#ff0000" stroke="none" opacity="0.8"/>`);
+          }
         }
       }
     }
@@ -312,9 +335,18 @@ export class SVGWriter {
     }
   }
 
-  // Get pattern bounds
+  // Get pattern bounds (respects thread filtering if threads option is set)
   getPatternBounds(stitchData) {
     if (!stitchData || !stitchData.threads) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    // Filter threads if threads option is set
+    const threadsToCheck = this.options.threads 
+      ? stitchData.threads.filter((_, index) => this.options.threads.includes(index))
+      : stitchData.threads;
+
+    if (threadsToCheck.length === 0) {
       return { x: 0, y: 0, width: 0, height: 0 };
     }
 
@@ -323,7 +355,7 @@ export class SVGWriter {
     let maxX = -Infinity,
       maxY = -Infinity;
 
-    for (const thread of stitchData.threads) {
+    for (const thread of threadsToCheck) {
       for (const run of thread.runs) {
         for (const stitch of run) {
           minX = Math.min(minX, stitch.x);
@@ -332,6 +364,124 @@ export class SVGWriter {
           maxY = Math.max(maxY, stitch.y);
         }
       }
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+
+  // Draw outline path only (for clean cutting/plotting exports)
+  drawOutlinePath(outlinePoints) {
+    if (!outlinePoints || outlinePoints.length === 0) {
+      this.addComment("No outline data to draw");
+      return;
+    }
+
+    // Calculate offset based on centerPattern option
+    let offsetX = 0;
+    let offsetY = 0;
+
+    if (this.options.centerPattern) {
+      // Get outline bounds to center it in the hoop
+      const bounds = this.getOutlineBounds(outlinePoints);
+      const hoop = this.options.hoopSize;
+      const hoopCenterX = hoop.width / 2;
+      const hoopCenterY = hoop.height / 2;
+      const outlineCenterX = bounds.x + bounds.width / 2;
+      const outlineCenterY = bounds.y + bounds.height / 2;
+
+      // Calculate offset to center outline in hoop
+      offsetX = hoopCenterX - outlineCenterX;
+      offsetY = hoopCenterY - outlineCenterY;
+      
+      this.addComment(`Outline centered in hoop: offset(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})`);
+    } else {
+      this.addComment("Outline exported at original coordinates");
+    }
+
+    // Create path data for outline with offset
+    let pathData = `M ${outlinePoints[0].x + offsetX} ${outlinePoints[0].y + offsetY}`;
+    for (let i = 1; i < outlinePoints.length; i++) {
+      pathData += ` L ${outlinePoints[i].x + offsetX} ${outlinePoints[i].y + offsetY}`;
+    }
+    pathData += ' Z'; // Close the path
+
+    this.data.push(
+      `<path d="${pathData}" fill="none" stroke="#000000" stroke-width="0.1" stroke-linecap="round" stroke-linejoin="round"/>`,
+    );
+
+    this.addComment(`Outline path with ${outlinePoints.length} points exported`);
+  }
+
+  // Generate SVG for outline only
+  generateOutlineSVG(outlinePoints, title) {
+    const paper = SVGWriter.PAPER_SIZES[this.options.paperSize];
+    if (!paper) {
+      throw new Error(`Invalid paper size: ${this.options.paperSize}`);
+    }
+
+    // Use mm as the base unit for SVG (1 SVG unit = 1mm)
+    const paperWidth = paper.width;
+    const paperHeight = paper.height;
+    const marginLeft = this.options.margins.left;
+    const marginTop = this.options.margins.top;
+
+    // Start SVG with mm units
+    this.data = [];
+    this.data.push('<?xml version="1.0" encoding="UTF-8"?>');
+    this.data.push(`<svg xmlns="http://www.w3.org/2000/svg" 
+      width="${paperWidth}mm" height="${paperHeight}mm" 
+      viewBox="0 0 ${paperWidth} ${paperHeight}">`);
+
+    // Add title and metadata
+    this.addComment(`TITLE: ${title} - Clean Outline Export`);
+    this.addComment(`PAPER_SIZE: ${this.options.paperSize}`);
+    this.addComment(`COORDINATE_SYSTEM: 1 SVG unit = 1mm`);
+    this.addComment(`HOOP_SIZE: ${this.options.hoopSize.width}x${this.options.hoopSize.height}mm`);
+
+    // Add coordinate system transformation (just translation, no scaling)
+    this.data.push(`<g transform="translate(${marginLeft}, ${marginTop})">`);
+
+    // Draw embroidery hoop if enabled
+    if (this.options.showHoop) {
+      this.drawHoop();
+    }
+
+    // Draw guides if enabled
+    if (this.options.showGuides) {
+      this.drawGuides();
+    }
+
+    // Draw outline path
+    this.drawOutlinePath(outlinePoints);
+
+    // Close groups
+    this.data.push("</g>");
+    this.data.push("</svg>");
+
+    return this.data.join("\n");
+  }
+
+  // Get outline bounds (similar to getPatternBounds but for outline points)
+  getOutlineBounds(outlinePoints) {
+    if (!outlinePoints || outlinePoints.length === 0) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    let minX = outlinePoints[0].x,
+      minY = outlinePoints[0].y;
+    let maxX = outlinePoints[0].x,
+      maxY = outlinePoints[0].y;
+
+    for (const point of outlinePoints) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
     }
 
     return {

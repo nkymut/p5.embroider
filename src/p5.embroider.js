@@ -1762,13 +1762,13 @@ function setDebugMode(enabled) {
     _originalRectFunc = window.rect;
     window.rect = function (x, y, w, h, ...cornerRs) {
       if (_recording) {
-        const mode = _p5Instance._renderer._rectMode;
+        const rectMode = _p5Instance._rectMode ?? _p5Instance._renderer?._rectMode;
         let x1, y1;
 
-        if (mode === _p5Instance.CENTER) {
+        if (rectMode === _p5Instance.CENTER) {
           x1 = x - w / 2;
           y1 = y - h / 2;
-        } else if (mode === _p5Instance.CORNERS) {
+        } else if (rectMode === _p5Instance.CORNERS) {
           // In CORNERS mode, w is x2 and h is y2. Re-calculate w and h to be width and height.
           w = w - x;
           h = h - y;
@@ -4358,6 +4358,32 @@ function setDebugMode(enabled) {
       }
       _p5Instance.strokeCap(SQUARE);
       _p5Instance.pop();
+    }else if (_drawMode === "p5") {
+      _p5Instance.push();
+      _p5Instance.strokeCap(ROUND);
+
+      // Draw background dots for thread ends
+
+      for (let i = 1; i < stitches.length; i++) {
+        let currentX = mmToPixel(stitches[i].x);
+        let currentY = mmToPixel(stitches[i].y);
+        _originalNoStrokeFunc.call(_p5Instance);
+        _originalFillFunc.call(_p5Instance, 15); // White background dots
+        // Middle layer - thread color
+        _originalStrokeFunc.call(
+          _p5Instance,
+          _stitchData.threads[threadIndex].color.r,
+          _stitchData.threads[threadIndex].color.g,
+          _stitchData.threads[threadIndex].color.b,
+        );
+        _originalStrokeWeightFunc.call(_p5Instance, 1.8);
+        _originalLineFunc.call(_p5Instance, prevX, prevY, currentX, currentY);
+
+        prevX = currentX;
+        prevY = currentY;
+      }
+      _p5Instance.strokeCap(SQUARE);
+      _p5Instance.pop();
     }
 
     // Return the last stitch position for chaining
@@ -5071,9 +5097,13 @@ function setDebugMode(enabled) {
     );
   };
 
-  // Add exportSVGFromPath to p5embroidery object
-  p5embroidery.exportSVGFromPath = async function (threadIndex, filename) {
-    return await exportSVGFromPath(threadIndex, filename, getEmbroideryState());
+  // Add exportSVGFromPath to p5embroidery object (deprecated - use exportSVG with threads option)
+  p5embroidery.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
+    if (!_stitchData || !_stitchData.threads) {
+      console.warn("🪡 p5.embroider says: No embroidery data to export");
+      return false;
+    }
+    return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
   };
 
   // Expose public functions
@@ -5282,8 +5312,10 @@ function setDebugMode(enabled) {
    * Exports only the specified thread path as SVG without creating an outline.
    * @method exportSVGFromPath
    * @for p5
+   * @deprecated Use exportSVG() with threads option instead
    * @param {number} threadIndex - Index of the thread to export
    * @param {string} filename - Output filename with .svg extension
+   * @param {Object} [options={}] - Export options
    * @returns {Promise<boolean>} Promise that resolves to true if export was successful
    * @example
    * function setup() {
@@ -5300,15 +5332,19 @@ function setDebugMode(enabled) {
    *   
    *   endRecord();
    *   
-   *   // Export only thread 0 path as SVG
+   *   // Old way (deprecated):
    *   exportSVGFromPath(0, "thread0-path.svg");
    *   
-   *   // Export only thread 1 path as SVG
-   *   exportSVGFromPath(1, "thread1-path.svg");
+   *   // New way (recommended):
+   *   exportSVG("thread0-path.svg", { threads: [0] });
    * }
    */
-  global.exportSVGFromPath = async function (threadIndex, filename) {
-    return await exportSVGFromPath(threadIndex, filename, getEmbroideryState());
+  global.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
+    if (!_stitchData || !_stitchData.threads) {
+      console.warn("🪡 p5.embroider says: No embroidery data to export");
+      return false;
+    }
+    return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
 
