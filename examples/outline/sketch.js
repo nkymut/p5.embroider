@@ -5,16 +5,19 @@ function setup() {
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
+    redraw();
   });
 
   let drawModeLineButton = createButton("Draw Mode: Realistic");
   drawModeLineButton.mousePressed(() => {
     drawMode = "realistic";
+    redraw();
   });
 
   let drawModeP5Button = createButton("Draw Mode: p5");
   drawModeP5Button.mousePressed(() => {
     drawMode = "p5";
+    redraw();
   });
 
   let exportDstButton = createButton("Export DST");
@@ -29,40 +32,34 @@ function setup() {
   });
   exportGcodeButton.position(90, height + 30);
 
-  //noLoop(); // Stop the draw loop after exporting
+  noLoop(); // Stop the draw loop after exporting
 }
 
 function draw() {
   background("#FFF5DC");
-  translate(mmToPixel(10), mmToPixel(10));
+  //translate(mmToPixel(10), mmToPixel(10));
 
   setDrawMode(drawMode);
-  strokeCap(SQUARE);
 
-  beginRecord(this);
-  // Draw a 100mm square
-  setStitch(0.1, 0.2, 0);
-  setStrokeSettings({
-    stitchLength: 0.5,
-    stitchWidth: 5,
-    noise: 0.0,
-  });
-  stroke(0, 0, 200);
-  strokeWeight(5);
-  setStrokeMode("zigzag");
   noFill();
-  rect(0, 0, 80, 80);
-  trimThread();
+  beginRecord(this);
+  //stroke(0, 200, 0);
+  //createCanvas(400, 400);
 
-  // Draw a 200px circle
-  strokeWeight(5);
+  // Draw embroidery patterns with concave shape
+  stroke(0, 0, 0);
+  fill(0, 0, 255);
+  strokeWeight(1);
+  beginShape();
+  vertex(30, 30);
+  vertex(70, 30);
+  vertex(70, 50);
+  vertex(50, 50);
+  vertex(50, 70);
+  vertex(30, 70);
+  endShape(CLOSE);
 
-  setFillMode("tatami");
-
-  fill(220, 220, 0);
-  ellipse(40, 40, 60, 60);
-
-  trimThread();
+  embroideryOutline(5); // Add outline around the embroidery with 5mm offset
 
   // Stop recording and export as DST
   endRecord();

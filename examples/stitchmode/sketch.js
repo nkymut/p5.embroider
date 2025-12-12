@@ -34,8 +34,10 @@ function setup() {
 
 let zigzagSettings = {
   minStitchLength: 0.1,
-  stitchLength: 0.2,
+  stitchLength: 2,
   strokeWeight: 5,
+  strokeEntry: "middle",
+  strokeExit: "middle",
 };
 
 let linesSettings = {
@@ -60,6 +62,7 @@ function draw() {
   strokeCap(SQUARE);
 
   setStitch(zigzagSettings.minStitchLength, zigzagSettings.stitchLength, 0);
+  setStrokeEntryExit(zigzagSettings.strokeEntry, zigzagSettings.strokeExit);
   stroke(200, 200, 200);
   strokeWeight(zigzagSettings.strokeWeight);
 

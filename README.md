@@ -3,21 +3,23 @@
 
 ## A p5.js Library for Digital Embroidery Pattern Creation
 
+![](./assets/p5.embroider-banner.jpg)
+
 [**p5.embroider.js**](https://github.com/nkymut/p5.embroider) is a p5.js library for creating digital embroidery patterns.<br />
 
 **Note:** This library is currently in early Alpha stage. Expect frequent and significant breaking changes. Please use with caution.
 
 
-Version 0.1.0, March 27, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
+Version 0.1.6, December 11, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
 
 ## Installation
-To use p5.sensor in your project, include the library in your HTML file:
+To use p5.embroider in your project, include the library in your HTML file:
 
 ### CDNs
 
 ```html
-<script src="https://unpkg.com/p5.embroider@0.1.0/lib/p5.embroider.js"></script>
+<script src="https://unpkg.com/p5.embroider/lib/p5.embroider.js"></script>
 ```
 
 ### GitHub Pages
@@ -30,6 +32,9 @@ To use p5.sensor in your project, include the library in your HTML file:
 ## Examples
 
 [editor.p5.js](https://editor.p5js.org/didny/sketches/PR9KKzCMe)   
+
+![colorExample](./assets/p5webeditor.png)
+
 
 ```jsx
 let _drawMode = "stitch";

@@ -1,7 +1,7 @@
 let drawMode = "stitch";
 
 function setup() {
-  createCanvas(mmToPixel(100), mmToPixel(100));
+  createCanvas(mmToPixel(180), mmToPixel(140));
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -34,34 +34,48 @@ function setup() {
 
 function draw() {
   background("#FFF5DC");
-  translate(mmToPixel(10), mmToPixel(10));
 
-  setDrawMode(drawMode);
   strokeCap(SQUARE);
-
+  setDrawMode(drawMode);
+  // noFill();
   beginRecord(this);
-  // Draw a 100mm square
-  setStitch(0.1, 0.2, 0);
-  setStrokeSettings({
-    stitchLength: 0.5,
-    stitchWidth: 5,
-    noise: 0.0,
+  fill(0, 200, 0);
+  setFillSettings({
+    stitchLength: 0.4,
+    stitchWidth: 0.4,
+    rowSpacing: 0.4,
+    noise: 0.4,
   });
+
+  setStitch(0.5, 0.2, 0);
+  setStrokeSettings({
+    strokeLength: 0.4,
+    stitchWidth: 0.8,
+    noise: 0.2,
+  });
+
   stroke(0, 0, 200);
   strokeWeight(5);
   setStrokeMode("zigzag");
-  noFill();
-  rect(0, 0, 80, 80);
+
+  strokeJoin(BEVEL);
+  strokeWeight(3);
+
+  ellipse(40, 40, 40, 40);
+  trimThread();
+  circle(40, 40, 20);
+  trimThread();
+  rectMode(CENTER);
+  rect(90, 40, 40, 40, 2);
+  trimThread();
+  square(140, 40, 40);
   trimThread();
 
-  // Draw a 200px circle
-  strokeWeight(5);
-
-  setFillMode("tatami");
-
-  fill(220, 220, 0);
-  ellipse(40, 40, 60, 60);
-
+  triangle(40, 80, 60, 110, 20, 110);
+  trimThread();
+  arc(90, 80, 40, 60, 0, PI);
+  trimThread();
+  quad(140, 80, 155, 95, 140, 110, 125, 95);
   trimThread();
 
   // Stop recording and export as DST
