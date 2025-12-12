@@ -6,9 +6,12 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
+    "test:json": "NODE_OPTIONS=--experimental-vm-modules jest --json --outputFile=test-results.json",
+    "test:browser": "npx http-server . -o /test/browser/index.html",
     "jsdoc": "jsdoc -c jsdoc.config.json",
     "serve-docs": "npx http-server ./docs -o",
     "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""

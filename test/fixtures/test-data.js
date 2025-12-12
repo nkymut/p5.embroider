@@ -1,6 +1,6 @@
 // Test data for p5.embroider tests
 
-const TEST_PATTERNS = {
+export const TEST_PATTERNS = {
   // Simple line pattern
   simpleLine: {
     vertices: [
@@ -33,7 +33,7 @@ const TEST_PATTERNS = {
   }
 };
 
-const TEST_COLORS = {
+export const TEST_COLORS = {
   red: { r: 255, g: 0, b: 0 },
   green: { r: 0, g: 255, b: 0 },
   blue: { r: 0, g: 0, b: 255 },
@@ -41,7 +41,7 @@ const TEST_COLORS = {
   white: { r: 255, g: 255, b: 255 }
 };
 
-const TEST_SETTINGS = {
+export const TEST_SETTINGS = {
   default: {
     stitchLength: 3,
     stitchWidth: 0,
@@ -68,7 +68,7 @@ const TEST_SETTINGS = {
 };
 
 // DST format test data
-const DST_TEST_DATA = {
+export const DST_TEST_DATA = {
   // Simple 2-stitch pattern
   simplePattern: {
     stitches: [
@@ -101,9 +101,4 @@ const DST_TEST_DATA = {
   }
 };
 
-module.exports = {
-  TEST_PATTERNS,
-  TEST_COLORS,
-  TEST_SETTINGS,
-  DST_TEST_DATA
-};
+// (named exports above)

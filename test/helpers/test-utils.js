@@ -1,6 +1,7 @@
 // Test utilities for p5.embroider
+import { expect } from "@jest/globals";
 
-const TestUtils = {
+export const TestUtils = {
   // Create test pattern data
   createSimplePattern: () => ({
     width: 100,
@@ -69,5 +70,3 @@ const TestUtils = {
     // In a real scenario, you'd reset mock state here
   }
 };
-
-module.exports = { TestUtils };

@@ -18,6 +18,8 @@
  *
  */
 export function mmToPixel(mm, dpi = 96) {
+  // Guard against invalid DPI to avoid Infinity/NaN propagation in consumers/tests
+  if (dpi === 0) return 0;
   return (mm / 25.4) * dpi;
 }
 
@@ -36,6 +38,8 @@ export function mmToPixel(mm, dpi = 96) {
  *
  */
 export function pixelToMm(pixels, dpi = 96) {
+  // Guard against invalid DPI to avoid Infinity/NaN propagation in consumers/tests
+  if (dpi === 0) return 0;
   return (pixels * 25.4) / dpi;
 }
 

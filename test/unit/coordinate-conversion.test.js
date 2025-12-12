@@ -1,49 +1,15 @@
-const { describe, test, expect, beforeEach } = require('@jest/globals');
-const { TestUtils } = require('../helpers/test-utils.js');
-
-// Test the coordinate conversion logic directly
-const mmToPixel = (mm, dpi = 96) => {
-  return (mm / 25.4) * dpi;
-};
-
-const pixelToMm = (pixels, dpi = 96) => {
-  return (pixels * 25.4) / dpi;
-};
-
-// Test geometric utility functions
-const getPathBounds = (points) => {
-  const xs = points.map(p => p.x);
-  const ys = points.map(p => p.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  
-  return {
-    x: minX,
-    y: minY,
-    w: maxX - minX,
-    h: maxY - minY
-  };
-};
-
-const pointInPolygon = (point, polygon) => {
-  let inside = false;
-  
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i].x;
-    const yi = polygon[i].y;
-    const xj = polygon[j].x;
-    const yj = polygon[j].y;
-    
-    if (((yi > point.y) !== (yj > point.y)) &&
-        (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
-      inside = !inside;
-    }
-  }
-  
-  return inside;
-};
+import { describe, test, beforeEach } from "@jest/globals";
+import { TestUtils } from "../helpers/test-utils.js";
+import {
+  mmToPixel,
+  pixelToMm,
+  mm2px,
+  px2mm,
+  inchToMm,
+  mmToInch,
+  inchToPixel,
+  pixelToInch,
+} from "../../src/utils/unit-conversion.js";
 
 describe('Coordinate Conversion Functions', () => {
   beforeEach(() => {
@@ -167,132 +133,31 @@ describe('Coordinate Conversion Functions', () => {
     });
   });
 
-  describe('getPathBounds', () => {
-    test('calculates bounds for simple rectangle', () => {
-      const points = TestUtils.createRectangleVertices(10, 20, 30, 40);
-      const bounds = getPathBounds(points);
-      
-      expect(bounds.x).toBe(10);
-      expect(bounds.y).toBe(20);
-      expect(bounds.w).toBe(30);
-      expect(bounds.h).toBe(40);
+  describe("Aliases", () => {
+    test("mm2px is an alias for mmToPixel", () => {
+      expect(mm2px(25.4, 96)).toBe(mmToPixel(25.4, 96));
     });
 
-    test('calculates bounds for single point', () => {
-      const points = [{ x: 5, y: 10 }];
-      const bounds = getPathBounds(points);
-      
-      expect(bounds.x).toBe(5);
-      expect(bounds.y).toBe(10);
-      expect(bounds.w).toBe(0);
-      expect(bounds.h).toBe(0);
-    });
-
-    test('calculates bounds for scattered points', () => {
-      const points = [
-        { x: -10, y: 5 },
-        { x: 20, y: -15 },
-        { x: 0, y: 30 }
-      ];
-      const bounds = getPathBounds(points);
-      
-      expect(bounds.x).toBe(-10);
-      expect(bounds.y).toBe(-15);
-      expect(bounds.w).toBe(30); // 20 - (-10)
-      expect(bounds.h).toBe(45); // 30 - (-15)
-    });
-
-    test('handles negative coordinates', () => {
-      const points = [
-        { x: -50, y: -30 },
-        { x: -20, y: -10 }
-      ];
-      const bounds = getPathBounds(points);
-      
-      expect(bounds.x).toBe(-50);
-      expect(bounds.y).toBe(-30);
-      expect(bounds.w).toBe(30);
-      expect(bounds.h).toBe(20);
+    test("px2mm is an alias for pixelToMm", () => {
+      expect(px2mm(96, 96)).toBe(pixelToMm(96, 96));
     });
   });
 
-  describe('pointInPolygon', () => {
-    test('detects point inside simple square', () => {
-      const square = [
-        { x: 0, y: 0 },
-        { x: 10, y: 0 },
-        { x: 10, y: 10 },
-        { x: 0, y: 10 }
-      ];
-      
-      expect(pointInPolygon({ x: 5, y: 5 }, square)).toBe(true);
-      expect(pointInPolygon({ x: 15, y: 5 }, square)).toBe(false);
-      expect(pointInPolygon({ x: 5, y: 15 }, square)).toBe(false);
+  describe("Inch conversions", () => {
+    test("inchToMm converts inches to millimeters", () => {
+      expectCoordinateToBeCloseTo(inchToMm(1), 25.4, 0.0001);
     });
 
-    test('handles point on edge', () => {
-      const triangle = [
-        { x: 0, y: 0 },
-        { x: 10, y: 0 },
-        { x: 5, y: 10 }
-      ];
-      
-      // Point on edge behavior can vary, but should be consistent
-      const result = pointInPolygon({ x: 5, y: 0 }, triangle);
-      expect(typeof result).toBe('boolean');
+    test("mmToInch converts millimeters to inches", () => {
+      expectCoordinateToBeCloseTo(mmToInch(25.4), 1, 0.0001);
     });
 
-    test('works with complex polygon', () => {
-      // L-shaped polygon
-      const lShape = [
-        { x: 0, y: 0 },
-        { x: 10, y: 0 },
-        { x: 10, y: 5 },
-        { x: 5, y: 5 },
-        { x: 5, y: 10 },
-        { x: 0, y: 10 }
-      ];
-      
-      expect(pointInPolygon({ x: 2, y: 2 }, lShape)).toBe(true);
-      expect(pointInPolygon({ x: 7, y: 2 }, lShape)).toBe(true);
-      expect(pointInPolygon({ x: 7, y: 7 }, lShape)).toBe(false);
-      expect(pointInPolygon({ x: 2, y: 7 }, lShape)).toBe(true);
+    test("inchToPixel converts inches to pixels", () => {
+      expectCoordinateToBeCloseTo(inchToPixel(1, 300), 300, 0.0001);
     });
 
-    test('handles degenerate cases', () => {
-      // Empty polygon
-      expect(pointInPolygon({ x: 0, y: 0 }, [])).toBe(false);
-      
-      // Single point polygon
-      expect(pointInPolygon({ x: 0, y: 0 }, [{ x: 0, y: 0 }])).toBe(false);
-    });
-  });
-});
-
-// Mock test for functions that aren't directly exported
-// These would need to be tested through the main library integration
-describe('Internal Coordinate Functions (Integration Required)', () => {
-  describe('getPathBounds', () => {
-    test('should be tested through library integration', () => {
-      // This function is internal and would be tested through
-      // the main embroidery pattern generation workflow
-      expect(true).toBe(true); // Placeholder
-    });
-  });
-
-  describe('pointInPolygon', () => {
-    test('should be tested through fill pattern generation', () => {
-      // This function is used in fill algorithms and would be
-      // tested through those workflows
-      expect(true).toBe(true); // Placeholder
-    });
-  });
-
-  describe('rotation transformations', () => {
-    test('should be tested through angled fill patterns', () => {
-      // Rotation transformations are used in tatami fill
-      // and would be tested through that functionality
-      expect(true).toBe(true); // Placeholder
+    test("pixelToInch converts pixels to inches", () => {
+      expectCoordinateToBeCloseTo(pixelToInch(300, 300), 1, 0.0001);
     });
   });
 });

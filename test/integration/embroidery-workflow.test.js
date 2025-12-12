@@ -1,6 +1,6 @@
-const { describe, test, expect, beforeEach } = require('@jest/globals');
-const { TestUtils } = require('../helpers/test-utils.js');
-const { TEST_PATTERNS, TEST_COLORS, TEST_SETTINGS } = require('../fixtures/test-data.js');
+import { describe, test, expect, beforeEach } from "@jest/globals";
+import { TestUtils } from "../helpers/test-utils.js";
+import { TEST_PATTERNS, TEST_COLORS, TEST_SETTINGS } from "../fixtures/test-data.js";
 
 // Integration test combining all components
 describe('Embroidery Workflow Integration Tests', () => {

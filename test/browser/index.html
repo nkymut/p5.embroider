@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>p5.embroider - Browser Sanity Tests</title>
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+    <link rel="icon" href="data:;base64,=" />
+    <style>
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        margin: 0;
+        padding: 16px;
+      }
+      #sketch-root {
+        margin-top: 12px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      #sketch-container {
+        border: 1px solid #ddd;
+        padding: 8px;
+      }
+      #sketch-container canvas {
+        display: block;
+      }
+      .hint {
+        color: #555;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>p5.embroider - Browser Sanity Tests</h1>
+    <div class="hint">
+      Runs in a real browser with real p5 global mode. Use this to verify beginRecord/endRecord override behavior and
+      export output (captured from Blob).
+    </div>
+
+    <div id="mocha"></div>
+    <div class="hint">Results JSON will appear at the bottom of this page after the run.</div>
+
+    <div id="sketch-root">
+      <div id="sketch-container">
+        <div class="hint">Sketch canvas (for visual debugging)</div>
+        <div id="sketch-mount"></div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+    <script>
+      mocha.setup("bdd");
+      mocha.setup({ timeout: 15000, slow: 2000 });
+
+      // p5 defines a global `describe()` (accessibility API) which conflicts with Mocha.
+      // Capture Mocha's globals before loading p5 so tests can use them safely.
+      window.__mocha_describe = window.describe;
+      window.__mocha_it = window.it;
+      window.__mocha_beforeEach = window.beforeEach;
+      window.__mocha_afterEach = window.afterEach;
+      window.__mocha_before = window.before;
+      window.__mocha_after = window.after;
+    </script>
+
+    <!-- Harness must be loaded BEFORE p5 so global-mode setup() is picked up -->
+    <script src="./harness.js"></script>
+
+    <!-- Real p5 + real built library -->
+    <script src="https://unpkg.com/p5@1.9.0/lib/p5.js"></script>
+    <script src="../../lib/p5.embroider.js"></script>
+
+    <!-- Tests -->
+    <script src="./tests.js"></script>
+
+    <script>
+      // Run mocha unless under a runner like Karma
+      if (!window.__karma__) window.__runMochaAndExposeResults();
+    </script>
+  </body>
+</html>
