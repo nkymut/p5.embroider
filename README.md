@@ -10,7 +10,7 @@
 **Note:** This library is currently in early Alpha stage. Expect frequent and significant breaking changes. Please use with caution.
 
 
-Version 0.1.5, June 24, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
+Version 0.1.6, December 11, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
 
 ## Installation
