@@ -461,6 +461,9 @@ function setDebugMode(enabled) {
     if (!p5Instance) {
       throw new Error("Invalid p5 instance provided to beginRecord().");
     }
+    // Reset transform state for a clean recording session
+    _transformStack = [];
+    _currentTransform.matrix = [1, 0, 0, 0, 1, 0, 0, 0, 1];
     _p5Instance = p5Instance;
     _stitchData.width = p5Instance.width;
     _stitchData.height = p5Instance.height;

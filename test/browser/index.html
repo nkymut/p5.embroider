@@ -68,8 +68,8 @@
     <!-- Harness must be loaded BEFORE p5 so global-mode setup() is picked up -->
     <script src="./harness.js"></script>
 
-    <!-- Real p5 + real built library -->
-    <script src="https://unpkg.com/p5@1.9.0/lib/p5.js"></script>
+    <!-- Real p5 + real built library (use local p5 for reliability/offline) -->
+    <script src="../../node_modules/p5/lib/p5.js"></script>
     <script src="../../lib/p5.embroider.js"></script>
 
     <!-- Tests -->

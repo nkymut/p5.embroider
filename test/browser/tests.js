@@ -43,6 +43,10 @@
       await window.__waitForP5Ready();
       ensureAPI();
       background(255);
+      // Avoid transform leakage across tests
+      if (typeof resetMatrix === "function") resetMatrix();
+      // Default draw mode for most tests
+      if (window.p5embroidery?.setDrawMode) window.p5embroidery.setDrawMode("stitch");
     });
 
     it("beginRecord overrides and endRecord restores global p5 functions (line)", async function () {
@@ -162,6 +166,153 @@
       assert.equal(blob.type, "image/svg+xml", "SVG export should use image/svg+xml blob type");
       const svgText = await blob.text();
       assert.ok(svgText.includes("<svg"), "SVG content should include <svg");
+    });
+
+    it("push()/pop() scopes transforms for recorded stitches", async function () {
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+
+      // Run A: with translate inside push/pop
+      push();
+      translate(10, 0);
+      line(0, 0, 10, 0);
+      pop();
+
+      // Run B: no translate
+      line(0, 0, 10, 0);
+
+      window.endRecord();
+      const obj = await exportJSONCaptured();
+
+      assert.isAtLeast(obj.threads[0].runs.length, 2, "should have at least two recorded runs");
+      const a0 = obj.threads[0].runs[0].stitches[0];
+      const b0 = obj.threads[0].runs[1].stitches[0];
+      assert.isAbove(a0.x, b0.x, "first run should be translated, second run should not");
+    });
+
+    it("rotate() affects recorded coordinates in stitch mode (sanity)", async function () {
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+
+      // Rotate 90deg around origin: (10,0) -> (0,10)
+      rotate(HALF_PI);
+      line(0, 0, 10, 0);
+      window.endRecord();
+
+      const obj = await exportJSONCaptured();
+      const stitches = obj.threads[0].runs[0].stitches;
+      const xs = stitches.map((s) => s.x);
+      const ys = stitches.map((s) => s.y);
+
+      const xSpan = Math.max(...xs) - Math.min(...xs);
+      const ySpan = Math.max(...ys) - Math.min(...ys);
+
+      // Expect mostly vertical line after rotation
+      assert.ok(ySpan > xSpan, "rotated line should have larger Y span than X span");
+    });
+
+    it("scale() affects recorded coordinates in stitch mode (sanity)", async function () {
+      // Baseline (no scale)
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      line(0, 0, 10, 0);
+      window.endRecord();
+      const base = await exportJSONCaptured();
+      const baseStitches = base.threads[0].runs[0].stitches;
+      const baseMaxX = Math.max(...baseStitches.map((s) => s.x));
+
+      // Scaled
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      scale(2);
+      line(0, 0, 10, 0);
+      window.endRecord();
+      const scaled = await exportJSONCaptured();
+      const scaledStitches = scaled.threads[0].runs[0].stitches;
+      const scaledMaxX = Math.max(...scaledStitches.map((s) => s.x));
+
+      assert.isAbove(scaledMaxX, baseMaxX, "scaled max X should be greater than base max X");
+    });
+
+    it("stitchLength parameter affects stitch density (sanity)", async function () {
+      // Short stitchLength => more stitches
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      window.p5embroidery.setStrokeSettings({ stitchLength: 1, minStitchLength: 0.1, resampleNoise: 0, strokeWeight: 0 });
+      line(0, 0, 20, 0);
+      window.endRecord();
+      const dense = await exportJSONCaptured();
+      const denseCount = dense.threads[0].runs[0].stitches.length;
+
+      // Long stitchLength => fewer stitches
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      window.p5embroidery.setStrokeSettings({ stitchLength: 5, minStitchLength: 0.1, resampleNoise: 0, strokeWeight: 0 });
+      line(0, 0, 20, 0);
+      window.endRecord();
+      const sparse = await exportJSONCaptured();
+      const sparseCount = sparse.threads[0].runs[0].stitches.length;
+
+      assert.isAbove(denseCount, sparseCount, "smaller stitchLength should produce more stitches");
+    });
+
+    it("setStrokeMode('zigzag') produces lateral deviation from a straight line", async function () {
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+
+      // Ensure a wide stroke so zigzag has visible amplitude
+      window.p5embroidery.setStrokeSettings({ stitchLength: 2, minStitchLength: 0.1, resampleNoise: 0, strokeWeight: 4 });
+      window.p5embroidery.setStrokeMode("zigzag");
+
+      line(0, 0, 30, 0);
+      window.endRecord();
+      const obj = await exportJSONCaptured();
+
+      const stitches = obj.threads[0].runs[0].stitches;
+      const ys = stitches.map((s) => s.y);
+      const ySpan = Math.max(...ys) - Math.min(...ys);
+      assert.ok(ySpan > 0.5, "zigzag should introduce non-trivial Y span");
+    });
+
+    it("records stitches from basic drawing primitives (rect/ellipse/triangle/arc)", async function () {
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+
+      rect(0, 0, 20, 10);
+      ellipse(40, 10, 10, 10);
+      triangle(70, 0, 80, 10, 60, 10);
+      arc(110, 10, 10, 10, 0, PI);
+
+      window.endRecord();
+      const obj = await exportJSONCaptured();
+      assert.isAtLeast(obj.threads[0].runs.length, 4, "expected at least one run per primitive");
+    });
+
+    it("drawMode 'realistic' behaves like 'stitch' for transform application (sanity)", async function () {
+      // stitch mode baseline
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      window.p5embroidery.setDrawMode("stitch");
+      translate(10, 0);
+      line(0, 0, 10, 0);
+      window.endRecord();
+      const stitchObj = await exportJSONCaptured();
+      const stitchFirst = firstStitch(stitchObj);
+
+      // realistic mode should still apply transforms to recorded points
+      window.beginRecord(window.__p5_instance);
+      minimalStrokeSetup();
+      window.p5embroidery.setDrawMode("realistic");
+      translate(10, 0);
+      line(0, 0, 10, 0);
+      window.endRecord();
+      const realisticObj = await exportJSONCaptured();
+      const realisticFirst = firstStitch(realisticObj);
+
+      assert.ok(
+        Math.abs(realisticFirst.x - stitchFirst.x) < 0.001,
+        "realistic mode should apply translate similarly to stitch mode",
+      );
     });
   });
 })();

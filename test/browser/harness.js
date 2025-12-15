@@ -50,6 +50,19 @@
   window.__waitForP5Ready = async function () {
     const start = Date.now();
     while (!window.__p5_ready) {
+      // Fallback: if p5 didn't auto-start global mode, try instantiating once.
+      // This avoids the common "setup() defined but never called" situation in some environments.
+      if (!window.__p5_bootstrapped && Date.now() - start > 500) {
+        window.__p5_bootstrapped = true;
+        if (typeof window.p5 === "function") {
+          try {
+            // eslint-disable-next-line no-new
+            new window.p5();
+          } catch (e) {
+            window.__p5_bootstrap_error = String(e?.message || e);
+          }
+        }
+      }
       if (Date.now() - start > 10000) throw new Error("Timed out waiting for p5 setup()");
       await new Promise((r) => setTimeout(r, 50));
     }
@@ -127,6 +140,7 @@
       stats.durationMs = stats.end - stats.start;
       const summary = { stats, failures };
       window.__browserTestResults = summary;
+      window.__browserTestDone = true;
       resultsEl.textContent = JSON.stringify(summary, null, 2);
 
       // Optional: provide a download link for the results JSON

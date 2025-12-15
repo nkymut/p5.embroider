@@ -12,6 +12,8 @@
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:json": "NODE_OPTIONS=--experimental-vm-modules jest --json --outputFile=test-results.json",
     "test:browser": "npx http-server . -o /test/browser/index.html",
+    "test:browser:headless": "node ./test/browser/run-headless.mjs",
+    "test:verbose:all": "npm run test:verbose && npm run test:browser:headless",
     "jsdoc": "jsdoc -c jsdoc.config.json",
     "serve-docs": "npx http-server ./docs -o",
     "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
@@ -43,6 +45,7 @@
     "jsdoc": "^4.0.2",
     "jsdom": "^26.1.0",
     "prettier": "^3.2.5",
+    "playwright": "^1.55.0",
     "rollup": "^4.12.0"
   },
   "type": "module"
