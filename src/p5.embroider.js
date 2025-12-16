@@ -4880,6 +4880,7 @@ function setDebugMode(enabled) {
     const perpAngle = angle + Math.PI / 2;
 
     const stitches = [];
+    let forward = true; // Track direction for alternating
 
     if (_DEBUG) {
       console.log("Satin fill params:", {
@@ -4890,6 +4891,9 @@ function setDebugMode(enabled) {
         bounds,
       });
     }
+
+    // Collect all scan line segments first
+    const allSegments = [];
 
     // Generate scan lines perpendicular to the fill angle
     for (let d = -diagonal / 2; d <= diagonal / 2; d += spacing) {
@@ -4917,10 +4921,32 @@ function setDebugMode(enabled) {
         { x: endX, y: endY },
       );
 
-      // Create stitches for each valid segment
-      for (const segment of validSegments) {
-        const segStart = segment.start;
-        const segEnd = segment.end;
+      // Store segments with direction info
+      if (validSegments.length > 0) {
+        allSegments.push({
+          segments: validSegments,
+          forward: forward,
+        });
+        forward = !forward; // Alternate direction for next line
+      }
+    }
+
+    // Now create stitches, alternating direction
+    for (const lineData of allSegments) {
+      const segments = lineData.segments;
+      const isForward = lineData.forward;
+
+      // Process segments in order (or reverse order)
+      const segmentsToProcess = isForward ? segments : segments.slice().reverse();
+
+      for (const segment of segmentsToProcess) {
+        let segStart = segment.start;
+        let segEnd = segment.end;
+
+        // If going backward, swap start and end
+        if (!isForward) {
+          [segStart, segEnd] = [segEnd, segStart];
+        }
 
         // Calculate segment length
         const segLength = Math.sqrt(
@@ -4954,7 +4980,7 @@ function setDebugMode(enabled) {
     }
 
     if (_DEBUG) {
-      console.log("Satin fill generated:", stitches.length, "stitch points");
+      console.log("Satin fill generated:", stitches.length, "stitch points (alternating direction)");
     }
 
     return stitches;

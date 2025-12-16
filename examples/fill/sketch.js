@@ -1,5 +1,6 @@
 let drawMode = "stitch";
 let fillMode = "tatami"; // Current fill mode
+let shapeType = "rect"; // Current shape to draw
 let currentSettings = {
   angle: 0,
   stitchLength: 3,
@@ -78,7 +79,7 @@ function setup() {
   let fillModeContainer = createDiv();
   fillModeContainer.position(width + 10, 80);
   fillModeContainer.style("width", "300px");
-  fillModeContainer.style("margin-bottom", "20px");
+  fillModeContainer.style("margin-bottom", "15px");
 
   let fillModeLabel = createSpan("Fill Mode: ");
   fillModeLabel.parent(fillModeContainer);
@@ -98,8 +99,39 @@ function setup() {
   fillModeDropdown.style("width", "150px");
   fillModeDropdown.style("padding", "5px");
 
+  // Create shape type dropdown
+  let shapeTypeContainer = createDiv();
+  shapeTypeContainer.position(width + 10, 125);
+  shapeTypeContainer.style("width", "300px");
+  shapeTypeContainer.style("margin-bottom", "20px");
+
+  let shapeTypeLabel = createSpan("Shape Type: ");
+  shapeTypeLabel.parent(shapeTypeContainer);
+  shapeTypeLabel.style("display", "inline-block");
+  shapeTypeLabel.style("width", "100px");
+
+  let shapeTypeDropdown = createSelect();
+  shapeTypeDropdown.parent(shapeTypeContainer);
+  shapeTypeDropdown.option("rect", "rect");
+  shapeTypeDropdown.option("rect-rounded", "rect-rounded");
+  shapeTypeDropdown.option("square", "square");
+  shapeTypeDropdown.option("circle", "circle");
+  shapeTypeDropdown.option("ellipse", "ellipse");
+  shapeTypeDropdown.option("triangle", "triangle");
+  shapeTypeDropdown.option("quad", "quad");
+  shapeTypeDropdown.option("arc-pie", "arc-pie");
+  shapeTypeDropdown.option("arc-chord", "arc-chord");
+  shapeTypeDropdown.option("vertices", "vertices");
+  shapeTypeDropdown.selected("rect");
+  shapeTypeDropdown.changed(() => {
+    shapeType = shapeTypeDropdown.value();
+    redraw();
+  });
+  shapeTypeDropdown.style("width", "150px");
+  shapeTypeDropdown.style("padding", "5px");
+
   // Create sliders for fill settings
-  let yStart = 150;
+  let yStart = 200;
   let ySpacing = 45;
 
   let angleControl = createLabeledSlider("Fill Angle (degrees)", 0, 360, currentSettings.angle, 1, yStart);
@@ -232,14 +264,69 @@ function draw() {
 
   setStrokeMode("zigzag");
   strokeWeight(2);
-  stroke(0, 0, 0);
   fill(0, 0, 200);
+  stroke(100, 100, 100);
+ 
+  // Draw the selected shape
+  drawSelectedShape();
 
-  rectMode(CENTER);
-  rect(50, 50, 40, 40, 5);
-
-  trimThread();
+  //trimThread();
   endRecord();
+}
+
+function drawSelectedShape() {
+  console.log("shapeType: ", shapeType);
+  switch (shapeType) {
+
+    case "rect":
+      rectMode(CENTER);
+      rect(50, 50, 40, 40);
+      break;
+    
+    case "rect-rounded":
+      rectMode(CENTER);
+      rect(50, 50, 40, 40, 5);
+      break;
+    
+    case "square":
+      rectMode(CENTER);
+      square(50, 50, 35);
+      break;
+    
+    case "circle":
+      circle(50, 50, 40);
+      break;
+    
+    case "ellipse":
+      ellipse(50, 50, 50, 30);
+      break;
+    
+    case "triangle":
+      triangle(50, 25, 30, 65, 70, 65);
+      break;
+    
+    case "quad":
+      quad(30, 30, 70, 35, 65, 70, 25, 65);
+      break;
+    
+    case "arc-pie":
+      arc(50, 50, 40, 40, 0, PI + QUARTER_PI, PIE);
+      break;
+    
+    case "arc-chord":
+      arc(50, 50, 40, 40, 0, PI + QUARTER_PI, CHORD);
+      break;
+    
+    case "vertices":
+      beginShape();
+      vertex(30, 30);
+      bezierVertex(70, 20, 70, 60, 50, 70);
+      vertex(30, 60);
+      vertex(30, 30);
+      endShape(CLOSE);
+      break;
+    
+  }
 }
 
 function keyPressed() {
