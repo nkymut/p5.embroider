@@ -107,6 +107,7 @@ function setDebugMode(enabled) {
   let _isQuadratic = false;
   let _isContour = false;
   let _isFirstContour = true;
+  let _nextVertexWidth = null; // Width for the next vertex (set by vertexWidth())
 
   let _strokeThreadIndex = 0;
   let _fillThreadIndex = 0;
@@ -679,8 +680,31 @@ function setDebugMode(enabled) {
   function overrideVertexFunction() {
     _originalVertexFunc = window.vertex;
 
-    window.vertex = function (x, y, moveTo, u, v) {
+    window.vertex = function (x, y, z_or_moveTo, u, v) {
       if (_recording) {
+        // Determine if third parameter is z (width) or moveTo
+        let width = null;
+        let moveTo = false;
+        
+        if (typeof z_or_moveTo === 'number') {
+          // Third parameter is z-coordinate (width)
+          width = z_or_moveTo;
+        } else if (z_or_moveTo === true || z_or_moveTo === false) {
+          // Third parameter is moveTo boolean
+          moveTo = z_or_moveTo;
+        }
+        
+        // If width not provided via z-coordinate, check if set by vertexWidth()
+        if (width === null && _nextVertexWidth !== null) {
+          width = _nextVertexWidth;
+          _nextVertexWidth = null; // Reset after use
+        }
+        
+        // If still no width, use default strokeWeight
+        if (width === null) {
+          width = _strokeSettings.strokeWeight;
+        }
+        
         // Apply current transformation to the vertex coordinates
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
 
@@ -688,6 +712,7 @@ function setDebugMode(enabled) {
         const vert = {
           x: transformedPoint.x,
           y: transformedPoint.y,
+          width: width,
           u: u || 0,
           v: v || 0,
           isVert: true,
@@ -703,17 +728,42 @@ function setDebugMode(enabled) {
 
         // Add to appropriate container based on contour state
         if (_isContour) {
-          _currentContour.push({ x: transformedPoint.x, y: transformedPoint.y });
-          if (_DEBUG) console.log("Added to contour (transformed):", { x: transformedPoint.x, y: transformedPoint.y });
+          _currentContour.push({ 
+            x: transformedPoint.x, 
+            y: transformedPoint.y,
+            width: width 
+          });
+          if (_DEBUG) console.log("Added to contour (transformed):", { x: transformedPoint.x, y: transformedPoint.y, width: width });
         } else {
           _vertices.push(vert);
           if (_DEBUG) console.log("Added to vertices (transformed):", vert);
         }
       } else {
-        let args = [mmToPixel(x), mmToPixel(y), moveTo, u, v];
+        let args = [mmToPixel(x), mmToPixel(y), z_or_moveTo, u, v];
         _originalVertexFunc.apply(this, args);
       }
     };
+  }
+
+  /**
+   * Set width for the next vertex or create a vertex with width
+   * Can be called in three ways:
+   * 1. vertexWidth(w) - sets width for next vertex() call
+   * 2. vertexWidth(x, y, w) - creates a vertex at (x,y) with width w
+   * @param {number} arg1 - Either width (if only one arg) or x-coordinate (if three args)
+   * @param {number} arg2 - y-coordinate (only if three args)
+   * @param {number} arg3 - width (only if three args)
+   */
+  function vertexWidth(arg1, arg2, arg3) {
+    if (arguments.length === 1) {
+      // vertexWidth(w) - set width for next vertex
+      _nextVertexWidth = arg1;
+    } else if (arguments.length === 3) {
+      // vertexWidth(x, y, w) - create vertex with width
+      window.vertex(arg1, arg2, arg3);
+    } else {
+      console.warn("vertexWidth() expects 1 or 3 arguments");
+    }
   }
 
   /**
@@ -748,6 +798,14 @@ function setDebugMode(enabled) {
         }
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
+        const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+        
+        // Determine end width
+        let endWidth = startWidth;
+        if (_nextVertexWidth !== null) {
+          endWidth = _nextVertexWidth;
+          _nextVertexWidth = null; // Reset after use
+        }
 
         // Generate bezier curve points using transformed control points
         const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPoint.x, endPoint.y);
@@ -755,13 +813,20 @@ function setDebugMode(enabled) {
         // Add all points except the first one (which is the last vertex)
         for (let i = 1; i < bezierPoints.length; i++) {
           const point = bezierPoints[i];
+          const t = i / (bezierPoints.length - 1);
+          const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
           if (_isContour) {
-            _currentContour.push({ x: point.x, y: point.y });
+            _currentContour.push({ 
+              x: point.x, 
+              y: point.y,
+              width: interpolatedWidth 
+            });
           } else {
             const vert = {
               x: point.x,
               y: point.y,
+              width: interpolatedWidth,
               u: 0,
               v: 0,
               isVert: true,
@@ -826,6 +891,14 @@ function setDebugMode(enabled) {
         }
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
+        const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+        
+        // Determine end width
+        let endWidth = startWidth;
+        if (_nextVertexWidth !== null) {
+          endWidth = _nextVertexWidth;
+          _nextVertexWidth = null; // Reset after use
+        }
 
         // Generate quadratic bezier curve points using transformed control points
         const quadraticPoints = generateQuadraticPoints(x1, y1, controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
@@ -833,13 +906,20 @@ function setDebugMode(enabled) {
         // Add all points except the first one (which is the last vertex)
         for (let i = 1; i < quadraticPoints.length; i++) {
           const point = quadraticPoints[i];
+          const t = i / (quadraticPoints.length - 1);
+          const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
           if (_isContour) {
-            _currentContour.push({ x: point.x, y: point.y });
+            _currentContour.push({ 
+              x: point.x, 
+              y: point.y,
+              width: interpolatedWidth 
+            });
           } else {
             const vert = {
               x: point.x,
               y: point.y,
+              width: interpolatedWidth,
               u: 0,
               v: 0,
               isVert: true,
@@ -883,9 +963,20 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Apply current transformation to the curve vertex
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
+        
+        // Determine width for this curve vertex
+        let width = _strokeSettings.strokeWeight;
+        if (_nextVertexWidth !== null) {
+          width = _nextVertexWidth;
+          _nextVertexWidth = null; // Reset after use
+        }
 
         // Add to contour vertices for curve calculation using transformed coordinates
-        _contourVertices.push({ x: transformedPoint.x, y: transformedPoint.y });
+        _contourVertices.push({ 
+          x: transformedPoint.x, 
+          y: transformedPoint.y,
+          width: width 
+        });
 
         // For curve vertices, we need at least 4 points to generate a curve segment
         if (_contourVertices.length >= 4) {
@@ -898,6 +989,10 @@ function setDebugMode(enabled) {
           // Generate curve points for this segment
           const curvePoints = generateCurvePoints(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
 
+          // Interpolate width from p1 to p2 (the actual curve segment)
+          const startWidth = p1.width || _strokeSettings.strokeWeight;
+          const endWidth = p2.width || _strokeSettings.strokeWeight;
+
           // If this is the first curve segment, add all points
           // Otherwise, add all points except the first (to avoid duplication)
           let startIdx;
@@ -909,13 +1004,20 @@ function setDebugMode(enabled) {
 
           for (let i = startIdx; i < curvePoints.length; i++) {
             const point = curvePoints[i];
+            const t = i / (curvePoints.length - 1);
+            const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
             if (_isContour) {
-              _currentContour.push({ x: point.x, y: point.y });
+              _currentContour.push({ 
+                x: point.x, 
+                y: point.y,
+                width: interpolatedWidth 
+              });
             } else {
               const vert = {
                 x: point.x,
                 y: point.y,
+                width: interpolatedWidth,
                 u: 0,
                 v: 0,
                 isVert: true,
@@ -983,11 +1085,17 @@ function setDebugMode(enabled) {
       return stitches;
     }
 
-    // Extract x,y coordinates from vertex objects for compatibility with path functions
+    // Extract x,y,width coordinates from vertex objects for compatibility with path functions
     const pathPoints = vertices.map((v) => ({
       x: v.x,
       y: v.y,
+      width: v.width !== undefined ? v.width : strokeSettings.strokeWeight,
     }));
+
+    // Check if any vertex has width specified (for variable width paths)
+    const hasVariableWidth = pathPoints.some(p => p.width !== undefined && p.width > 0);
+    const hasStrokeWeight = strokeSettings.strokeWeight > 0;
+    const hasWidth = hasStrokeWeight || hasVariableWidth;
 
     if (_DEBUG) {
       console.log("convertVerticesToStitches input:", {
@@ -996,16 +1104,18 @@ function setDebugMode(enabled) {
         strokeWeight: strokeSettings.strokeWeight,
         strokeMode: strokeSettings.strokeMode,
         strokeJoin: strokeSettings.strokeJoin,
+        hasVariableWidth: hasVariableWidth,
+        hasWidth: hasWidth,
       });
     }
 
-    // If we have a stroke weight and multiple vertices, use join-aware stitching
-    if (strokeSettings.strokeWeight > 0 && vertices.length > 2) {
+    // If we have a stroke weight (global or per-vertex) and multiple vertices, use join-aware stitching
+    if (hasWidth && vertices.length > 2) {
       if (_DEBUG) console.log("Using convertPathToStitchesWithJoins");
       return convertPathToStitchesWithJoins(pathPoints, strokeSettings);
     }
     // If we have a stroke weight, use the appropriate path-based function
-    else if (strokeSettings.strokeWeight > 0) {
+    else if (hasWidth) {
       if (_DEBUG) console.log("Using stroke mode:", strokeSettings.strokeMode);
       switch (strokeSettings.strokeMode) {
         case STROKE_MODE.STRAIGHT:
@@ -2379,6 +2489,9 @@ function setDebugMode(enabled) {
     overrideEndShapeFunction();
     overrideBeginContourFunction();
     overrideEndContourFunction();
+    
+    // Add vertexWidth function to window
+    window.vertexWidth = vertexWidth;
   }
 
   /**
@@ -2756,6 +2869,9 @@ function setDebugMode(enabled) {
 
     for (let i = 0; i < simplifiedPath.length; i++) {
       const curr = simplifiedPath[i];
+      // Use point's width if available, otherwise use default offset
+      const pointOffset = curr.width !== undefined ? curr.width / 2 : offset;
+      
       let prev, next;
 
       if (isClosedPath) {
@@ -2776,8 +2892,8 @@ function setDebugMode(enabled) {
         const dy = next.y - curr.y;
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len > 0) {
-          const perpX = (-dy / len) * (isLeft ? offset : -offset);
-          const perpY = (dx / len) * (isLeft ? offset : -offset);
+          const perpX = (-dy / len) * (isLeft ? pointOffset : -pointOffset);
+          const perpY = (dx / len) * (isLeft ? pointOffset : -pointOffset);
           offsetPoint = { x: curr.x + perpX, y: curr.y + perpY };
         } else {
           offsetPoint = { x: curr.x, y: curr.y };
@@ -2788,15 +2904,15 @@ function setDebugMode(enabled) {
         const dy = curr.y - prev.y;
         const len = Math.sqrt(dx * dx + dy * dy);
         if (len > 0) {
-          const perpX = (-dy / len) * (isLeft ? offset : -offset);
-          const perpY = (dx / len) * (isLeft ? offset : -offset);
+          const perpX = (-dy / len) * (isLeft ? pointOffset : -pointOffset);
+          const perpY = (dx / len) * (isLeft ? pointOffset : -pointOffset);
           offsetPoint = { x: curr.x + perpX, y: curr.y + perpY };
         } else {
           offsetPoint = { x: curr.x, y: curr.y };
         }
       } else {
         // Middle point or closed path vertex - calculate proper join
-        offsetPoint = calculateOffsetCorner(prev, curr, next, offset, isLeft);
+        offsetPoint = calculateOffsetCorner(prev, curr, next, pointOffset, isLeft);
       }
 
       offsetPath.push(offsetPoint);
