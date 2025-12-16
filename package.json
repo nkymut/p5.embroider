@@ -1,6 +1,6 @@
 {
   "name": "p5.embroider",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "a p5.js library for creating digital embroidery patterns",
   "main": "lib/p5.embroider.js",
   "scripts": {
@@ -14,7 +14,11 @@
     "test:browser": "npx http-server . -o /test/browser/index.html",
     "jsdoc": "jsdoc -c jsdoc.config.json",
     "serve-docs": "npx http-server ./docs -o",
-    "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\""
+    "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "release": "standard-version",
+    "release:patch": "standard-version --release-as patch",
+    "release:minor": "standard-version --release-as minor",
+    "release:major": "standard-version --release-as major"
   },
   "files": [
     "lib",
@@ -43,7 +47,8 @@
     "jsdoc": "^4.0.2",
     "jsdom": "^26.1.0",
     "prettier": "^3.2.5",
-    "rollup": "^4.12.0"
+    "rollup": "^4.12.0",
+    "standard-version": "^9.5.0"
   },
   "type": "module"
 }

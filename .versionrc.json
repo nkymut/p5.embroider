@@ -1,0 +1,24 @@
+{
+  "types": [
+    { "type": "feat", "section": "### Added" },
+    { "type": "fix", "section": "### Fixed" },
+    { "type": "perf", "section": "### Changed" },
+    { "type": "refactor", "section": "### Changed" },
+    { "type": "docs", "section": "### Changed" },
+    { "type": "style", "section": "### Changed" },
+    { "type": "chore", "section": "### Changed" },
+    { "type": "test", "section": "### Changed" },
+    { "type": "build", "section": "### Changed" },
+    { "type": "ci", "section": "### Changed" }
+  ],
+  "releaseCommitMessageFormat": "chore(release): {{currentTag}}",
+  "changelogHeader": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n",
+  "compareUrlFormat": "https://github.com/nkymut/p5.embroider/compare/{{previousTag}}...{{currentTag}}",
+  "skip": {
+    "bump": false,
+    "changelog": false,
+    "commit": false,
+    "tag": false
+  }
+}
+
