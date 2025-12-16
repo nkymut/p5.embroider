@@ -564,12 +564,39 @@ function setDebugMode(enabled) {
           let fillStitches = [];
 
           if (_contours.length > 0) {
-            // Fill with contours
+            // Fill with contours (currently only tatami supports contours)
             if (_DEBUG) console.log("Filling shape with", _contours.length, "contours");
-            fillStitches = createTatamiFillWithContours(mainPath, _contours, _fillSettings);
+            
+            switch (_currentFillMode) {
+              case FILL_MODE.TATAMI:
+                fillStitches = createTatamiFillWithContours(mainPath, _contours, _fillSettings);
+                break;
+              case FILL_MODE.SATIN:
+              case FILL_MODE.SPIRAL:
+                // For now, satin and spiral don't support contours, use simple fill
+                console.warn(`${_currentFillMode} fill does not support contours yet, using simple fill`);
+                fillStitches = _currentFillMode === FILL_MODE.SATIN 
+                  ? createSatinFillFromPath(mainPath, _fillSettings)
+                  : createSpiralFillFromPath(mainPath, _fillSettings);
+                break;
+              default:
+                fillStitches = createTatamiFillWithContours(mainPath, _contours, _fillSettings);
+            }
           } else {
             // Simple fill without contours
-            fillStitches = createTatamiFillFromPath(mainPath, _fillSettings);
+            switch (_currentFillMode) {
+              case FILL_MODE.TATAMI:
+                fillStitches = createTatamiFillFromPath(mainPath, _fillSettings);
+                break;
+              case FILL_MODE.SATIN:
+                fillStitches = createSatinFillFromPath(mainPath, _fillSettings);
+                break;
+              case FILL_MODE.SPIRAL:
+                fillStitches = createSpiralFillFromPath(mainPath, _fillSettings);
+                break;
+              default:
+                fillStitches = createTatamiFillFromPath(mainPath, _fillSettings);
+            }
           }
 
           if (fillStitches && fillStitches.length > 0) {
@@ -1616,12 +1643,29 @@ function setDebugMode(enabled) {
         if (_recording) {
           if (_doFill) {
             // Convert vertices to pathPoints format for the fill function
-            const fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            let fillStitches = [];
+            
+            switch (_currentFillMode) {
+              case FILL_MODE.TATAMI:
+                fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
+                break;
+              case FILL_MODE.SATIN:
+                fillStitches = createSatinFillFromPath(transformedPathPoints, _fillSettings);
+                break;
+              case FILL_MODE.SPIRAL:
+                fillStitches = createSpiralFillFromPath(transformedPathPoints, _fillSettings);
+                break;
+              default:
+                fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
+            }
+            
+            if (fillStitches && fillStitches.length > 0) {
+              _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
 
-            // Draw fill stitches in visual modes
-            if (_drawMode === "stitch" || _drawMode === "realistic") {
-              drawStitches(fillStitches, _fillThreadIndex);
+              // Draw fill stitches in visual modes
+              if (_drawMode === "stitch" || _drawMode === "realistic") {
+                drawStitches(fillStitches, _fillThreadIndex);
+              }
             }
           }
 
@@ -1875,7 +1919,12 @@ function setDebugMode(enabled) {
             case FILL_MODE.TATAMI:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
               break;
-            // Add other fill modes here as they are implemented
+            case FILL_MODE.SATIN:
+              fillStitches = createSatinFillFromPath(transformedPathPoints, _fillSettings);
+              break;
+            case FILL_MODE.SPIRAL:
+              fillStitches = createSpiralFillFromPath(transformedPathPoints, _fillSettings);
+              break;
             default:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
@@ -1969,6 +2018,12 @@ function setDebugMode(enabled) {
             case FILL_MODE.TATAMI:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
               break;
+            case FILL_MODE.SATIN:
+              fillStitches = createSatinFillFromPath(transformedPathPoints, _fillSettings);
+              break;
+            case FILL_MODE.SPIRAL:
+              fillStitches = createSpiralFillFromPath(transformedPathPoints, _fillSettings);
+              break;
             default:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
@@ -2035,6 +2090,12 @@ function setDebugMode(enabled) {
           switch (_currentFillMode) {
             case FILL_MODE.TATAMI:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
+              break;
+            case FILL_MODE.SATIN:
+              fillStitches = createSatinFillFromPath(transformedPathPoints, _fillSettings);
+              break;
+            case FILL_MODE.SPIRAL:
+              fillStitches = createSpiralFillFromPath(transformedPathPoints, _fillSettings);
               break;
             default:
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
@@ -4793,9 +4854,110 @@ function setDebugMode(enabled) {
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
   function createSatinFillFromPath(pathPoints, settings) {
-    // For now, fall back to tatami fill
-    // TODO: Implement proper satin fill algorithm
-    return createTatamiFillFromPath(pathPoints, settings);
+    if (!pathPoints || pathPoints.length < 3) {
+      if (_DEBUG) console.log("createSatinFillFromPath: insufficient pathPoints", pathPoints?.length);
+      return [];
+    }
+
+    // Satin fill uses perpendicular stitches (like columns)
+    // Stitches run perpendicular to the specified angle
+    const angle = (settings.angle || 0) * (Math.PI / 180); // Convert to radians
+    const threadWidth = settings.stitchWidth || 0.2;
+    const spacing = threadWidth * 0.8; // Slight overlap for complete coverage
+    const maxStitchLength = settings.stitchLength || 10;
+    const minStitchLength = settings.minStitchLength || 0.5;
+
+    // Calculate bounds of the polygon
+    const bounds = getPathBounds(pathPoints);
+    const centerX = bounds.x + bounds.w / 2;
+    const centerY = bounds.y + bounds.h / 2;
+
+    // Expand bounds to ensure we cover rotated shape
+    const diagonal = Math.sqrt(bounds.w * bounds.w + bounds.h * bounds.h) * 1.2;
+
+    // Calculate perpendicular angle (90 degrees offset from fill angle)
+    // If angle is 0° (horizontal), stitches should be vertical (90°)
+    const perpAngle = angle + Math.PI / 2;
+
+    const stitches = [];
+
+    if (_DEBUG) {
+      console.log("Satin fill params:", {
+        angle: settings.angle,
+        perpAngle: perpAngle * (180 / Math.PI),
+        spacing,
+        threadWidth,
+        bounds,
+      });
+    }
+
+    // Generate scan lines perpendicular to the fill angle
+    for (let d = -diagonal / 2; d <= diagonal / 2; d += spacing) {
+      // Calculate start and end points for the scan line (perpendicular to angle)
+      const startX = centerX - (diagonal / 2) * Math.cos(perpAngle) - d * Math.sin(perpAngle);
+      const startY = centerY - (diagonal / 2) * Math.sin(perpAngle) + d * Math.cos(perpAngle);
+      const endX = centerX + (diagonal / 2) * Math.cos(perpAngle) - d * Math.sin(perpAngle);
+      const endY = centerY + (diagonal / 2) * Math.sin(perpAngle) + d * Math.cos(perpAngle);
+
+      // Find intersections with the polygon
+      const intersections = segmentIntersectPolygon({ x: startX, y: startY }, { x: endX, y: endY }, pathPoints);
+
+      // Sort intersections by distance from start
+      intersections.sort((a, b) => {
+        const distA = Math.sqrt((a.x - startX) * (a.x - startX) + (a.y - startY) * (a.y - startY));
+        const distB = Math.sqrt((b.x - startX) * (b.x - startX) + (b.y - startY) * (b.y - startY));
+        return distA - distB;
+      });
+
+      // Find valid segments for this scan line
+      const validSegments = findValidSegments(
+        intersections,
+        pathPoints,
+        { x: startX, y: startY },
+        { x: endX, y: endY },
+      );
+
+      // Create stitches for each valid segment
+      for (const segment of validSegments) {
+        const segStart = segment.start;
+        const segEnd = segment.end;
+
+        // Calculate segment length
+        const segLength = Math.sqrt(
+          Math.pow(segEnd.x - segStart.x, 2) + Math.pow(segEnd.y - segStart.y, 2),
+        );
+
+        // If segment is very short, skip it
+        if (segLength < minStitchLength) {
+          continue;
+        }
+
+        // If segment is longer than max stitch length, subdivide it
+        if (segLength > maxStitchLength) {
+          const numSubStitches = Math.ceil(segLength / maxStitchLength);
+          const dx = (segEnd.x - segStart.x) / numSubStitches;
+          const dy = (segEnd.y - segStart.y) / numSubStitches;
+
+          // Add subdivided stitches
+          for (let i = 0; i <= numSubStitches; i++) {
+            stitches.push({
+              x: segStart.x + dx * i,
+              y: segStart.y + dy * i,
+            });
+          }
+        } else {
+          // Add the segment as a single stitch
+          stitches.push(segStart);
+          stitches.push(segEnd);
+        }
+      }
+    }
+
+    if (_DEBUG) {
+      console.log("Satin fill generated:", stitches.length, "stitch points");
+    }
+
+    return stitches;
   }
 
   /**

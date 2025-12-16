@@ -1,4 +1,5 @@
 let drawMode = "stitch";
+let fillMode = "tatami"; // Current fill mode
 let currentSettings = {
   angle: 0,
   stitchLength: 3,
@@ -73,8 +74,32 @@ function setup() {
     button.style.marginBottom = "10px";
   }
 
+  // Create fill mode dropdown
+  let fillModeContainer = createDiv();
+  fillModeContainer.position(width + 10, 80);
+  fillModeContainer.style("width", "300px");
+  fillModeContainer.style("margin-bottom", "20px");
+
+  let fillModeLabel = createSpan("Fill Mode: ");
+  fillModeLabel.parent(fillModeContainer);
+  fillModeLabel.style("display", "inline-block");
+  fillModeLabel.style("width", "100px");
+
+  let fillModeDropdown = createSelect();
+  fillModeDropdown.parent(fillModeContainer);
+  fillModeDropdown.option("tatami");
+  fillModeDropdown.option("satin");
+  fillModeDropdown.option("spiral");
+  fillModeDropdown.selected("tatami");
+  fillModeDropdown.changed(() => {
+    fillMode = fillModeDropdown.value();
+    redraw();
+  });
+  fillModeDropdown.style("width", "150px");
+  fillModeDropdown.style("padding", "5px");
+
   // Create sliders for fill settings
-  let yStart = 80;
+  let yStart = 150;
   let ySpacing = 45;
 
   let angleControl = createLabeledSlider("Fill Angle (degrees)", 0, 360, currentSettings.angle, 1, yStart);
@@ -196,7 +221,7 @@ function draw() {
   beginRecord(this);
 
   strokeWeight(1);
-  setFillMode("tatami");
+  setFillMode(fillMode);
   updateFillSettings();
 
   setStrokeSettings({
