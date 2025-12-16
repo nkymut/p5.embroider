@@ -1,16 +1,19 @@
 
+
+
 # p5.embroider
 
-## A p5.js Library for Digital Embroidery Pattern Creation
-
 ![](./assets/p5.embroider-banner.jpg)
+
+
+ ## A p5.js Library for Digital Embroidery Pattern Creation
 
 [**p5.embroider.js**](https://github.com/nkymut/p5.embroider) is a p5.js library for creating digital embroidery patterns.<br />
 
 **Note:** This library is currently in early Alpha stage. Expect frequent and significant breaking changes. Please use with caution.
 
 
-Version 0.1.6, December 11, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
+Version 0.1.7, December 16, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
 
 ## Installation
