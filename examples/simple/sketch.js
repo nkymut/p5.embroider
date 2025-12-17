@@ -46,12 +46,15 @@ function draw() {
     stitchLength: 0.5,
     stitchWidth: 5,
     noise: 0.0,
+    strokeInterpolate: true,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
   setStrokeMode("zigzag");
+
   noFill();
-  rect(0, 0, 80, 80);
+  
+  rect(0, 0, 80, 80,2);
   trimThread();
 
   // Draw a 200px circle
