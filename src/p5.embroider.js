@@ -2450,6 +2450,208 @@ function setDebugMode(enabled) {
   }
 
   /**
+   * Override text() function for embroidery recording
+   * @private
+   */
+  let _originalTextFunc;
+  function overrideTextFunction() {
+    _originalTextFunc = window.text;
+
+    window.text = function(str, x, y, maxWidth, maxHeight) {
+      if (_recording) {
+        // Get current font
+        const font = _p5Instance._renderer._textFont;
+
+        // Check if valid p5.Font (not system font)
+        if (!(font && font.font)) {
+          console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
+          if (_drawMode === "p5") {
+            _originalTextFunc.apply(this, arguments);
+          }
+          return;
+        }
+
+        // Get current text size
+        const fontSize = _p5Instance._renderer._textSize;
+
+        // Warn if text is very small
+        // const MIN_READABLE_SIZE = 12;
+        // if (fontSize < MIN_READABLE_SIZE) {
+        //   console.warn(`p5.embroider: Text size ${fontSize}px may not be readable in embroidery. Recommended minimum: ${MIN_READABLE_SIZE}px`);
+        // }
+
+        if (_DEBUG) {
+          console.log('text() called:', str, 'at', x, y, 'size:', fontSize);
+        }
+
+        try {
+          // Use textToPoints() - it handles alignment, multi-line, kerning, etc.
+          const points = font.textToPoints(str, x, y, fontSize, {
+            sampleFactor: 0.1,      // Adjust for quality vs performance
+            simplifyThreshold: 0    // No simplification for now
+          });
+
+          if (_DEBUG) {
+            console.log('textToPoints returned', points.length, 'points');
+          }
+
+          // Group points into separate letter paths
+          const letterPaths = groupPointsIntoLetterPaths(points);
+
+          if (_DEBUG) {
+            console.log('Grouped into', letterPaths.length, 'letter paths');
+          }
+
+          // Convert each letter path to stitches
+          for (const letterPath of letterPaths) {
+            // Apply current transformation
+            const transformedPath = applyCurrentTransformToPoints(letterPath);
+
+            // Convert to stitches using existing functions
+            // This respects current stroke/fill/strokeWeight settings automatically!
+            
+            // Handle fill
+            if (_doFill) {
+              if (_DEBUG) {
+                console.log('Creating fill stitches for letter path with', transformedPath.length, 'points');
+              }
+
+              try {
+                let fillStitches = [];
+                
+                // Use current fill mode
+                if (_currentFillMode === FILL_MODE.SATIN) {
+                  fillStitches = createSatinFillFromPath(transformedPath, _fillSettings);
+                } else if (_currentFillMode === FILL_MODE.SPIRAL) {
+                  fillStitches = createSpiralFillFromPath(transformedPath, _fillSettings);
+                } else {
+                  // Default to tatami
+                  fillStitches = createTatamiFillFromPath(transformedPath, _fillSettings);
+                }
+
+                if (fillStitches && fillStitches.length > 0) {
+                  // Add fill stitches to thread runs
+                  _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+
+                  // Draw fill stitches in visual modes
+                  if (_drawMode === "stitch" || _drawMode === "realistic") {
+                    drawStitches(fillStitches, _fillThreadIndex);
+                  }
+
+                  if (_DEBUG) {
+                    console.log('Added', fillStitches.length, 'fill stitches');
+                  }
+                }
+              } catch (error) {
+                console.error('Error creating fill stitches for text:', error);
+              }
+            }
+
+            // Handle stroke
+            if (_doStroke) {
+              if (_DEBUG) {
+                console.log('Creating stroke stitches for letter path with', transformedPath.length, 'points');
+              }
+
+              try {
+                let strokeStitches;
+                
+                // Use current stroke mode
+                if (_strokeSettings.strokeWeight > 0) {
+                  switch (_strokeSettings.strokeMode) {
+                    case STROKE_MODE.ZIGZAG:
+                      strokeStitches = zigzagStitchFromPath(transformedPath, _strokeSettings);
+                      break;
+                    case STROKE_MODE.LINES:
+                      strokeStitches = multiLineStitchFromPath(transformedPath, _strokeSettings);
+                      break;
+                    case STROKE_MODE.SASHIKO:
+                      strokeStitches = sashikoStitchFromPath(transformedPath, _strokeSettings);
+                      break;
+                    default:
+                      strokeStitches = straightLineStitchFromPath(transformedPath, _strokeSettings);
+                  }
+                } else {
+                  strokeStitches = straightLineStitchFromPath(transformedPath, _strokeSettings);
+                }
+
+                if (strokeStitches && strokeStitches.length > 0) {
+                  // Add stroke stitches to thread runs
+                  _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+
+                  // Draw stroke stitches in visual modes
+                  if (_drawMode === "stitch" || _drawMode === "realistic") {
+                    drawStitches(strokeStitches, _strokeThreadIndex);
+                  }
+
+                  if (_DEBUG) {
+                    console.log('Added', strokeStitches.length, 'stroke stitches');
+                  }
+                }
+              } catch (error) {
+                console.error('Error creating stroke stitches for text:', error);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error converting text to embroidery:', error);
+        }
+
+        // Call original for visual feedback based on draw mode
+        if (_drawMode === "p5") {
+          _originalTextFunc.apply(this, arguments);
+        }
+      } else {
+        // Not recording, just call original
+        _originalTextFunc.apply(this, arguments);
+      }
+    };
+  }
+
+  /**
+   * Group points into separate letter paths
+   * Detects when points jump to a new letter (large distance)
+   * @private
+   */
+  function groupPointsIntoLetterPaths(points) {
+    if (points.length === 0) return [];
+
+    const letterPaths = [];
+    let currentPath = [{x: points[0].x, y: points[0].y}];
+    const JUMP_THRESHOLD = 5; // pixels - tune as needed
+
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+
+      // Calculate distance between consecutive points
+      const dist = Math.sqrt(
+        Math.pow(curr.x - prev.x, 2) + 
+        Math.pow(curr.y - prev.y, 2)
+      );
+
+      // If distance is large, we've jumped to a new letter or path segment
+      if (dist > JUMP_THRESHOLD) {
+        // Save current path and start new one
+        if (currentPath.length > 0) {
+          letterPaths.push(currentPath);
+        }
+        currentPath = [{x: curr.x, y: curr.y}];
+      } else {
+        // Continue current path
+        currentPath.push({x: curr.x, y: curr.y});
+      }
+    }
+
+    // Don't forget the last path
+    if (currentPath.length > 0) {
+      letterPaths.push(currentPath);
+    }
+
+    return letterPaths;
+  }
+
+  /**
    * Overrides necessary p5.js functions for embroidery recording.
    * @private
    */
@@ -2489,6 +2691,9 @@ function setDebugMode(enabled) {
     overrideEndShapeFunction();
     overrideBeginContourFunction();
     overrideEndContourFunction();
+    
+    // Text functions
+    overrideTextFunction();
     
     // Add vertexWidth function to window
     window.vertexWidth = vertexWidth;
@@ -2534,6 +2739,9 @@ function setDebugMode(enabled) {
     window.endShape = _originalEndShapeFunc;
     window.beginContour = _originalBeginContourFunc;
     window.endContour = _originalEndContourFunc;
+    
+    // Restore text functions
+    window.text = _originalTextFunc;
   }
 
   /**
