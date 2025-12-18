@@ -259,7 +259,7 @@ function drawShape() {
       rect(10, 10, 40, 40, 5);
       break;
     case "circle":
-      ellipseMode(CENTER);
+      ellipseMode(CORNER);
       circle(10, 10, 40);
       break;
     case "ellipse":

@@ -1730,9 +1730,35 @@ function setDebugMode(enabled) {
     _originalEllipseFunc = window.ellipse;
     window.ellipse = function (x, y, w, h) {
       if (_recording) {
+
+        const ellipseMode = _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
+        let centerX;
+        let centerY;
+        let diameterX;
+        let diameterY;
+      
+
+        if (ellipseMode === _p5Instance.CORNER) {
+          centerX = x + w / 2;
+          centerY = y + h / 2;
+          diameterX = w;
+          diameterY = h;
+        } else if (ellipseMode === _p5Instance.CENTER) {
+          centerX = x;
+          centerY = y;
+          diameterX = w;
+          diameterY = h;
+        } else if (ellipseMode === _p5Instance.CORNERS) {
+          centerX = x;
+          centerY = y;
+          diameterX = w - x;
+          diameterY = h - y;
+
+        }
+
         // Calculate radius values
-        let radiusX = w / 2;
-        let radiusY = h / 2;
+        let radiusX = diameterX / 2;
+        let radiusY = diameterY / 2;
 
         // Generate path points for the ellipse
         let pathPoints = [];
@@ -1741,8 +1767,8 @@ function setDebugMode(enabled) {
         // Generate points along the ellipse, starting at 0 degrees (right side of ellipse)
         for (let i = 0; i <= numSteps; i++) {
           let angle = (i / numSteps) * Math.PI * 2;
-          let pointX = x + Math.cos(angle) * radiusX;
-          let pointY = y + Math.sin(angle) * radiusY;
+          let pointX = centerX + Math.cos(angle) * radiusX;
+          let pointY = centerY + Math.sin(angle) * radiusY;
 
           // Store in mm (internal format)
           pathPoints.push({
@@ -2840,7 +2866,7 @@ function setDebugMode(enabled) {
    * Creates a zigzag pattern that follows path normals (perpendiculars).
    * This produces sharp corners where the perpendicular changes direction.
    * @private
-   * @param {Array<{x: number, y: number, width?: number}>} pathPoints - Array of path points in mm
+   * @param {Array<{x: number, y: number, width: number}>} pathPoints - Array of path points in mm (width is optional)
    * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
