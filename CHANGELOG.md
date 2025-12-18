@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/nkymut/p5.embroider/compare/v0.1.7...v0.2.0) (2025-12-18)
+
+
+### ### Changed
+
+* **release:** 0.1.9 ([310c91b](https://github.com/nkymut/p5.embroider/commit/310c91b6b2b1c44efb3fe0121c0542bd0c2b1254))
+
 ### [0.1.9](https://github.com/nkymut/p5.embroider/compare/v0.1.7...v0.1.9) (2025-12-18)
 
 ### [0.1.9](https://github.com/nkymut/p5.embroider/compare/v0.1.7...v0.1.9) (2025-12-16)
