@@ -72,7 +72,7 @@ function draw() {
 
   setStitch(linesSettings.minStitchLength, linesSettings.stitchLength, 0);
   strokeWeight(linesSettings.strokeWeight);
-  setStrokeMode("lines");
+  setStrokeMode("parallel");
   line(0, 10, 80, 10); // right
   trimThread();
 
@@ -90,10 +90,10 @@ function draw() {
   line(5, 30, 25, 50); // vertical
   trimThread();
 
-  // Diagonal line with lines
+  // Diagonal line with parallel
   setStitch(linesSettings.minStitchLength, linesSettings.stitchLength, 0);
   strokeWeight(linesSettings.strokeWeight);
-  setStrokeMode("lines");
+  setStrokeMode("parallel");
   line(30, 30, 50, 50); // vertical
   trimThread();
 
@@ -111,10 +111,10 @@ function draw() {
   line(15, 60, 15, 80); // vertical
   trimThread();
 
-  // Vertical line with lines
+  // Vertical line with parallel
   setStitch(linesSettings.minStitchLength, linesSettings.stitchLength, 0);
   strokeWeight(linesSettings.strokeWeight);
-  setStrokeMode("lines");
+  setStrokeMode("parallel");
   line(40, 60, 40, 80); // vertical
   trimThread();
 

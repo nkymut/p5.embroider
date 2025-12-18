@@ -118,7 +118,7 @@ function setup() {
   // Stroke mode dropdown
   let strokeModeDropdown = createLabeledDropdown(
     "Stroke Mode",
-    ["straight", "zigzag", "lines", "sashiko"],
+    ["straight", "zigzag", "parallel", "sashiko"],
     currentStrokeMode,
     yStart + ySpacing * 0.5,
   );

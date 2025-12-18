@@ -1600,7 +1600,7 @@ function updateMultiPartSettings() {
       {
         straight: "straight",
         zigzag: "zigzag",
-        lines: "lines",
+        parallel: "parallel",
         sashiko: "sashiko",
       },
       commonStrokeMode,
@@ -2214,7 +2214,7 @@ function updatePartSettings(part, propagateToSelection = false) {
       {
         straight: "straight",
         zigzag: "zigzag",
-        lines: "lines",
+        parallel: "parallel",
         sashiko: "sashiko",
       },
       part.strokeSettings.mode,

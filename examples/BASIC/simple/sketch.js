@@ -44,16 +44,14 @@ function draw() {
   setStitch(0.1, 0.2, 0);
   setStrokeSettings({
     stitchLength: 0.5,
-    stitchWidth: 5,
+    stitchWidth: 0.2,
     noise: 0.0,
     strokeInterpolate: true,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
-  setStrokeMode("zigzag");
-
+  setStrokeMode("parallel");
   noFill();
-
   rect(0, 0, 80, 80, 2);
   trimThread();
 
@@ -61,7 +59,7 @@ function draw() {
   strokeWeight(5);
 
   setFillMode("tatami");
-
+  setStrokeMode("parallel");
   fill(220, 220, 0);
   ellipse(40, 40, 60, 60);
 

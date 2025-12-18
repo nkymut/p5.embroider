@@ -144,7 +144,8 @@ function setDebugMode(enabled) {
     ZIGZAG: "zigzag",
     RAMP: "ramp",
     SQUARE: "square",
-    LINES: "lines",
+    LINES: "lines", //Deprecated: use PARALLEL instead
+    PARALLEL: "parallel",
     SASHIKO: "sashiko",
   };
 
@@ -302,7 +303,7 @@ function setDebugMode(enabled) {
    * Sets the stroke mode for embroidery stitches.
    * @method setStrokeMode
    * @for p5
-   * @param {string} mode - The stroke mode to use ('zigzag', 'lines', or 'sashiko')
+   * @param {string} mode - The stroke mode to use ('zigzag', 'parallel', or 'sashiko')
    * @example
    * function setup() {
    *   createCanvas(400, 400);
@@ -1137,8 +1138,8 @@ function setDebugMode(enabled) {
           return straightLineStitchFromPath(pathPoints, strokeSettings);
         case STROKE_MODE.ZIGZAG:
           return zigzagStitchFromPath(pathPoints, strokeSettings);
-        case STROKE_MODE.LINES:
-          return multiLineStitchFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.PARALLEL:
+          return parallelLineStitchFromPath(pathPoints, strokeSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, strokeSettings);
         default:
@@ -1863,8 +1864,8 @@ function setDebugMode(enabled) {
               case STROKE_MODE.ZIGZAG:
                 stitches = zigzagStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
-              case STROKE_MODE.LINES:
-                stitches = multiLineStitchFromPath(transformedPathPoints, _strokeSettings);
+              case STROKE_MODE.PARALLEL:
+                stitches = parallelLineStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
               case STROKE_MODE.SASHIKO:
                 stitches = sashikoStitchFromPath(transformedPathPoints, _strokeSettings);
@@ -2718,7 +2719,7 @@ function setDebugMode(enabled) {
           return rampStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SQUARE:
           return squareStitch(x1, y1, x2, y2, stitchSettings);
-        case STROKE_MODE.LINES:
+        case STROKE_MODE.PARALLEL:
           return multiLineStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitch(x1, y1, x2, y2, stitchSettings);
@@ -2763,8 +2764,8 @@ function setDebugMode(enabled) {
         const zigzagResult = createZigzagWithJoins(pathPoints, stitchSettings);
         if (_DEBUG) console.log("Zigzag result:", zigzagResult.length, "stitches");
         return zigzagResult;
-      case STROKE_MODE.LINES:
-        return multiLineStitchFromPath(pathPoints, stitchSettings);
+      case STROKE_MODE.PARALLEL:
+        return parallelLineStitchFromPath(pathPoints, stitchSettings);
       case STROKE_MODE.SASHIKO:
         return sashikoStitchFromPath(pathPoints, stitchSettings);
       default:
@@ -3222,8 +3223,8 @@ function setDebugMode(enabled) {
           return rampStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SQUARE:
           return squareStitchFromPath(pathPoints, stitchSettings);
-        case STROKE_MODE.LINES:
-          return multiLineStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.PARALLEL:
+          return parallelLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, stitchSettings);
         default:
@@ -3921,7 +3922,7 @@ function setDebugMode(enabled) {
       { x: x1, y: y1 },
       { x: x2, y: y2 },
     ];
-    return multiLineStitchFromPath(pathPoints, stitchSettings);
+    return parallelLineStitchFromPath(pathPoints, stitchSettings);
   }
 
   /**
@@ -3931,7 +3932,7 @@ function setDebugMode(enabled) {
    * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
-  function multiLineStitchFromPath(pathPoints, stitchSettings) {
+  function parallelLineStitchFromPath(pathPoints, stitchSettings) {
     if (!pathPoints || pathPoints.length < 2) {
       console.warn("Cannot create multi-line stitching from insufficient path points");
       return [];
@@ -3953,38 +3954,46 @@ function setDebugMode(enabled) {
 
       // Calculate perpendicular vectors for each segment and apply offset
       for (let j = 0; j < pathPoints.length; j++) {
-        // For first point or when calculating new perpendicular
-        if (j === 0 || j === pathPoints.length - 1) {
-          let perpX, perpY;
+        let perpX = 0,
+          perpY = 0;
+        let hasValidDirection = false;
 
-          if (j === 0) {
-            // For first point, use direction to next point
-            const dx = pathPoints[1].x - pathPoints[0].x;
-            const dy = pathPoints[1].y - pathPoints[0].y;
+        if (j === 0) {
+          // For first point, find first valid direction
+          for (let k = 1; k < pathPoints.length; k++) {
+            const dx = pathPoints[k].x - pathPoints[0].x;
+            const dy = pathPoints[k].y - pathPoints[0].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance === 0 || distance < 0.001) {
-              // Skip this point if distance is zero
-              continue;
+            if (distance > 0.001) {
+              perpX = -dy / distance;
+              perpY = dx / distance;
+              hasValidDirection = true;
+              break;
             }
-            perpX = -dy / distance;
-            perpY = dx / distance;
-          } else {
-            // For last point, use direction from previous point
-            const dx = pathPoints[j].x - pathPoints[j - 1].x;
-            const dy = pathPoints[j].y - pathPoints[j - 1].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance === 0 || distance < 0.001) {
-              // Skip this point if distance is zero
-              continue;
-            }
-            perpX = -dy / distance;
-            perpY = dx / distance;
           }
-
-          offsetPath.push({
-            x: pathPoints[j].x + perpX * offset,
-            y: pathPoints[j].y + perpY * offset,
-          });
+        } else if (j === pathPoints.length - 1) {
+          // For last point, use direction from previous point
+          const dx = pathPoints[j].x - pathPoints[j - 1].x;
+          const dy = pathPoints[j].y - pathPoints[j - 1].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance > 0.001) {
+            perpX = -dy / distance;
+            perpY = dx / distance;
+            hasValidDirection = true;
+          } else {
+            // Find previous valid direction
+            for (let k = j - 2; k >= 0; k--) {
+              const dx = pathPoints[j].x - pathPoints[k].x;
+              const dy = pathPoints[j].y - pathPoints[k].y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance > 0.001) {
+                perpX = -dy / distance;
+                perpY = dx / distance;
+                hasValidDirection = true;
+                break;
+              }
+            }
+          }
         } else {
           // For interior points, average the perpendiculars of adjacent segments
           const prevDx = pathPoints[j].x - pathPoints[j - 1].x;
@@ -3995,25 +4004,90 @@ function setDebugMode(enabled) {
           const nextDy = pathPoints[j + 1].y - pathPoints[j].y;
           const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
 
-          // Calculate perpendicular vectors
-          const prevPerpX = -prevDy / prevDistance;
-          const prevPerpY = prevDx / prevDistance;
+          let prevPerpX = 0,
+            prevPerpY = 0;
+          let nextPerpX = 0,
+            nextPerpY = 0;
+          let hasPrev = false,
+            hasNext = false;
 
-          const nextPerpX = -nextDy / nextDistance;
-          const nextPerpY = nextDx / nextDistance;
+          // Calculate previous perpendicular if valid
+          if (prevDistance > 0.001) {
+            prevPerpX = -prevDy / prevDistance;
+            prevPerpY = prevDx / prevDistance;
+            hasPrev = true;
+          }
 
-          // Average the perpendicular vectors
-          const perpX = (prevPerpX + nextPerpX) / 2;
-          const perpY = (prevPerpY + nextPerpY) / 2;
+          // Calculate next perpendicular if valid
+          if (nextDistance > 0.001) {
+            nextPerpX = -nextDy / nextDistance;
+            nextPerpY = nextDx / nextDistance;
+            hasNext = true;
+          }
 
-          // Normalize the averaged vector
-          const length = Math.sqrt(perpX * perpX + perpY * perpY);
-
-          offsetPath.push({
-            x: pathPoints[j].x + (perpX / length) * offset,
-            y: pathPoints[j].y + (perpY / length) * offset,
-          });
+          // Average perpendiculars if both are valid, otherwise use the valid one
+          if (hasPrev && hasNext) {
+            perpX = (prevPerpX + nextPerpX) / 2;
+            perpY = (prevPerpY + nextPerpY) / 2;
+            hasValidDirection = true;
+          } else if (hasPrev) {
+            perpX = prevPerpX;
+            perpY = prevPerpY;
+            hasValidDirection = true;
+          } else if (hasNext) {
+            perpX = nextPerpX;
+            perpY = nextPerpY;
+            hasValidDirection = true;
+          } else {
+            // Both segments are zero - find nearest valid direction
+            for (let k = j - 2; k >= 0; k--) {
+              const dx = pathPoints[j].x - pathPoints[k].x;
+              const dy = pathPoints[j].y - pathPoints[k].y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance > 0.001) {
+                perpX = -dy / distance;
+                perpY = dx / distance;
+                hasValidDirection = true;
+                break;
+              }
+            }
+            if (!hasValidDirection) {
+              for (let k = j + 2; k < pathPoints.length; k++) {
+                const dx = pathPoints[k].x - pathPoints[j].x;
+                const dy = pathPoints[k].y - pathPoints[j].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 0.001) {
+                  perpX = -dy / distance;
+                  perpY = dx / distance;
+                  hasValidDirection = true;
+                  break;
+                }
+              }
+            }
+          }
         }
+
+        // Normalize the perpendicular vector if we have a valid direction
+        if (hasValidDirection) {
+          const length = Math.sqrt(perpX * perpX + perpY * perpY);
+          if (length > 0.001) {
+            perpX = perpX / length;
+            perpY = perpY / length;
+          }
+        }
+
+        // Always add the point to offsetPath (even if direction is invalid, use zero offset)
+        offsetPath.push({
+          x: pathPoints[j].x + perpX * offset,
+          y: pathPoints[j].y + perpY * offset,
+        });
+      }
+
+      // Validate that offsetPath has same length as pathPoints
+      if (offsetPath.length !== pathPoints.length) {
+        console.warn(
+          `parallelLineStitchFromPath: offsetPath length mismatch (${offsetPath.length} vs ${pathPoints.length})`,
+        );
       }
 
       // For even lines, go from start to end
@@ -4103,7 +4177,7 @@ function setDebugMode(enabled) {
 
         if (isMultiline) {
           // Use the pathPoints version of multiLine stitching
-          const lineStitches = multiLineStitchFromPath(segmentPoints, stitchSettings);
+          const lineStitches = parallelLineStitchFromPath(segmentPoints, stitchSettings);
           result.push(...lineStitches);
         } else {
           // Create single straight line for this segment
@@ -5587,7 +5661,7 @@ function setDebugMode(enabled) {
 
   // Expose new path-based functions
   global.convertPathToStitches = convertPathToStitches;
-  global.multiLineStitchingFromPath = multiLineStitchFromPath;
+  global.parallelLineStitchingFromPath = parallelLineStitchFromPath;
   global.sashikoStitchingFromPath = sashikoStitchFromPath;
 
   // Expose embroidery guide utilities
