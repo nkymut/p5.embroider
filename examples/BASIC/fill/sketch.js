@@ -266,7 +266,7 @@ function draw() {
   strokeWeight(2);
   fill(0, 0, 200);
   stroke(100, 100, 100);
- 
+
   // Draw the selected shape
   drawSelectedShape();
 
@@ -277,46 +277,45 @@ function draw() {
 function drawSelectedShape() {
   console.log("shapeType: ", shapeType);
   switch (shapeType) {
-
     case "rect":
       rectMode(CENTER);
       rect(50, 50, 40, 40);
       break;
-    
+
     case "rect-rounded":
       rectMode(CENTER);
       rect(50, 50, 40, 40, 5);
       break;
-    
+
     case "square":
       rectMode(CENTER);
       square(50, 50, 35);
       break;
-    
+
     case "circle":
       circle(50, 50, 40);
       break;
-    
+
     case "ellipse":
       ellipse(50, 50, 50, 30);
       break;
-    
+
     case "triangle":
       triangle(50, 25, 30, 65, 70, 65);
       break;
-    
+
     case "quad":
       quad(30, 30, 70, 35, 65, 70, 25, 65);
       break;
-    
+
     case "arc-pie":
       arc(50, 50, 40, 40, 0, PI + QUARTER_PI, PIE);
       break;
-    
+
     case "arc-chord":
       arc(50, 50, 40, 40, 0, PI + QUARTER_PI, CHORD);
       break;
-    
+
     case "vertices":
       beginShape();
       vertex(30, 30);
@@ -325,7 +324,6 @@ function drawSelectedShape() {
       vertex(30, 30);
       endShape(CLOSE);
       break;
-    
   }
 }
 

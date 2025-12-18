@@ -1,6 +1,6 @@
 /**
  * Variable Width Path Example
- * 
+ *
  * This example demonstrates three ways to create variable-width embroidery paths:
  * 1. Using vertex(x, y, width) - z-coordinate as width
  * 2. Using vertexWidth(width) before vertex(x, y)
@@ -11,7 +11,7 @@ let drawMode = "realistic";
 
 function setup() {
   createCanvas(mmToPixel(120), mmToPixel(150));
-  
+
   // UI Buttons
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
@@ -64,20 +64,20 @@ function draw() {
   stroke(255, 0, 100);
   noFill();
   setStrokeMode("zigzag");
-  
+
   beginShape();
-  vertex(10, 10, 1);    // Start thin
-  vertex(30, 10, 5);    // Get thicker
-  vertex(50, 10, 8);    // Maximum thickness
-  vertex(70, 10, 5);    // Get thinner
-  vertex(90, 10, 1);    // End thin
+  vertex(10, 10, 1); // Start thin
+  vertex(30, 10, 5); // Get thicker
+  vertex(50, 10, 8); // Maximum thickness
+  vertex(70, 10, 5); // Get thinner
+  vertex(90, 10, 1); // End thin
   endShape();
   trimThread();
 
   // Example 2: Using vertexWidth(w) - Wave pattern
   stroke(0, 150, 255);
   setStrokeMode("zigzag");
-  
+
   beginShape();
   for (let i = 0; i <= 10; i++) {
     let x = 10 + i * 8;
@@ -92,7 +92,7 @@ function draw() {
   // Example 3: Using vertexWidth(x, y, w) - Calligraphic effect
   stroke(100, 50, 200);
   setStrokeMode("zigzag");
-  
+
   beginShape();
   vertexWidth(20, 50, 2);
   vertexWidth(30, 55, 6);
@@ -108,7 +108,7 @@ function draw() {
   // Example 4: Bezier curve with variable width
   stroke(255, 150, 0);
   setStrokeMode("zigzag");
-  
+
   beginShape();
   vertex(10, 70, 2);
   vertexWidth(4);
@@ -121,7 +121,7 @@ function draw() {
   // Example 5: Spiral with increasing width
   stroke(0, 200, 100);
   setStrokeMode("zigzag");
-  
+
   let centerX = 50;
   let centerY = 115;
   beginShape();
@@ -136,7 +136,7 @@ function draw() {
   trimThread();
 
   endRecord();
-  
+
   // Draw labels in p5 mode (not embroidered)
   if (drawMode === "p5" || drawMode === "realistic") {
     push();
@@ -168,4 +168,3 @@ function keyPressed() {
       break;
   }
 }
-

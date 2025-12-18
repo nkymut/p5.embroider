@@ -27,7 +27,7 @@ function getViewportVars() {
   return {
     previewScale: state.scale,
     previewPanX: state.panX,
-    previewPanY: state.panY
+    previewPanY: state.panY,
   };
 }
 let hoverPartIndex = -1;
@@ -533,7 +533,7 @@ function draw() {
   setupPreviewViewport({
     scale: 1,
     minScale: 0.5,
-    maxScale: 5
+    maxScale: 5,
   });
 
   // Center the embroidery output area in the canvas
@@ -590,8 +590,6 @@ function draw() {
   pop();
   endRecord();
 
-
-
   // Draw selection highlight in screen space (apply full mapping from model to screen)
   const _centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
   const _centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
@@ -605,30 +603,24 @@ function draw() {
     canvasHeight: height,
   });
 
-    // Remove preview-only transforms
-    pop();
+  // Remove preview-only transforms
+  pop();
   // End preview viewport
   endPreviewViewport();
 
   // UI overlay (drawn in screen space)
   drawPreviewControls({
     showSlider: true,
-    showResetButton: true
+    showResetButton: true,
   });
 }
 
 // Draw a visual highlight for selected parts in preview only (not recorded)
 function drawSelectedOverlay(params) {
-  const {
-    scaleFactor,
-    offsetX,
-    offsetY,
-    centerOffsetX,
-    centerOffsetY,
-  } = params;
-  
+  const { scaleFactor, offsetX, offsetY, centerOffsetX, centerOffsetY } = params;
+
   if (!selectedPartIndices || selectedPartIndices.length === 0) return;
-  
+
   // Draw overlays in the transformed coordinate space
   // The viewport transformation is already applied, so we work in world coordinates
   push();
@@ -1872,71 +1864,141 @@ function updatePartSettings(part, propagateToSelection = false) {
 
   // Size subsection (Width/Height + Lock Aspect + Scale X/Y)
   const sizeSec = createCollapsibleSection(container, "Size", true);
-  (function(){
+  (function () {
     const fsz = computeEditFrame(part);
     // Width/Height
-    const sizeRow = createDiv(); sizeRow.parent(sizeSec.content); sizeRow.class('form-row');
-    const sizeFieldW = createDiv(); sizeFieldW.parent(sizeRow); sizeFieldW.addClass('form-field');
-    const sizeLabW = createDiv('Width'); sizeLabW.parent(sizeFieldW); sizeLabW.addClass('control-label');
-    const sizeInputW = createInput((fsz.widthMm || 0).toFixed(2), 'number'); sizeInputW.parent(sizeFieldW); sizeInputW.addClass('value-input'); sizeInputW.attribute('step','0.1'); sizeInputW.style('width','80px');
-    const sizeFieldH = createDiv(); sizeFieldH.parent(sizeRow); sizeFieldH.addClass('form-field');
-    const sizeLabH = createDiv('Height'); sizeLabH.parent(sizeFieldH); sizeLabH.addClass('control-label');
-    const sizeInputH = createInput((fsz.heightMm || 0).toFixed(2), 'number'); sizeInputH.parent(sizeFieldH); sizeInputH.addClass('value-input'); sizeInputH.attribute('step','0.1'); sizeInputH.style('width','80px');
+    const sizeRow = createDiv();
+    sizeRow.parent(sizeSec.content);
+    sizeRow.class("form-row");
+    const sizeFieldW = createDiv();
+    sizeFieldW.parent(sizeRow);
+    sizeFieldW.addClass("form-field");
+    const sizeLabW = createDiv("Width");
+    sizeLabW.parent(sizeFieldW);
+    sizeLabW.addClass("control-label");
+    const sizeInputW = createInput((fsz.widthMm || 0).toFixed(2), "number");
+    sizeInputW.parent(sizeFieldW);
+    sizeInputW.addClass("value-input");
+    sizeInputW.attribute("step", "0.1");
+    sizeInputW.style("width", "80px");
+    const sizeFieldH = createDiv();
+    sizeFieldH.parent(sizeRow);
+    sizeFieldH.addClass("form-field");
+    const sizeLabH = createDiv("Height");
+    sizeLabH.parent(sizeFieldH);
+    sizeLabH.addClass("control-label");
+    const sizeInputH = createInput((fsz.heightMm || 0).toFixed(2), "number");
+    sizeInputH.parent(sizeFieldH);
+    sizeInputH.addClass("value-input");
+    sizeInputH.attribute("step", "0.1");
+    sizeInputH.style("width", "80px");
 
     // Lock Aspect aligned with W/H
-    const lockField = createDiv(); lockField.parent(sizeRow); lockField.addClass('form-field');
+    const lockField = createDiv();
+    lockField.parent(sizeRow);
+    lockField.addClass("form-field");
     let lockAspect = true;
-    createCheckboxControl(lockField, 'Lock Aspect', lockAspect, (checked) => { lockAspect = checked; });
+    createCheckboxControl(lockField, "Lock Aspect", lockAspect, (checked) => {
+      lockAspect = checked;
+    });
 
-    const stopEvtLocal = (elt) => { ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => { elt.addEventListener(evt, (e) => { e.stopPropagation(); }); }); };
-    stopEvtLocal(sizeInputW.elt); stopEvtLocal(sizeInputH.elt);
+    const stopEvtLocal = (elt) => {
+      ["keydown", "keyup", "keypress", "wheel", "mousedown"].forEach((evt) => {
+        elt.addEventListener(evt, (e) => {
+          e.stopPropagation();
+        });
+      });
+    };
+    stopEvtLocal(sizeInputW.elt);
+    stopEvtLocal(sizeInputH.elt);
 
     const applySize = (source) => {
       let vw = parseFloat(sizeInputW.value());
       let vh = parseFloat(sizeInputH.value());
       let hasW = !isNaN(vw);
       let hasH = !isNaN(vh);
-      if (lockAspect && (hasW ^ hasH)) {
+      if (lockAspect && hasW ^ hasH) {
         // compute live ratio from current frame
         const fcur = computeEditFrame(part);
         const ratio = (fcur.heightMm || 1) / Math.max(1e-6, fcur.widthMm || 1);
-        if (hasW && !hasH && source === 'w') { vh = vw * ratio; sizeInputH.value(vh.toFixed(2)); hasH = true; }
-        if (hasH && !hasW && source === 'h') { const wr = 1 / Math.max(1e-6, ratio); vw = vh * wr; sizeInputW.value(vw.toFixed(2)); hasW = true; }
+        if (hasW && !hasH && source === "w") {
+          vh = vw * ratio;
+          sizeInputH.value(vh.toFixed(2));
+          hasH = true;
+        }
+        if (hasH && !hasW && source === "h") {
+          const wr = 1 / Math.max(1e-6, ratio);
+          vw = vh * wr;
+          sizeInputW.value(vw.toFixed(2));
+          hasW = true;
+        }
       }
       if (!hasW && !hasH) return;
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => {
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => {
         const f = computeEditFrame(p);
         const base = f.base;
-        if (hasW) { const baseW = Math.max(1e-6, base.w0); p.sx = Math.max(0.01, vw / baseW); }
-        if (hasH) { const baseH = Math.max(1e-6, base.h0); p.sy = Math.max(0.01, vh / baseH); }
+        if (hasW) {
+          const baseW = Math.max(1e-6, base.w0);
+          p.sx = Math.max(0.01, vw / baseW);
+        }
+        if (hasH) {
+          const baseH = Math.max(1e-6, base.h0);
+          p.sy = Math.max(0.01, vh / baseH);
+        }
       });
-      updateSVGPartsList(); updateInfoTable(); redraw();
+      updateSVGPartsList();
+      updateInfoTable();
+      redraw();
     };
-    sizeInputW.changed(() => applySize('w'));
-    sizeInputH.changed(() => applySize('h'));
+    sizeInputW.changed(() => applySize("w"));
+    sizeInputH.changed(() => applySize("h"));
 
     // Scale X/Y
-    const scaleRow = createDiv(); scaleRow.parent(sizeSec.content); scaleRow.class('form-row');
-    const scxField = createDiv(); scxField.parent(scaleRow); scxField.addClass('form-field');
-    const scxLab = createDiv('Scale X'); scxLab.parent(scxField); scxLab.addClass('control-label');
-    const scxInput = createInput((part.sx || 1).toFixed(3), 'number'); scxInput.parent(scxField); scxInput.addClass('value-input'); scxInput.attribute('step','0.01'); scxInput.attribute('min','0.01'); scxInput.style('width','80px');
-    const scyField = createDiv(); scyField.parent(scaleRow); scyField.addClass('form-field');
-    const scyLab = createDiv('Scale Y'); scyLab.parent(scyField); scyLab.addClass('control-label');
-    const scyInput = createInput((part.sy || 1).toFixed(3), 'number'); scyInput.parent(scyField); scyInput.addClass('value-input'); scyInput.attribute('step','0.01'); scyInput.attribute('min','0.01'); scyInput.style('width','80px');
-    stopEvtLocal(scxInput.elt); stopEvtLocal(scyInput.elt);
+    const scaleRow = createDiv();
+    scaleRow.parent(sizeSec.content);
+    scaleRow.class("form-row");
+    const scxField = createDiv();
+    scxField.parent(scaleRow);
+    scxField.addClass("form-field");
+    const scxLab = createDiv("Scale X");
+    scxLab.parent(scxField);
+    scxLab.addClass("control-label");
+    const scxInput = createInput((part.sx || 1).toFixed(3), "number");
+    scxInput.parent(scxField);
+    scxInput.addClass("value-input");
+    scxInput.attribute("step", "0.01");
+    scxInput.attribute("min", "0.01");
+    scxInput.style("width", "80px");
+    const scyField = createDiv();
+    scyField.parent(scaleRow);
+    scyField.addClass("form-field");
+    const scyLab = createDiv("Scale Y");
+    scyLab.parent(scyField);
+    scyLab.addClass("control-label");
+    const scyInput = createInput((part.sy || 1).toFixed(3), "number");
+    scyInput.parent(scyField);
+    scyInput.addClass("value-input");
+    scyInput.attribute("step", "0.01");
+    scyInput.attribute("min", "0.01");
+    scyInput.style("width", "80px");
+    stopEvtLocal(scxInput.elt);
+    stopEvtLocal(scyInput.elt);
     const applyScale = () => {
       const nsx = parseFloat(scxInput.value());
       const nsy = parseFloat(scyInput.value());
       const hasSX = !isNaN(nsx);
       const hasSY = !isNaN(nsy);
       if (!hasSX && !hasSY) return;
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => {
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => {
         if (hasSX) p.sx = Math.max(0.01, nsx);
         if (hasSY) p.sy = Math.max(0.01, nsy);
       });
-      updateInfoTable(); redraw();
+      updateInfoTable();
+      redraw();
     };
     scxInput.changed(applyScale);
     scyInput.changed(applyScale);
@@ -1946,29 +2008,57 @@ function updatePartSettings(part, propagateToSelection = false) {
   const transformSec = createCollapsibleSection(container, "Transform", true);
 
   // Position controls under Transform
-  (function(){
+  (function () {
     const frameForPos = computeEditFrame(part);
-    const posRow = createDiv(); posRow.parent(transformSec.content); posRow.class('form-row');
-    const posFieldX = createDiv(); posFieldX.parent(posRow); posFieldX.addClass('form-field');
-    const posLabX = createDiv('Position X'); posLabX.parent(posFieldX); posLabX.addClass('control-label');
-    const posInputX = createInput((frameForPos.centerMm.x || 0).toFixed(2), 'number'); posInputX.parent(posFieldX); posInputX.addClass('value-input'); posInputX.attribute('step','0.1'); posInputX.style('width','80px');
-    const posFieldY = createDiv(); posFieldY.parent(posRow); posFieldY.addClass('form-field');
-    const posLabY = createDiv('Position Y'); posLabY.parent(posFieldY); posLabY.addClass('control-label');
-    const posInputY = createInput((frameForPos.centerMm.y || 0).toFixed(2), 'number'); posInputY.parent(posFieldY); posInputY.addClass('value-input'); posInputY.attribute('step','0.1'); posInputY.style('width','80px');
-    const stopEvtPos = (elt) => { ['keydown','keyup','keypress','wheel','mousedown'].forEach(evt => { elt.addEventListener(evt, (e) => { e.stopPropagation(); }); }); };
-    stopEvtPos(posInputX.elt); stopEvtPos(posInputY.elt);
+    const posRow = createDiv();
+    posRow.parent(transformSec.content);
+    posRow.class("form-row");
+    const posFieldX = createDiv();
+    posFieldX.parent(posRow);
+    posFieldX.addClass("form-field");
+    const posLabX = createDiv("Position X");
+    posLabX.parent(posFieldX);
+    posLabX.addClass("control-label");
+    const posInputX = createInput((frameForPos.centerMm.x || 0).toFixed(2), "number");
+    posInputX.parent(posFieldX);
+    posInputX.addClass("value-input");
+    posInputX.attribute("step", "0.1");
+    posInputX.style("width", "80px");
+    const posFieldY = createDiv();
+    posFieldY.parent(posRow);
+    posFieldY.addClass("form-field");
+    const posLabY = createDiv("Position Y");
+    posLabY.parent(posFieldY);
+    posLabY.addClass("control-label");
+    const posInputY = createInput((frameForPos.centerMm.y || 0).toFixed(2), "number");
+    posInputY.parent(posFieldY);
+    posInputY.addClass("value-input");
+    posInputY.attribute("step", "0.1");
+    posInputY.style("width", "80px");
+    const stopEvtPos = (elt) => {
+      ["keydown", "keyup", "keypress", "wheel", "mousedown"].forEach((evt) => {
+        elt.addEventListener(evt, (e) => {
+          e.stopPropagation();
+        });
+      });
+    };
+    stopEvtPos(posInputX.elt);
+    stopEvtPos(posInputY.elt);
     const applyPosition = () => {
       const vx = parseFloat(posInputX.value());
       const vy = parseFloat(posInputY.value());
       if (isNaN(vx) || isNaN(vy)) return;
-      const applyTo = propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map(i => svgParts[i]) : [part];
-      applyTo.forEach(p => {
+      const applyTo =
+        propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
+      applyTo.forEach((p) => {
         const f = computeEditFrame(p);
         const base = f.base;
         p.tx = vx - base.cx0;
         p.ty = vy - base.cy0;
       });
-      updateSVGPartsList(); updateInfoTable(); redraw();
+      updateSVGPartsList();
+      updateInfoTable();
+      redraw();
     };
     posInputX.changed(applyPosition);
     posInputY.changed(applyPosition);

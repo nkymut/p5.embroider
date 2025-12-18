@@ -53,8 +53,8 @@ function draw() {
   setStrokeMode("zigzag");
 
   noFill();
-  
-  rect(0, 0, 80, 80,2);
+
+  rect(0, 0, 80, 80, 2);
   trimThread();
 
   // Draw a 200px circle

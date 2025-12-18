@@ -1,5 +1,5 @@
 // p5.js SVG Writer for Embroidery Patterns
-import { PAPER_SIZES, HOOP_PRESETS } from '../utils/embroidery-guides.js';
+import { PAPER_SIZES, HOOP_PRESETS } from "../utils/embroidery-guides.js";
 
 export class SVGWriter {
   constructor() {
@@ -185,7 +185,7 @@ export class SVGWriter {
     }
 
     // Filter threads if threads option is set
-    const threadsToDraw = this.options.threads 
+    const threadsToDraw = this.options.threads
       ? stitchData.threads.filter((_, index) => this.options.threads.includes(index))
       : stitchData.threads;
 
@@ -202,7 +202,7 @@ export class SVGWriter {
       // Get pattern bounds to center it in the hoop (using filtered threads)
       const filteredStitchData = {
         ...stitchData,
-        threads: threadsToDraw
+        threads: threadsToDraw,
       };
       const bounds = this.getPatternBounds(filteredStitchData);
       const hoop = this.options.hoopSize;
@@ -214,7 +214,7 @@ export class SVGWriter {
       // Calculate offset to center pattern in hoop
       offsetX = hoopCenterX - patternCenterX;
       offsetY = hoopCenterY - patternCenterY;
-      
+
       this.addComment(`Pattern centered in hoop: offset(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})`);
     } else {
       this.addComment("Pattern exported at original coordinates");
@@ -224,9 +224,7 @@ export class SVGWriter {
     for (let i = 0; i < threadsToDraw.length; i++) {
       const thread = threadsToDraw[i];
       // Get original thread index for color/identification
-      const originalThreadIndex = this.options.threads 
-        ? this.options.threads[i]
-        : i;
+      const originalThreadIndex = this.options.threads ? this.options.threads[i] : i;
 
       // Set thread color
       const color = this.getThreadColor(thread.color);
@@ -307,10 +305,10 @@ export class SVGWriter {
           // Fill with white background
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
+
           // Draw SVG image
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          
+
           canvas.toBlob((blob) => {
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -342,7 +340,7 @@ export class SVGWriter {
     }
 
     // Filter threads if threads option is set
-    const threadsToCheck = this.options.threads 
+    const threadsToCheck = this.options.threads
       ? stitchData.threads.filter((_, index) => this.options.threads.includes(index))
       : stitchData.threads;
 
@@ -397,7 +395,7 @@ export class SVGWriter {
       // Calculate offset to center outline in hoop
       offsetX = hoopCenterX - outlineCenterX;
       offsetY = hoopCenterY - outlineCenterY;
-      
+
       this.addComment(`Outline centered in hoop: offset(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)})`);
     } else {
       this.addComment("Outline exported at original coordinates");
@@ -408,7 +406,7 @@ export class SVGWriter {
     for (let i = 1; i < outlinePoints.length; i++) {
       pathData += ` L ${outlinePoints[i].x + offsetX} ${outlinePoints[i].y + offsetY}`;
     }
-    pathData += ' Z'; // Close the path
+    pathData += " Z"; // Close the path
 
     this.data.push(
       `<path d="${pathData}" fill="none" stroke="#000000" stroke-width="0.1" stroke-linecap="round" stroke-linejoin="round"/>`,
