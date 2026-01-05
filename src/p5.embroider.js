@@ -193,7 +193,7 @@ function setDebugMode(enabled) {
     strokeJoin: STROKE_JOIN.ROUND, // Add join setting
     strokeEntry: "right", // "right","left","middle"
     strokeExit: "right", // "right","left","middle"
-    strokeInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
+    stitchInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
   };
 
   /**
@@ -384,12 +384,12 @@ function setDebugMode(enabled) {
 
   /**
    * Sets whether zigzag stitches should interpolate smoothly around corners.
-   * @method setStrokeInterpolate
+   * @method setStitchInterpolate
    * @for p5
    * @param {boolean} enabled - false = follow path normals with sharp corners (default), true = interpolate for smooth corners
    */
-  p5embroidery.setStrokeInterpolate = function (enabled) {
-    _strokeSettings.strokeInterpolate = !!enabled;
+  p5embroidery.setStitchInterpolate = function (enabled) {
+    _strokeSettings.stitchInterpolate = !!enabled;
   };
 
   /**
@@ -2786,7 +2786,7 @@ function setDebugMode(enabled) {
     }
 
     // Check if we should use interpolation or follow path normals
-    const useInterpolation = stitchSettings.strokeInterpolate !== undefined ? stitchSettings.strokeInterpolate : false;
+    const useInterpolation = stitchSettings.stitchInterpolate !== undefined ? stitchSettings.stitchInterpolate : false;
 
     if (!useInterpolation) {
       // Default behavior: follow path normals (sharp corners)
@@ -5657,7 +5657,7 @@ function setDebugMode(enabled) {
   global.setFillSettings = p5embroidery.setFillSettings;
   global.setStrokeSettings = p5embroidery.setStrokeSettings;
   global.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
-  global.setStrokeInterpolate = p5embroidery.setStrokeInterpolate;
+  global.setStitchInterpolate = p5embroidery.setStitchInterpolate;
 
   // Expose new path-based functions
   global.convertPathToStitches = convertPathToStitches;

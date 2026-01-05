@@ -46,7 +46,7 @@ function draw() {
     stitchLength: 0.5,
     stitchWidth: 0.2,
     noise: 0.0,
-    strokeInterpolate: true,
+    stitchInterpolate: true,
   });
   stroke(0, 0, 200);
   strokeWeight(5);
