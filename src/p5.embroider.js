@@ -2,7 +2,7 @@ import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
-import { 
+import {
   mmToPixel,
   pixelToMm,
   px2mm,
@@ -10,15 +10,15 @@ import {
   inchToMm,
   mmToInch,
   inchToPixel,
-  pixelToInch
+  pixelToInch,
 } from "./utils/unit-conversion.js";
-import { 
-  drawGrid, 
-  drawHoopGuides, 
+import {
+  drawGrid,
+  drawHoopGuides,
   drawHoop,
   drawManualHoop,
   drawMachineHoop,
-  drawCornerMarks, 
+  drawCornerMarks,
   drawPaperGuides,
   drawEmbroideryWorkspace,
   PAPER_SIZES,
@@ -30,7 +30,7 @@ import {
   getHoopsBySize,
   findBestHoop,
   getHoopBrands,
-  getHoopTypes
+  getHoopTypes,
 } from "./utils/embroidery-guides.js";
 import {
   setupPreviewViewport,
@@ -47,7 +47,7 @@ import {
   drawPreviewControls,
   handlePreviewControlsPressed,
   handlePreviewControlsDragged,
-  handlePreviewControlsReleased
+  handlePreviewControlsReleased,
 } from "./utils/preview-viewport.js";
 
 let _DEBUG = false;
@@ -68,10 +68,8 @@ import {
   createScaledOutline,
   getConvexHull,
   expandPolygon,
-  crossProduct
-} from './utils/embroidery-outline.js';
-
-
+  crossProduct,
+} from "./utils/embroidery-outline.js";
 
 // Expose debug control
 function setDebugMode(enabled) {
@@ -146,7 +144,8 @@ function setDebugMode(enabled) {
     ZIGZAG: "zigzag",
     RAMP: "ramp",
     SQUARE: "square",
-    LINES: "lines",
+    LINES: "lines", //Deprecated: use PARALLEL instead
+    PARALLEL: "parallel",
     SASHIKO: "sashiko",
   };
 
@@ -194,6 +193,7 @@ function setDebugMode(enabled) {
     strokeJoin: STROKE_JOIN.ROUND, // Add join setting
     strokeEntry: "right", // "right","left","middle"
     strokeExit: "right", // "right","left","middle"
+    stitchInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
   };
 
   /**
@@ -303,7 +303,7 @@ function setDebugMode(enabled) {
    * Sets the stroke mode for embroidery stitches.
    * @method setStrokeMode
    * @for p5
-   * @param {string} mode - The stroke mode to use ('zigzag', 'lines', or 'sashiko')
+   * @param {string} mode - The stroke mode to use ('zigzag', 'parallel', or 'sashiko')
    * @example
    * function setup() {
    *   createCanvas(400, 400);
@@ -380,6 +380,16 @@ function setDebugMode(enabled) {
     } else {
       console.warn(`Invalid exit: ${exit}. Using default: ${_strokeSettings.strokeExit}`);
     }
+  };
+
+  /**
+   * Sets whether zigzag stitches should interpolate smoothly around corners.
+   * @method setStitchInterpolate
+   * @for p5
+   * @param {boolean} enabled - false = follow path normals with sharp corners (default), true = interpolate for smooth corners
+   */
+  p5embroidery.setStitchInterpolate = function (enabled) {
+    _strokeSettings.stitchInterpolate = !!enabled;
   };
 
   /**
@@ -567,7 +577,7 @@ function setDebugMode(enabled) {
           if (_contours.length > 0) {
             // Fill with contours (currently only tatami supports contours)
             if (_DEBUG) console.log("Filling shape with", _contours.length, "contours");
-            
+
             switch (_currentFillMode) {
               case FILL_MODE.TATAMI:
                 fillStitches = createTatamiFillWithContours(mainPath, _contours, _fillSettings);
@@ -576,9 +586,10 @@ function setDebugMode(enabled) {
               case FILL_MODE.SPIRAL:
                 // For now, satin and spiral don't support contours, use simple fill
                 console.warn(`${_currentFillMode} fill does not support contours yet, using simple fill`);
-                fillStitches = _currentFillMode === FILL_MODE.SATIN 
-                  ? createSatinFillFromPath(mainPath, _fillSettings)
-                  : createSpiralFillFromPath(mainPath, _fillSettings);
+                fillStitches =
+                  _currentFillMode === FILL_MODE.SATIN
+                    ? createSatinFillFromPath(mainPath, _fillSettings)
+                    : createSpiralFillFromPath(mainPath, _fillSettings);
                 break;
               default:
                 fillStitches = createTatamiFillWithContours(mainPath, _contours, _fillSettings);
@@ -685,26 +696,26 @@ function setDebugMode(enabled) {
         // Determine if third parameter is z (width) or moveTo
         let width = null;
         let moveTo = false;
-        
-        if (typeof z_or_moveTo === 'number') {
+
+        if (typeof z_or_moveTo === "number") {
           // Third parameter is z-coordinate (width)
           width = z_or_moveTo;
         } else if (z_or_moveTo === true || z_or_moveTo === false) {
           // Third parameter is moveTo boolean
           moveTo = z_or_moveTo;
         }
-        
+
         // If width not provided via z-coordinate, check if set by vertexWidth()
         if (width === null && _nextVertexWidth !== null) {
           width = _nextVertexWidth;
           _nextVertexWidth = null; // Reset after use
         }
-        
+
         // If still no width, use default strokeWeight
         if (width === null) {
           width = _strokeSettings.strokeWeight;
         }
-        
+
         // Apply current transformation to the vertex coordinates
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
 
@@ -728,12 +739,17 @@ function setDebugMode(enabled) {
 
         // Add to appropriate container based on contour state
         if (_isContour) {
-          _currentContour.push({ 
-            x: transformedPoint.x, 
+          _currentContour.push({
+            x: transformedPoint.x,
             y: transformedPoint.y,
-            width: width 
+            width: width,
           });
-          if (_DEBUG) console.log("Added to contour (transformed):", { x: transformedPoint.x, y: transformedPoint.y, width: width });
+          if (_DEBUG)
+            console.log("Added to contour (transformed):", {
+              x: transformedPoint.x,
+              y: transformedPoint.y,
+              width: width,
+            });
         } else {
           _vertices.push(vert);
           if (_DEBUG) console.log("Added to vertices (transformed):", vert);
@@ -799,7 +815,7 @@ function setDebugMode(enabled) {
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
         const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
-        
+
         // Determine end width
         let endWidth = startWidth;
         if (_nextVertexWidth !== null) {
@@ -817,10 +833,10 @@ function setDebugMode(enabled) {
           const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
           if (_isContour) {
-            _currentContour.push({ 
-              x: point.x, 
+            _currentContour.push({
+              x: point.x,
               y: point.y,
-              width: interpolatedWidth 
+              width: interpolatedWidth,
             });
           } else {
             const vert = {
@@ -892,7 +908,7 @@ function setDebugMode(enabled) {
         const x1 = lastVertex.x;
         const y1 = lastVertex.y;
         const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
-        
+
         // Determine end width
         let endWidth = startWidth;
         if (_nextVertexWidth !== null) {
@@ -910,10 +926,10 @@ function setDebugMode(enabled) {
           const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
           if (_isContour) {
-            _currentContour.push({ 
-              x: point.x, 
+            _currentContour.push({
+              x: point.x,
               y: point.y,
-              width: interpolatedWidth 
+              width: interpolatedWidth,
             });
           } else {
             const vert = {
@@ -963,7 +979,7 @@ function setDebugMode(enabled) {
       if (_recording) {
         // Apply current transformation to the curve vertex
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
-        
+
         // Determine width for this curve vertex
         let width = _strokeSettings.strokeWeight;
         if (_nextVertexWidth !== null) {
@@ -972,10 +988,10 @@ function setDebugMode(enabled) {
         }
 
         // Add to contour vertices for curve calculation using transformed coordinates
-        _contourVertices.push({ 
-          x: transformedPoint.x, 
+        _contourVertices.push({
+          x: transformedPoint.x,
           y: transformedPoint.y,
-          width: width 
+          width: width,
         });
 
         // For curve vertices, we need at least 4 points to generate a curve segment
@@ -1008,10 +1024,10 @@ function setDebugMode(enabled) {
             const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
 
             if (_isContour) {
-              _currentContour.push({ 
-                x: point.x, 
+              _currentContour.push({
+                x: point.x,
                 y: point.y,
-                width: interpolatedWidth 
+                width: interpolatedWidth,
               });
             } else {
               const vert = {
@@ -1093,7 +1109,7 @@ function setDebugMode(enabled) {
     }));
 
     // Check if any vertex has width specified (for variable width paths)
-    const hasVariableWidth = pathPoints.some(p => p.width !== undefined && p.width > 0);
+    const hasVariableWidth = pathPoints.some((p) => p.width !== undefined && p.width > 0);
     const hasStrokeWeight = strokeSettings.strokeWeight > 0;
     const hasWidth = hasStrokeWeight || hasVariableWidth;
 
@@ -1122,8 +1138,8 @@ function setDebugMode(enabled) {
           return straightLineStitchFromPath(pathPoints, strokeSettings);
         case STROKE_MODE.ZIGZAG:
           return zigzagStitchFromPath(pathPoints, strokeSettings);
-        case STROKE_MODE.LINES:
-          return multiLineStitchFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.PARALLEL:
+          return parallelLineStitchFromPath(pathPoints, strokeSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, strokeSettings);
         default:
@@ -1719,9 +1735,32 @@ function setDebugMode(enabled) {
     _originalEllipseFunc = window.ellipse;
     window.ellipse = function (x, y, w, h) {
       if (_recording) {
+        const ellipseMode = _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
+        let centerX;
+        let centerY;
+        let diameterX;
+        let diameterY;
+
+        if (ellipseMode === _p5Instance.CORNER) {
+          centerX = x + w / 2;
+          centerY = y + h / 2;
+          diameterX = w;
+          diameterY = h;
+        } else if (ellipseMode === _p5Instance.CENTER) {
+          centerX = x;
+          centerY = y;
+          diameterX = w;
+          diameterY = h;
+        } else if (ellipseMode === _p5Instance.CORNERS) {
+          centerX = x;
+          centerY = y;
+          diameterX = w - x;
+          diameterY = h - y;
+        }
+
         // Calculate radius values
-        let radiusX = w / 2;
-        let radiusY = h / 2;
+        let radiusX = diameterX / 2;
+        let radiusY = diameterY / 2;
 
         // Generate path points for the ellipse
         let pathPoints = [];
@@ -1730,8 +1769,8 @@ function setDebugMode(enabled) {
         // Generate points along the ellipse, starting at 0 degrees (right side of ellipse)
         for (let i = 0; i <= numSteps; i++) {
           let angle = (i / numSteps) * Math.PI * 2;
-          let pointX = x + Math.cos(angle) * radiusX;
-          let pointY = y + Math.sin(angle) * radiusY;
+          let pointX = centerX + Math.cos(angle) * radiusX;
+          let pointY = centerY + Math.sin(angle) * radiusY;
 
           // Store in mm (internal format)
           pathPoints.push({
@@ -1754,7 +1793,7 @@ function setDebugMode(enabled) {
           if (_doFill) {
             // Convert vertices to pathPoints format for the fill function
             let fillStitches = [];
-            
+
             switch (_currentFillMode) {
               case FILL_MODE.TATAMI:
                 fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
@@ -1768,7 +1807,7 @@ function setDebugMode(enabled) {
               default:
                 fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
             }
-            
+
             if (fillStitches && fillStitches.length > 0) {
               _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
 
@@ -1825,8 +1864,8 @@ function setDebugMode(enabled) {
               case STROKE_MODE.ZIGZAG:
                 stitches = zigzagStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
-              case STROKE_MODE.LINES:
-                stitches = multiLineStitchFromPath(transformedPathPoints, _strokeSettings);
+              case STROKE_MODE.PARALLEL:
+                stitches = parallelLineStitchFromPath(transformedPathPoints, _strokeSettings);
                 break;
               case STROKE_MODE.SASHIKO:
                 stitches = sashikoStitchFromPath(transformedPathPoints, _strokeSettings);
@@ -2796,8 +2835,6 @@ function setDebugMode(enabled) {
     _fillSettings.stitchWidth = _embroiderySettings.stitchWidth;
   };
 
-
-
   /**
    * Sets the stroke settings for embroidery.
    * @method setStrokeSettings
@@ -2890,8 +2927,8 @@ function setDebugMode(enabled) {
           return rampStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SQUARE:
           return squareStitch(x1, y1, x2, y2, stitchSettings);
-        case STROKE_MODE.LINES:
-          return multiLineStitch(x1, y1, x2, y2, stitchSettings);
+        case STROKE_MODE.PARALLEL:
+          return parallelLineStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitch(x1, y1, x2, y2, stitchSettings);
         default:
@@ -2935,8 +2972,8 @@ function setDebugMode(enabled) {
         const zigzagResult = createZigzagWithJoins(pathPoints, stitchSettings);
         if (_DEBUG) console.log("Zigzag result:", zigzagResult.length, "stitches");
         return zigzagResult;
-      case STROKE_MODE.LINES:
-        return multiLineStitchFromPath(pathPoints, stitchSettings);
+      case STROKE_MODE.PARALLEL:
+        return parallelLineStitchFromPath(pathPoints, stitchSettings);
       case STROKE_MODE.SASHIKO:
         return sashikoStitchFromPath(pathPoints, stitchSettings);
       default:
@@ -2956,6 +2993,15 @@ function setDebugMode(enabled) {
       return [];
     }
 
+    // Check if we should use interpolation or follow path normals
+    const useInterpolation = stitchSettings.stitchInterpolate !== undefined ? stitchSettings.stitchInterpolate : false;
+
+    if (!useInterpolation) {
+      // Default behavior: follow path normals (sharp corners)
+      return createZigzagFollowingPath(pathPoints, stitchSettings);
+    }
+
+    // Legacy behavior: interpolate between offset paths (smooth corners)
     const width = stitchSettings.strokeWeight;
     const density = stitchSettings.stitchLength;
     const result = [];
@@ -3023,6 +3069,101 @@ function setDebugMode(enabled) {
   }
 
   /**
+   * Creates a zigzag pattern that follows path normals (perpendiculars).
+   * This produces sharp corners where the perpendicular changes direction.
+   * @private
+   * @param {Array<{x: number, y: number, width: number}>} pathPoints - Array of path points in mm (width is optional)
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function createZigzagFollowingPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 2) {
+      return [];
+    }
+
+    const defaultWidth = stitchSettings.strokeWeight;
+    const density = stitchSettings.stitchLength;
+    const result = [];
+
+    // Calculate total path length
+    let totalLength = 0;
+    const segmentLengths = [];
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const dx = pathPoints[i + 1].x - pathPoints[i].x;
+      const dy = pathPoints[i + 1].y - pathPoints[i].y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      segmentLengths.push(len);
+      totalLength += len;
+    }
+
+    // Calculate number of zigzag points based on density
+    const numZigzags = Math.max(2, Math.floor(totalLength / density));
+
+    // Track which side we're on
+    let isLeftSide = true;
+
+    // Generate zigzag points by walking along the path
+    for (let i = 0; i <= numZigzags; i++) {
+      const targetDistance = (i / numZigzags) * totalLength;
+
+      // Find which segment this point falls on
+      let accumulatedLength = 0;
+      let segmentIndex = 0;
+      let localT = 0;
+
+      for (let s = 0; s < segmentLengths.length; s++) {
+        if (accumulatedLength + segmentLengths[s] >= targetDistance) {
+          segmentIndex = s;
+          localT = segmentLengths[s] > 0 ? (targetDistance - accumulatedLength) / segmentLengths[s] : 0;
+          break;
+        }
+        accumulatedLength += segmentLengths[s];
+      }
+
+      // Get the point on the path at this position
+      const p1 = pathPoints[segmentIndex];
+      const p2 = pathPoints[segmentIndex + 1];
+      const pathX = p1.x + (p2.x - p1.x) * localT;
+      const pathY = p1.y + (p2.y - p1.y) * localT;
+
+      // Interpolate width if points have individual width values (vertexWidth)
+      const width1 = p1.width !== undefined ? p1.width : defaultWidth;
+      const width2 = p2.width !== undefined ? p2.width : defaultWidth;
+      const currentWidth = width1 + (width2 - width1) * localT;
+
+      // Calculate perpendicular direction for this segment
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const segLen = Math.sqrt(dx * dx + dy * dy);
+
+      if (segLen > 0) {
+        // Perpendicular vector (rotated 90 degrees)
+        const perpX = -dy / segLen;
+        const perpY = dx / segLen;
+
+        // Offset by half width in the perpendicular direction
+        const offset = isLeftSide ? currentWidth / 2 : -currentWidth / 2;
+        const stitchX = pathX + perpX * offset;
+        const stitchY = pathY + perpY * offset;
+
+        result.push({ x: stitchX, y: stitchY });
+      } else {
+        // Degenerate segment, just add the path point
+        result.push({ x: pathX, y: pathY });
+      }
+
+      // Alternate sides
+      isLeftSide = !isLeftSide;
+    }
+
+    if (_DEBUG) {
+      console.log("Zigzag following path result:", result.slice(0, 10));
+    }
+
+    return result;
+  }
+
+  /**
    * Simplifies a path by removing redundant points that are too close together.
    * @private
    */
@@ -3079,7 +3220,7 @@ function setDebugMode(enabled) {
       const curr = simplifiedPath[i];
       // Use point's width if available, otherwise use default offset
       const pointOffset = curr.width !== undefined ? curr.width / 2 : offset;
-      
+
       let prev, next;
 
       if (isClosedPath) {
@@ -3290,8 +3431,8 @@ function setDebugMode(enabled) {
           return rampStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SQUARE:
           return squareStitchFromPath(pathPoints, stitchSettings);
-        case STROKE_MODE.LINES:
-          return multiLineStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.PARALLEL:
+          return parallelLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, stitchSettings);
         default:
@@ -3983,13 +4124,13 @@ function setDebugMode(enabled) {
     return result;
   }
 
-  function multiLineStitch(x1, y1, x2, y2, stitchSettings) {
+  function parallelLineStitch(x1, y1, x2, y2, stitchSettings) {
     // This is now a wrapper function that calls the path-based implementation
     const pathPoints = [
       { x: x1, y: y1 },
       { x: x2, y: y2 },
     ];
-    return multiLineStitchFromPath(pathPoints, stitchSettings);
+    return parallelLineStitchFromPath(pathPoints, stitchSettings);
   }
 
   /**
@@ -3999,7 +4140,7 @@ function setDebugMode(enabled) {
    * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
-  function multiLineStitchFromPath(pathPoints, stitchSettings) {
+  function parallelLineStitchFromPath(pathPoints, stitchSettings) {
     if (!pathPoints || pathPoints.length < 2) {
       console.warn("Cannot create multi-line stitching from insufficient path points");
       return [];
@@ -4021,38 +4162,46 @@ function setDebugMode(enabled) {
 
       // Calculate perpendicular vectors for each segment and apply offset
       for (let j = 0; j < pathPoints.length; j++) {
-        // For first point or when calculating new perpendicular
-        if (j === 0 || j === pathPoints.length - 1) {
-          let perpX, perpY;
+        let perpX = 0,
+          perpY = 0;
+        let hasValidDirection = false;
 
-          if (j === 0) {
-            // For first point, use direction to next point
-            const dx = pathPoints[1].x - pathPoints[0].x;
-            const dy = pathPoints[1].y - pathPoints[0].y;
+        if (j === 0) {
+          // For first point, find first valid direction
+          for (let k = 1; k < pathPoints.length; k++) {
+            const dx = pathPoints[k].x - pathPoints[0].x;
+            const dy = pathPoints[k].y - pathPoints[0].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance === 0 || distance < 0.001) {
-              // Skip this point if distance is zero
-              continue;
+            if (distance > 0.001) {
+              perpX = -dy / distance;
+              perpY = dx / distance;
+              hasValidDirection = true;
+              break;
             }
-            perpX = -dy / distance;
-            perpY = dx / distance;
-          } else {
-            // For last point, use direction from previous point
-            const dx = pathPoints[j].x - pathPoints[j - 1].x;
-            const dy = pathPoints[j].y - pathPoints[j - 1].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance === 0 || distance < 0.001) {
-              // Skip this point if distance is zero
-              continue;
-            }
-            perpX = -dy / distance;
-            perpY = dx / distance;
           }
-
-          offsetPath.push({
-            x: pathPoints[j].x + perpX * offset,
-            y: pathPoints[j].y + perpY * offset,
-          });
+        } else if (j === pathPoints.length - 1) {
+          // For last point, use direction from previous point
+          const dx = pathPoints[j].x - pathPoints[j - 1].x;
+          const dy = pathPoints[j].y - pathPoints[j - 1].y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance > 0.001) {
+            perpX = -dy / distance;
+            perpY = dx / distance;
+            hasValidDirection = true;
+          } else {
+            // Find previous valid direction
+            for (let k = j - 2; k >= 0; k--) {
+              const dx = pathPoints[j].x - pathPoints[k].x;
+              const dy = pathPoints[j].y - pathPoints[k].y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance > 0.001) {
+                perpX = -dy / distance;
+                perpY = dx / distance;
+                hasValidDirection = true;
+                break;
+              }
+            }
+          }
         } else {
           // For interior points, average the perpendiculars of adjacent segments
           const prevDx = pathPoints[j].x - pathPoints[j - 1].x;
@@ -4063,25 +4212,90 @@ function setDebugMode(enabled) {
           const nextDy = pathPoints[j + 1].y - pathPoints[j].y;
           const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
 
-          // Calculate perpendicular vectors
-          const prevPerpX = -prevDy / prevDistance;
-          const prevPerpY = prevDx / prevDistance;
+          let prevPerpX = 0,
+            prevPerpY = 0;
+          let nextPerpX = 0,
+            nextPerpY = 0;
+          let hasPrev = false,
+            hasNext = false;
 
-          const nextPerpX = -nextDy / nextDistance;
-          const nextPerpY = nextDx / nextDistance;
+          // Calculate previous perpendicular if valid
+          if (prevDistance > 0.001) {
+            prevPerpX = -prevDy / prevDistance;
+            prevPerpY = prevDx / prevDistance;
+            hasPrev = true;
+          }
 
-          // Average the perpendicular vectors
-          const perpX = (prevPerpX + nextPerpX) / 2;
-          const perpY = (prevPerpY + nextPerpY) / 2;
+          // Calculate next perpendicular if valid
+          if (nextDistance > 0.001) {
+            nextPerpX = -nextDy / nextDistance;
+            nextPerpY = nextDx / nextDistance;
+            hasNext = true;
+          }
 
-          // Normalize the averaged vector
-          const length = Math.sqrt(perpX * perpX + perpY * perpY);
-
-          offsetPath.push({
-            x: pathPoints[j].x + (perpX / length) * offset,
-            y: pathPoints[j].y + (perpY / length) * offset,
-          });
+          // Average perpendiculars if both are valid, otherwise use the valid one
+          if (hasPrev && hasNext) {
+            perpX = (prevPerpX + nextPerpX) / 2;
+            perpY = (prevPerpY + nextPerpY) / 2;
+            hasValidDirection = true;
+          } else if (hasPrev) {
+            perpX = prevPerpX;
+            perpY = prevPerpY;
+            hasValidDirection = true;
+          } else if (hasNext) {
+            perpX = nextPerpX;
+            perpY = nextPerpY;
+            hasValidDirection = true;
+          } else {
+            // Both segments are zero - find nearest valid direction
+            for (let k = j - 2; k >= 0; k--) {
+              const dx = pathPoints[j].x - pathPoints[k].x;
+              const dy = pathPoints[j].y - pathPoints[k].y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance > 0.001) {
+                perpX = -dy / distance;
+                perpY = dx / distance;
+                hasValidDirection = true;
+                break;
+              }
+            }
+            if (!hasValidDirection) {
+              for (let k = j + 2; k < pathPoints.length; k++) {
+                const dx = pathPoints[k].x - pathPoints[j].x;
+                const dy = pathPoints[k].y - pathPoints[j].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 0.001) {
+                  perpX = -dy / distance;
+                  perpY = dx / distance;
+                  hasValidDirection = true;
+                  break;
+                }
+              }
+            }
+          }
         }
+
+        // Normalize the perpendicular vector if we have a valid direction
+        if (hasValidDirection) {
+          const length = Math.sqrt(perpX * perpX + perpY * perpY);
+          if (length > 0.001) {
+            perpX = perpX / length;
+            perpY = perpY / length;
+          }
+        }
+
+        // Always add the point to offsetPath (even if direction is invalid, use zero offset)
+        offsetPath.push({
+          x: pathPoints[j].x + perpX * offset,
+          y: pathPoints[j].y + perpY * offset,
+        });
+      }
+
+      // Validate that offsetPath has same length as pathPoints
+      if (offsetPath.length !== pathPoints.length) {
+        console.warn(
+          `parallelLineStitchFromPath: offsetPath length mismatch (${offsetPath.length} vs ${pathPoints.length})`,
+        );
       }
 
       // For even lines, go from start to end
@@ -4146,15 +4360,15 @@ function setDebugMode(enabled) {
 
       // Sashiko stitch length (longer than regular stitches)
       const sashikoStitchLength = stitchSettings.stitchLength * 2;
-      const multilineLength = sashikoStitchLength * 0.5;
+      const parallelLineLength = sashikoStitchLength * 0.5;
       const straightLength = sashikoStitchLength * 0.5;
 
       let currentDist = 0;
-      let isMultiline = true;
+      let isParallel = true;
 
       // Create segments along this path section
       while (currentDist < distance) {
-        const segmentLength = isMultiline ? multilineLength : straightLength;
+        const segmentLength = isParallel ? parallelLineLength : straightLength;
         const endDist = Math.min(currentDist + segmentLength, distance);
 
         // Calculate segment start and end points
@@ -4169,9 +4383,9 @@ function setDebugMode(enabled) {
           { x: segEndX, y: segEndY },
         ];
 
-        if (isMultiline) {
-          // Use the pathPoints version of multiLine stitching
-          const lineStitches = multiLineStitchFromPath(segmentPoints, stitchSettings);
+        if (isParallel) {
+          // Use the pathPoints version of parallelLine stitching
+          const lineStitches = parallelLineStitchFromPath(segmentPoints, stitchSettings);
           result.push(...lineStitches);
         } else {
           // Create single straight line for this segment
@@ -4181,7 +4395,7 @@ function setDebugMode(enabled) {
 
         // Move to next segment
         currentDist = endDist;
-        isMultiline = !isMultiline; // Toggle between multiline and straight line
+        isParallel = !isParallel; // Toggle between parallel and straight line
       }
     }
 
@@ -4295,7 +4509,7 @@ function setDebugMode(enabled) {
    *   translate(100, 25); // Position at 100mm, 25mm
    *   circle(0, 0, 20);
    *   endRecord();
-   *   
+   *
    *   // Export at original coordinates (recommended)
    *   exportSVG('my-pattern.svg', {
    *     paperSize: 'A4',
@@ -4598,7 +4812,7 @@ function setDebugMode(enabled) {
       if (!lastRun || lastRun.length === 0) {
         console.warn("trimThread: No stitches to trim for thread", threadIndex);
         console.trace("Call stack for trimThread:"); // Add this line
-  
+
         return; // No stitches to trim
       }
 
@@ -4743,7 +4957,7 @@ function setDebugMode(enabled) {
       }
       _p5Instance.strokeCap(SQUARE);
       _p5Instance.pop();
-    }else if (_drawMode === "p5") {
+    } else if (_drawMode === "p5") {
       _p5Instance.push();
       _p5Instance.strokeCap(ROUND);
 
@@ -5273,9 +5487,7 @@ function setDebugMode(enabled) {
         }
 
         // Calculate segment length
-        const segLength = Math.sqrt(
-          Math.pow(segEnd.x - segStart.x, 2) + Math.pow(segEnd.y - segStart.y, 2),
-        );
+        const segLength = Math.sqrt(Math.pow(segEnd.x - segStart.x, 2) + Math.pow(segEnd.y - segStart.y, 2));
 
         // If segment is very short, skip it
         if (segLength < minStitchLength) {
@@ -5585,7 +5797,12 @@ function setDebugMode(enabled) {
   };
 
   // Add embroideryOutline to p5embroidery object
-  p5embroidery.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex", cornerRadius = 0) {
+  p5embroidery.embroideryOutline = function (
+    offsetDistance,
+    threadIndex = _strokeThreadIndex,
+    outlineType = "convex",
+    cornerRadius = 0,
+  ) {
     return embroideryOutline(offsetDistance, threadIndex, outlineType, cornerRadius, getEmbroideryState());
   };
 
@@ -5605,7 +5822,7 @@ function setDebugMode(enabled) {
       outlineType,
       applyTransform,
       cornerRadius,
-      getEmbroideryState()
+      getEmbroideryState(),
     );
   };
 
@@ -5648,12 +5865,13 @@ function setDebugMode(enabled) {
   global.setFillSettings = p5embroidery.setFillSettings;
   global.setStrokeSettings = p5embroidery.setStrokeSettings;
   global.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
+  global.setStitchInterpolate = p5embroidery.setStitchInterpolate;
 
   // Expose new path-based functions
   global.convertPathToStitches = convertPathToStitches;
-  global.multiLineStitchingFromPath = multiLineStitchFromPath;
+  global.parallelLineStitchingFromPath = parallelLineStitchFromPath;
   global.sashikoStitchingFromPath = sashikoStitchFromPath;
-  
+
   // Expose embroidery guide utilities
   global.drawGrid = drawGrid;
   global.drawHoopGuides = drawHoopGuides;
@@ -5673,8 +5891,8 @@ function setDebugMode(enabled) {
   global.findBestHoop = findBestHoop;
   global.getHoopBrands = getHoopBrands;
   global.getHoopTypes = getHoopTypes;
-  
-  // Expose preview viewport utilities  
+
+  // Expose preview viewport utilities
   global.setupPreviewViewport = setupPreviewViewport;
   global.endPreviewViewport = endPreviewViewport;
   global.handlePreviewZoom = handlePreviewZoom;
@@ -5690,7 +5908,7 @@ function setDebugMode(enabled) {
   global.handlePreviewControlsPressed = handlePreviewControlsPressed;
   global.handlePreviewControlsDragged = handlePreviewControlsDragged;
   global.handlePreviewControlsReleased = handlePreviewControlsReleased;
-  
+
   global.zigzagStitchFromPath = zigzagStitchFromPath;
   global.rampStitchFromPath = rampStitchFromPath;
   global.squareStitchFromPath = squareStitchFromPath;
@@ -5724,7 +5942,7 @@ function setDebugMode(enabled) {
     convertVerticesToStitches: p5embroidery.convertVerticesToStitches,
     _strokeSettings,
     _drawMode,
-    drawStitches
+    drawStitches,
   });
 
   /**
@@ -5746,7 +5964,12 @@ function setDebugMode(enabled) {
    *   endRecord();
    * }
    */
-  global.embroideryOutline = function (offsetDistance, threadIndex = _strokeThreadIndex, outlineType = "convex", cornerRadius = 0) {
+  global.embroideryOutline = function (
+    offsetDistance,
+    threadIndex = _strokeThreadIndex,
+    outlineType = "convex",
+    cornerRadius = 0,
+  ) {
     return embroideryOutline(offsetDistance, threadIndex, outlineType, cornerRadius, getEmbroideryState());
   };
 
@@ -5788,7 +6011,7 @@ function setDebugMode(enabled) {
       outlineType,
       applyTransform,
       cornerRadius,
-      getEmbroideryState()
+      getEmbroideryState(),
     );
   };
 
@@ -5808,10 +6031,10 @@ function setDebugMode(enabled) {
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   endRecord();
-   *   
+   *
    *   // Export outline of thread 0 with 5mm offset as SVG
    *   exportOutline(0, 5, "outline.svg");
-   *   
+   *
    *   // Export outline with bounding box type as G-code
    *   exportOutline(0, 10, "cut-outline.gcode", "bounding");
    * }
@@ -5833,20 +6056,20 @@ function setDebugMode(enabled) {
    * function setup() {
    *   createCanvas(400, 400);
    *   beginRecord(this);
-   *   
+   *
    *   // Thread 0 - Red circle
    *   stroke(255, 0, 0);
    *   circle(50, 50, 20);
-   *   
-   *   // Thread 1 - Blue square  
+   *
+   *   // Thread 1 - Blue square
    *   stroke(0, 0, 255);
    *   rect(30, 30, 40, 40);
-   *   
+   *
    *   endRecord();
-   *   
+   *
    *   // Old way (deprecated):
    *   exportSVGFromPath(0, "thread0-path.svg");
-   *   
+   *
    *   // New way (recommended):
    *   exportSVG("thread0-path.svg", { threads: [0] });
    * }
@@ -5859,7 +6082,6 @@ function setDebugMode(enabled) {
     return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);
-
 
 /**
  * Creates straight line stitches from an array of path points
