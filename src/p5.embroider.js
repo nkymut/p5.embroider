@@ -2490,6 +2490,7 @@ function setDebugMode(enabled) {
 
   /**
    * Override text() function for embroidery recording
+   * Uses OpenType path commands for high-quality vector extraction (Approach B)
    * @private
    */
   let _originalTextFunc;
@@ -2498,6 +2499,11 @@ function setDebugMode(enabled) {
 
     window.text = function(str, x, y, maxWidth, maxHeight) {
       if (_recording) {
+        // Warn if maxWidth or maxHeight are provided
+        if (typeof maxWidth !== 'undefined' || typeof maxHeight !== 'undefined') {
+          console.warn('p5.embroider: text() does not yet support maxWidth or maxHeight parameters.');
+        }
+
         // Get current font
         const font = _p5Instance._renderer._textFont;
 
@@ -2505,7 +2511,12 @@ function setDebugMode(enabled) {
         if (!(font && font.font)) {
           console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
           if (_drawMode === "p5") {
-            _originalTextFunc.apply(this, arguments);
+          
+            push();
+            textSize(mmToPixel(fontSize));
+            _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
+            pop();
+          
           }
           return;
         }
@@ -2513,66 +2524,91 @@ function setDebugMode(enabled) {
         // Get current text size
         const fontSize = _p5Instance._renderer._textSize;
 
-        // Warn if text is very small
-        // const MIN_READABLE_SIZE = 12;
-        // if (fontSize < MIN_READABLE_SIZE) {
-        //   console.warn(`p5.embroider: Text size ${fontSize}px may not be readable in embroidery. Recommended minimum: ${MIN_READABLE_SIZE}px`);
-        // }
-
         if (_DEBUG) {
           console.log('text() called:', str, 'at', x, y, 'size:', fontSize);
         }
 
         try {
-          // Use textToPoints() - it handles alignment, multi-line, kerning, etc.
-          const points = font.textToPoints(str, x, y, fontSize, {
-            sampleFactor: 0.1,      // Adjust for quality vs performance
-            simplifyThreshold: 0    // No simplification for now
-          });
+          // Get OpenType path with actual bezier commands (Approach B)
+          const path = font._getPath(str, x, y, {});
+          const commands = path.commands;
 
           if (_DEBUG) {
-            console.log('textToPoints returned', points.length, 'points');
+            console.log('OpenType path has', commands.length, 'commands');
           }
 
-          // Group points into separate letter paths
-          const letterPaths = groupPointsIntoLetterPaths(points);
+          // Split commands into separate contours (letters/holes)
+          const allContours = splitPathCommands(commands);
 
           if (_DEBUG) {
-            console.log('Grouped into', letterPaths.length, 'letter paths');
+            console.log('Split into', allContours.length, 'contours');
           }
 
-          // Convert each letter path to stitches
-          for (const letterPath of letterPaths) {
-            // Apply current transformation
-            const transformedPath = applyCurrentTransformToPoints(letterPath);
+          // Group contours into letters (outer contours with their holes)
+          const letterGroups = groupContoursIntoLetters(allContours);
 
-            // Convert to stitches using existing functions
-            // This respects current stroke/fill/strokeWeight settings automatically!
-            
+          if (_DEBUG) {
+            console.log('Grouped into', letterGroups.length, 'letter groups');
+          }
+
+          // Process each letter group (outer contour + holes)
+          for (const letterGroup of letterGroups) {
+            // Convert outer contour to points
+            const outerPoints = convertCommandsToPoints(letterGroup.outer, {
+              bezierSteps: 10,
+              quadSteps: 8
+            });
+
+            if (outerPoints.length < 3) continue;
+
+            // Convert hole contours to points
+            const holePointsArray = letterGroup.holes.map(holeContour => 
+              convertCommandsToPoints(holeContour, {
+                bezierSteps: 10,
+                quadSteps: 8
+              })
+            ).filter(pts => pts.length >= 3);
+
+            // Apply current transformation to outer contour
+            const transformedOuter = applyCurrentTransformToPoints(outerPoints);
+
+            // Apply current transformation to holes
+            const transformedHoles = holePointsArray.map(holePts => 
+              applyCurrentTransformToPoints(holePts)
+            );
+
             // Handle fill
             if (_doFill) {
               if (_DEBUG) {
-                console.log('Creating fill stitches for letter path with', transformedPath.length, 'points');
+                console.log('Creating fill stitches for letter with', transformedOuter.length, 'outer points and', transformedHoles.length, 'holes');
               }
 
               try {
                 let fillStitches = [];
                 
-                // Use current fill mode
-                if (_currentFillMode === FILL_MODE.SATIN) {
-                  fillStitches = createSatinFillFromPath(transformedPath, _fillSettings);
-                } else if (_currentFillMode === FILL_MODE.SPIRAL) {
-                  fillStitches = createSpiralFillFromPath(transformedPath, _fillSettings);
+                // Use current fill mode with contour support
+                if (transformedHoles.length > 0) {
+                  // Fill with holes (only tatami supports this currently)
+                  if (_currentFillMode === FILL_MODE.TATAMI) {
+                    fillStitches = createTatamiFillWithContours(transformedOuter, transformedHoles, _fillSettings);
+                  } else {
+                    console.warn(`${_currentFillMode} fill does not support holes yet, using tatami`);
+                    fillStitches = createTatamiFillWithContours(transformedOuter, transformedHoles, _fillSettings);
+                  }
                 } else {
-                  // Default to tatami
-                  fillStitches = createTatamiFillFromPath(transformedPath, _fillSettings);
+                  // Simple fill without holes
+                  if (_currentFillMode === FILL_MODE.SATIN) {
+                    fillStitches = createSatinFillFromPath(transformedOuter, _fillSettings);
+                  } else if (_currentFillMode === FILL_MODE.SPIRAL) {
+                    fillStitches = createSpiralFillFromPath(transformedOuter, _fillSettings);
+                  } else {
+                    fillStitches = createTatamiFillFromPath(transformedOuter, _fillSettings);
+                  }
                 }
 
                 if (fillStitches && fillStitches.length > 0) {
-                  // Add fill stitches to thread runs
                   _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
 
-                  // Draw fill stitches in visual modes
                   if (_drawMode === "stitch" || _drawMode === "realistic") {
                     drawStitches(fillStitches, _fillThreadIndex);
                   }
@@ -2586,45 +2622,78 @@ function setDebugMode(enabled) {
               }
             }
 
-            // Handle stroke
+            // Handle stroke (outline both outer and holes)
             if (_doStroke) {
+              // Stroke outer contour
               if (_DEBUG) {
-                console.log('Creating stroke stitches for letter path with', transformedPath.length, 'points');
+                console.log('Creating stroke stitches for outer contour with', transformedOuter.length, 'points');
               }
 
               try {
                 let strokeStitches;
                 
-                // Use current stroke mode
                 if (_strokeSettings.strokeWeight > 0) {
                   switch (_strokeSettings.strokeMode) {
                     case STROKE_MODE.ZIGZAG:
-                      strokeStitches = zigzagStitchFromPath(transformedPath, _strokeSettings);
+                      strokeStitches = zigzagStitchFromPath(transformedOuter, _strokeSettings);
                       break;
                     case STROKE_MODE.LINES:
-                      strokeStitches = multiLineStitchFromPath(transformedPath, _strokeSettings);
+                      strokeStitches = multiLineStitchFromPath(transformedOuter, _strokeSettings);
                       break;
                     case STROKE_MODE.SASHIKO:
-                      strokeStitches = sashikoStitchFromPath(transformedPath, _strokeSettings);
+                      strokeStitches = sashikoStitchFromPath(transformedOuter, _strokeSettings);
                       break;
                     default:
-                      strokeStitches = straightLineStitchFromPath(transformedPath, _strokeSettings);
+                      strokeStitches = straightLineStitchFromPath(transformedOuter, _strokeSettings);
                   }
                 } else {
-                  strokeStitches = straightLineStitchFromPath(transformedPath, _strokeSettings);
+                  strokeStitches = straightLineStitchFromPath(transformedOuter, _strokeSettings);
                 }
 
                 if (strokeStitches && strokeStitches.length > 0) {
-                  // Add stroke stitches to thread runs
                   _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
 
-                  // Draw stroke stitches in visual modes
                   if (_drawMode === "stitch" || _drawMode === "realistic") {
                     drawStitches(strokeStitches, _strokeThreadIndex);
                   }
 
                   if (_DEBUG) {
-                    console.log('Added', strokeStitches.length, 'stroke stitches');
+                    console.log('Added', strokeStitches.length, 'outer stroke stitches');
+                  }
+                }
+
+                // Stroke holes
+                for (const holePoints of transformedHoles) {
+                  let holeStrokeStitches;
+                  
+                  if (_strokeSettings.strokeWeight > 0) {
+                    switch (_strokeSettings.strokeMode) {
+                      case STROKE_MODE.ZIGZAG:
+                        holeStrokeStitches = zigzagStitchFromPath(holePoints, _strokeSettings);
+                        break;
+                      case STROKE_MODE.LINES:
+                        holeStrokeStitches = multiLineStitchFromPath(holePoints, _strokeSettings);
+                        break;
+                      case STROKE_MODE.SASHIKO:
+                        holeStrokeStitches = sashikoStitchFromPath(holePoints, _strokeSettings);
+                        break;
+                      default:
+                        holeStrokeStitches = straightLineStitchFromPath(holePoints, _strokeSettings);
+                    }
+                  } else {
+                    holeStrokeStitches = straightLineStitchFromPath(holePoints, _strokeSettings);
+                  }
+
+                  if (holeStrokeStitches && holeStrokeStitches.length > 0) {
+                    _stitchData.threads[_strokeThreadIndex].runs.push(holeStrokeStitches);
+
+                    if (_drawMode === "stitch" || _drawMode === "realistic") {
+                      drawStitches(holeStrokeStitches, _strokeThreadIndex);
+                    }
+
+                    if (_DEBUG) {
+                      console.log('Added', holeStrokeStitches.length, 'hole stroke stitches');
+                    }
                   }
                 }
               } catch (error) {
@@ -2634,60 +2703,260 @@ function setDebugMode(enabled) {
           }
         } catch (error) {
           console.error('Error converting text to embroidery:', error);
+          console.error('Stack:', error.stack);
         }
 
         // Call original for visual feedback based on draw mode
         if (_drawMode === "p5") {
-          _originalTextFunc.apply(this, arguments);
+        
+          push();
+          textSize(mmToPixel(fontSize));
+          _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
+          pop();
         }
       } else {
         // Not recording, just call original
-        _originalTextFunc.apply(this, arguments);
+        push();
+        textSize(mmToPixel(fontSize));
+        _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
+        pop();
       }
     };
   }
 
   /**
-   * Group points into separate letter paths
-   * Detects when points jump to a new letter (large distance)
+   * Split OpenType path commands into separate contours
+   * Each 'M' (moveTo) command starts a new contour
    * @private
    */
-  function groupPointsIntoLetterPaths(points) {
-    if (points.length === 0) return [];
-
-    const letterPaths = [];
-    let currentPath = [{x: points[0].x, y: points[0].y}];
-    const JUMP_THRESHOLD = 5; // pixels - tune as needed
-
-    for (let i = 1; i < points.length; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-
-      // Calculate distance between consecutive points
-      const dist = Math.sqrt(
-        Math.pow(curr.x - prev.x, 2) + 
-        Math.pow(curr.y - prev.y, 2)
-      );
-
-      // If distance is large, we've jumped to a new letter or path segment
-      if (dist > JUMP_THRESHOLD) {
-        // Save current path and start new one
-        if (currentPath.length > 0) {
-          letterPaths.push(currentPath);
+  function splitPathCommands(commands) {
+    const contours = [];
+    let currentContour = [];
+    
+    for (const cmd of commands) {
+      if (cmd.type === 'M') {
+        // Start new contour
+        if (currentContour.length > 0) {
+          contours.push(currentContour);
         }
-        currentPath = [{x: curr.x, y: curr.y}];
+        currentContour = [cmd];
       } else {
-        // Continue current path
-        currentPath.push({x: curr.x, y: curr.y});
+        // Add to current contour
+        currentContour.push(cmd);
       }
     }
+    
+    // Don't forget the last contour
+    if (currentContour.length > 0) {
+      contours.push(currentContour);
+    }
+    
+    return contours;
+  }
 
-    // Don't forget the last path
-    if (currentPath.length > 0) {
-      letterPaths.push(currentPath);
+  /**
+   * Group contours into letters (outer contours with their holes)
+   * Uses point-in-polygon test to determine which contours are holes
+   * @private
+   */
+  function groupContoursIntoLetters(contours) {
+    if (contours.length === 0) return [];
+    
+    // Convert each contour to points for area calculation
+    const contourData = contours.map(contour => {
+      const points = convertCommandsToPoints(contour, {
+        bezierSteps: 10,
+        quadSteps: 8
+      });
+      const area = calculateSignedArea(points);
+      const absArea = Math.abs(area);
+      const bounds = getPathBounds(points);
+      return { contour, points, area, absArea, bounds };
+    });
+
+    // Sort by absolute area (largest first) - larger contours are likely outer, smaller are likely holes
+    contourData.sort((a, b) => b.absArea - a.absArea);
+
+    // Strategy: Use spatial containment to determine holes
+    // A contour is a hole if it's contained within another larger contour
+    const letterGroups = [];
+    const processedIndices = new Set();
+    
+    for (let i = 0; i < contourData.length; i++) {
+      if (processedIndices.has(i)) continue;
+      
+      const outerData = contourData[i];
+      const holes = [];
+      
+      // Find all contours contained within this one
+      for (let j = i + 1; j < contourData.length; j++) {
+        if (processedIndices.has(j)) continue;
+        
+        const innerData = contourData[j];
+        
+        // Check if inner contour's center is inside outer contour
+        const innerCenterX = innerData.bounds.x + innerData.bounds.w / 2;
+        const innerCenterY = innerData.bounds.y + innerData.bounds.h / 2;
+        
+        if (isPointInPolygon({x: innerCenterX, y: innerCenterY}, outerData.points)) {
+          // This is a hole of the outer contour
+          holes.push(innerData.contour);
+          processedIndices.add(j);
+        }
+      }
+      
+      // Add this letter group
+      letterGroups.push({
+        outer: outerData.contour,
+        outerPoints: outerData.points,
+        outerBounds: outerData.bounds,
+        holes: holes
+      });
+      
+      processedIndices.add(i);
     }
 
-    return letterPaths;
+    return letterGroups;
+  }
+
+  /**
+   * Calculate signed area of a polygon
+   * Positive area = clockwise, Negative area = counter-clockwise
+   * @private
+   */
+  function calculateSignedArea(points) {
+    if (points.length < 3) return 0;
+    
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+      const j = (i + 1) % points.length;
+      area += points[i].x * points[j].y;
+      area -= points[j].x * points[i].y;
+    }
+    return area / 2;
+  }
+
+  /**
+   * Test if a point is inside a polygon using ray casting algorithm
+   * @private
+   */
+  function isPointInPolygon(point, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      
+      const intersect = ((yi > point.y) !== (yj > point.y))
+          && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  /**
+   * Convert OpenType path commands to points
+   * Samples bezier curves at appropriate density
+   * @private
+   */
+  function convertCommandsToPoints(commands, options = {}) {
+    const points = [];
+    const bezierSteps = options.bezierSteps || 10;
+    const quadSteps = options.quadSteps || 8;
+    
+    let currentX = 0, currentY = 0;
+    
+    for (const cmd of commands) {
+      if (cmd.type === 'M') {
+        // Move to
+        currentX = cmd.x;
+        currentY = cmd.y;
+        points.push({x: currentX, y: currentY});
+        
+      } else if (cmd.type === 'L') {
+        // Line to
+        currentX = cmd.x;
+        currentY = cmd.y;
+        points.push({x: currentX, y: currentY});
+        
+      } else if (cmd.type === 'C') {
+        // Cubic bezier curve - sample it
+        for (let i = 1; i <= bezierSteps; i++) {
+          const t = i / bezierSteps;
+          const point = cubicBezierPoint(
+            currentX, currentY,
+            cmd.x1, cmd.y1,
+            cmd.x2, cmd.y2,
+            cmd.x, cmd.y,
+            t
+          );
+          points.push(point);
+        }
+        currentX = cmd.x;
+        currentY = cmd.y;
+        
+      } else if (cmd.type === 'Q') {
+        // Quadratic bezier curve - sample it
+        for (let i = 1; i <= quadSteps; i++) {
+          const t = i / quadSteps;
+          const point = quadraticBezierPoint(
+            currentX, currentY,
+            cmd.x1, cmd.y1,
+            cmd.x, cmd.y,
+            t
+          );
+          points.push(point);
+        }
+        currentX = cmd.x;
+        currentY = cmd.y;
+        
+      } else if (cmd.type === 'Z') {
+        // Close path - add line back to first point if needed
+        if (points.length > 0) {
+          const first = points[0];
+          const dist = Math.sqrt(
+            Math.pow(currentX - first.x, 2) + 
+            Math.pow(currentY - first.y, 2)
+          );
+          if (dist > 0.1) { // Only add if not already at start
+            points.push({x: first.x, y: first.y});
+          }
+        }
+      }
+    }
+    
+    return points;
+  }
+
+  /**
+   * Sample a cubic bezier curve at parameter t
+   * @private
+   */
+  function cubicBezierPoint(x0, y0, x1, y1, x2, y2, x3, y3, t) {
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    const mt3 = mt2 * mt;
+    const t2 = t * t;
+    const t3 = t2 * t;
+    
+    return {
+      x: mt3*x0 + 3*mt2*t*x1 + 3*mt*t2*x2 + t3*x3,
+      y: mt3*y0 + 3*mt2*t*y1 + 3*mt*t2*y2 + t3*y3
+    };
+  }
+
+  /**
+   * Sample a quadratic bezier curve at parameter t
+   * @private
+   */
+  function quadraticBezierPoint(x0, y0, x1, y1, x2, y2, t) {
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    const t2 = t * t;
+    
+    return {
+      x: mt2*x0 + 2*mt*t*x1 + t2*x2,
+      y: mt2*y0 + 2*mt*t*y1 + t2*y2
+    };
   }
 
   /**

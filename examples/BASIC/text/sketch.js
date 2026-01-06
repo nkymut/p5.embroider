@@ -1,26 +1,18 @@
 let font;
-let drawMode = "stitch";
+let drawMode = "realistic";
 
 function preload() {
-  // Load a font
-  //font = loadFont('./assets/CloisterBlack.ttf',
-  font = loadFont('./assets/grotesk.otf',
-
-    () => {
-      console.log('Font loaded successfully');
-      console.log('Font object:', font);
-      console.log('Has font.font?', font.font);
-    },
-    (err) => console.error('Error loading font:', err)
-  );
+  font = loadFont('assets/SourceSansPro-Regular.otf');
 }
 
-// Enable debug mode
-window._DEBUG = true;
 
 function setup() {
-  createCanvas(mmToPixel(100), mmToPixel(100));
+  createCanvas(mmToPixel(100), mmToPixel(120));
   
+  // Load a font
+  //font = loadFont('./assets/CloisterBlack.ttf');
+  
+
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
     drawMode = "stitch";
@@ -50,8 +42,8 @@ function setup() {
 }
 
 function draw() {
-  background("#FFF5DC");
-  translate(mmToPixel(10), mmToPixel(10));
+  background("#6c757d");
+  //translate(mmToPixel(10), mmToPixel(50+30));
 
   setDrawMode(drawMode);
 
@@ -59,14 +51,21 @@ function draw() {
   
   // Configure embroidery settings
   setStitch(0.1, 0.5, 0);
+  setFillSettings({
+    stitchLength: 15,
+    stitchWidth: 0.2,
+    rowSpacing: 0.2,
+    noise: 0.0,
+    stitchInterpolate: true,
+  });
   
-  // Example 1: Stroke-only text (outline)
+
   textFont(font);
-  textSize(50);
-  stroke(0);
+  textSize(80);
+  noStroke();
   strokeWeight(1);
-  noFill();
-  text('A', 5, 40);
+  fill("#39c5bb");
+  text('p5', 5, 80);
   
   // End recording
   endRecord();
