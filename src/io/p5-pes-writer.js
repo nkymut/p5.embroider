@@ -432,9 +432,49 @@ export class PESWriter {
       console.log("Original border size:", border);
     }
 
+    // need to shift by minX
+    const centerX = border.width / 2;
+    const centerY = border.height / 2;
+
+    if (_DEBUG_PES) {
+      console.log("Transformation values:", {
+        centerX,
+        centerY,
+        left: border.left,
+        top: border.top,
+        offset: {
+          x: border.left + centerX,
+          y: border.top + centerY,
+        },
+      });
+    }
+
+    const transformedPoints = points.map((point) => {
+      const newPoint = { ...point };
+      // Transform coordinates to center-origin
+      newPoint.x = point.x + border.left;
+      newPoint.y = point.y + border.top;
+      return newPoint;
+    });
+
+    if (_DEBUG_PES) {
+      console.log("Coordinate transformation:", {
+        centerX,
+        centerY,
+        originalFirstPoint: points[0],
+        transformedFirstPoint: transformedPoints[0],
+      });
+    }
+
+    // Recalculate border size after transformation
+    border = this.calculateBorderSize(transformedPoints);
+    if (_DEBUG_PES) {
+      console.log("Transformed border size:", border);
+    }
+
     // Extract stitches and colors arrays from transformed points
-    const stitches = points.map(p => ({ x: p.x, y: p.y }));
-    const colors = points.map(p => p.color || 0xFF0000);
+    const stitches = transformedPoints.map(p => ({ x: p.x, y: p.y }));
+    const colors = transformedPoints.map(p => p.color || 0xFF0000);
     
     // Write the file
     this.writeTruncatedVersion1(title, stitches, colors, border);
