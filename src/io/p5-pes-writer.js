@@ -98,7 +98,10 @@ export class PESWriter {
     
     this.buffer.push(value & 0xFF);
     this.buffer.push((value >> 8) & 0xFF);
-    this.buffer.push(...tempBuffer);
+    // Use loop instead of spread to avoid stack overflow on large buffers
+    for (let i = 0; i < tempBuffer.length; i++) {
+      this.buffer.push(tempBuffer[i]);
+    }
   }
   
   writeSpaceHolder24LE(value) {
@@ -109,7 +112,10 @@ export class PESWriter {
     this.buffer.push(value & 0xFF);
     this.buffer.push((value >> 8) & 0xFF);
     this.buffer.push((value >> 16) & 0xFF);
-    this.buffer.push(...tempBuffer);
+    // Use loop instead of spread to avoid stack overflow on large buffers
+    for (let i = 0; i < tempBuffer.length; i++) {
+      this.buffer.push(tempBuffer[i]);
+    }
   }
   
   writeSpaceHolder32LE(value) {
@@ -121,15 +127,19 @@ export class PESWriter {
     this.buffer.push((value >> 8) & 0xFF);
     this.buffer.push((value >> 16) & 0xFF);
     this.buffer.push((value >>> 24) & 0xFF);
-    this.buffer.push(...tempBuffer);
+    // Use loop instead of spread to avoid stack overflow on large buffers
+    for (let i = 0; i < tempBuffer.length; i++) {
+      this.buffer.push(tempBuffer[i]);
+    }
   }
+  
   
   // ===== PEC Color Palette Matching =====
   
   findColor(color) {
-    const r = (color >> 16) & 0xFF;
-    const g = (color >> 8) & 0xFF;
-    const b = color & 0xFF;
+    const r = (color >> 16) & 255;
+    const g = (color >> 8) & 255;
+    const b = color & 255;
     
     const std = [
       0x1a0a94,0x0f75ff,0x00934c,0xbabdfe,0xec0000,0xe4995a,0xcc48ab,0xfdc4fa,0xdd84cd,0x6bd38a,
@@ -145,9 +155,9 @@ export class PESWriter {
     let minIndex = 0;
     
     for (let i = 0; i < std.length; i++) {
-      const r0 = (std[i] >> 16) & 0xFF;
-      const g0 = (std[i] >> 8) & 0xFF;
-      const b0 = std[i] & 0xFF;
+      const r0 = (std[i] >> 16) & 255;
+      const g0 = (std[i] >> 8) & 255;
+      const b0 = std[i] & 255;
       const dist = Math.pow(r - r0, 2) + Math.pow(g - g0, 2) + Math.pow(b - b0, 2);
       
       if (dist < minDist) {
@@ -302,6 +312,7 @@ export class PESWriter {
     
     for (let i = 0; i < palette.length; i++) {
       const idx = this.findColor(palette[i]);
+      console.log(idx, palette[i])
       colorIndexList.push(idx);
       this.writeInt8(idx);
     }

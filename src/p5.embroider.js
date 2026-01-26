@@ -2510,7 +2510,7 @@ function setDebugMode(enabled) {
 
         // Check if valid p5.Font (not system font)
         if (!(font && font.font)) {
-          console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
+          // console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
           if (_drawMode === "p5") {
           
             push();

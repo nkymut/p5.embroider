@@ -38,6 +38,13 @@ function setup() {
   });
   exportGcodeButton.position(90, height + 60);
 
+  let exportPesButton = createButton("Export PES");
+  exportPesButton.mousePressed(() => {
+    console.log('yaaay');
+    exportEmbroidery("colourExample.pes");
+  });
+  exportPesButton.position(200, height + 60);
+
   noLoop();
 }
 
