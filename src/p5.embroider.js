@@ -2,6 +2,7 @@ import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
+import { PESWriter } from "./io/p5-pes-writer.js";
 import {
   mmToPixel,
   pixelToMm,
@@ -4699,6 +4700,9 @@ function setDebugMode(enabled) {
       case "dst":
         p5embroidery.exportDST(filename);
         break;
+      case "pes":
+        p5embroidery.exportPES(filename);
+        break;
       case "svg":
         p5embroidery.exportSVG(filename);
         break;
@@ -4858,6 +4862,152 @@ function setDebugMode(enabled) {
   };
 
   /**
+   * Exports the recorded embroidery data as a PES file.
+   * @method exportPES
+   * @for p5
+   * @param {String} [filename='embroideryPattern.pes'] - Output filename
+   * @example
+   *
+   *
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   endRecord();
+   *   exportPES('pattern.pes');
+   * }
+   *
+   *
+   */
+
+// PES Export for p5.embroidery
+// Matches DST export structure and calling pattern
+
+// ===== MAIN EXPORT FUNCTION - Matches DST structure exactly =====
+p5embroidery.exportPES = function(filename = "embroideryPattern.pes") {
+  const points = [];
+  const pesWriter = new PESWriter();
+
+  if (_DEBUG) console.log("=== Starting PES Export ===");
+  if (_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
+  if (_DEBUG) console.log("Stitch data:", _stitchData);
+
+  let currentThreadIndex = -1;
+
+  for (let threadIndex = 0; threadIndex < _stitchData.threads.length; threadIndex++) {
+    const thread = _stitchData.threads[threadIndex];
+
+    // Skip threads with no stitches
+    if (thread.runs.length === 0 || !thread.runs.some((run) => run.length > 0)) {
+      continue;
+    }
+
+    // DIFFERENCE FROM DST: We track color per stitch rather than using colorChange flag
+    // PES needs the actual color value for palette matching
+    const threadColor = thread.color || 0xFF0000; // Default red
+    
+    // Convert color from p5 color object to hex if needed
+    let hexColor;
+    if (typeof threadColor === 'object') {
+      // p5.Color object - extract RGB
+      hexColor = (Math.round(threadColor.r) << 16) | 
+                 (Math.round(threadColor.g) << 8) | 
+                 Math.round(threadColor.b);
+    } else if (typeof threadColor === 'string') {
+      // Hex string like "#FF0000"
+      hexColor = parseInt(threadColor.replace('#', ''), 16);
+    } else {
+      // Already a number
+      hexColor = threadColor;
+    }
+
+    if (_DEBUG && currentThreadIndex !== threadIndex) {
+      console.log(`Thread ${threadIndex} color:`, hexColor.toString(16));
+    }
+
+    currentThreadIndex = threadIndex;
+
+    for (const run of thread.runs) {
+      // Handle trim commands (similar to DST)
+      if (run.length === 1 && run[0].command === "trim") {
+        if (_DEBUG) {
+          console.log("Trim command at:", run[0].x, run[0].y);
+        }
+
+        // Validate trim command coordinates
+        if (run[0].x == null || run[0].y == null || 
+            !isFinite(run[0].x) || !isFinite(run[0].y)) {
+          if (_DEBUG) console.warn("Skipping invalid trim command with null/NaN coordinates:", run[0]);
+          continue;
+        }
+
+        // Convert from mm to 0.1mm for PES format (same as DST)
+        points.push({
+          x: run[0].x * 10,
+          y: run[0].y * 10,
+          color: hexColor,
+          jump: true,
+          trim: true,
+        });
+        continue;
+      }
+
+      // Normal stitches
+      if (_DEBUG) console.log("=== New Stitch Run ===");
+      if (_DEBUG) console.log("Run:", run);
+      
+      for (const stitch of run) {
+        // Validate stitch coordinates before processing
+        if (stitch.x == null || stitch.y == null || 
+            !isFinite(stitch.x) || !isFinite(stitch.y)) {
+          if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
+          continue;
+        }
+
+        // Convert from mm to 0.1mm for PES format
+        points.push({
+          x: stitch.x * 10,
+          y: stitch.y * 10,
+          color: hexColor,
+          command: stitch.command,
+          jump: stitch.command === "jump",
+        });
+      }
+    }
+  }
+
+  // Skip export if no points
+  if (points.length === 0) {
+    console.warn("No embroidery points to export");
+    return;
+  }
+
+  if (_DEBUG) {
+    console.log("=== Final Points Array ===");
+    console.log("Total points:", points.length);
+    console.log("First point:", points[0]);
+    console.log("Last point:", points[points.length - 1]);
+
+    // Log bounding box
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    for (const point of points) {
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minY = Math.min(minY, point.y);
+      maxY = Math.max(maxY, point.y);
+    }
+    console.log("Bounding box (0.1mm):", {
+      minX, maxX, minY, maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    });
+  }
+
+  pesWriter.savePES(points, "EmbroideryPattern", filename);
+};
+
+  /**
    * Exports the recorded embroidery data as a DST file.
    * @method exportDST
    * @for p5
@@ -4875,6 +5025,7 @@ function setDebugMode(enabled) {
    *
    *
    */
+
   p5embroidery.exportDST = function (filename = "embroideryPattern.dst") {
     const points = [];
     const dstWriter = new DSTWriter();
@@ -6110,6 +6261,7 @@ function setDebugMode(enabled) {
   global.endRecord = p5embroidery.endRecord;
   global.exportEmbroidery = p5embroidery.exportEmbroidery;
   global.exportDST = p5embroidery.exportDST;
+  global.exportPES = p5embroidery.exportPES;
   global.exportGcode = p5embroidery.exportGcode;
   global.exportSVG = p5embroidery.exportSVG;
   global.exportPNG = p5embroidery.exportPNG;

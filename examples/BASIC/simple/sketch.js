@@ -17,9 +17,9 @@ function setup() {
     drawMode = "p5";
   });
 
-  let exportDstButton = createButton("Export DST");
+  let exportDstButton = createButton("Export PES");
   exportDstButton.mousePressed(() => {
-    exportEmbroidery("simple.dst");
+    exportEmbroidery("simple.pes");
   });
   exportDstButton.position(0, height + 30);
 
