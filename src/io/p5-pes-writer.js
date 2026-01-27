@@ -312,7 +312,6 @@ export class PESWriter {
     
     for (let i = 0; i < palette.length; i++) {
       const idx = this.findColor(palette[i]);
-      console.log(idx, palette[i])
       colorIndexList.push(idx);
       this.writeInt8(idx);
     }
