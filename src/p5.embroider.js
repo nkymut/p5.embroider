@@ -2,6 +2,7 @@ import { DSTWriter } from "./io/p5-tajima-dst-writer.js";
 import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
+import { PESWriter } from "./io/p5-pes-writer.js";
 import {
   mmToPixel,
   pixelToMm,
@@ -2497,11 +2498,11 @@ function setDebugMode(enabled) {
   function overrideTextFunction() {
     _originalTextFunc = window.text;
 
-    window.text = function(str, x, y, maxWidth, maxHeight) {
+    window.text = function (str, x, y, maxWidth, maxHeight) {
       if (_recording) {
         // Warn if maxWidth or maxHeight are provided
-        if (typeof maxWidth !== 'undefined' || typeof maxHeight !== 'undefined') {
-          console.warn('p5.embroider: text() does not yet support maxWidth or maxHeight parameters.');
+        if (typeof maxWidth !== "undefined" || typeof maxHeight !== "undefined") {
+          console.warn("p5.embroider: text() does not yet support maxWidth or maxHeight parameters.");
         }
 
         // Get current font
@@ -2509,14 +2510,19 @@ function setDebugMode(enabled) {
 
         // Check if valid p5.Font (not system font)
         if (!(font && font.font)) {
-          console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
+          // console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
           if (_drawMode === "p5") {
-          
             push();
             textSize(mmToPixel(fontSize));
-            _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
+            _originalTextFunc.call(
+              _p5Instance,
+              str,
+              mmToPixel(x),
+              mmToPixel(y),
+              mmToPixel(maxWidth),
+              mmToPixel(maxHeight),
+            );
             pop();
-          
           }
           return;
         }
@@ -2525,7 +2531,7 @@ function setDebugMode(enabled) {
         const fontSize = _p5Instance._renderer._textSize;
 
         if (_DEBUG) {
-          console.log('text() called:', str, 'at', x, y, 'size:', fontSize);
+          console.log("text() called:", str, "at", x, y, "size:", fontSize);
         }
 
         try {
@@ -2534,21 +2540,21 @@ function setDebugMode(enabled) {
           const commands = path.commands;
 
           if (_DEBUG) {
-            console.log('OpenType path has', commands.length, 'commands');
+            console.log("OpenType path has", commands.length, "commands");
           }
 
           // Split commands into separate contours (letters/holes)
           const allContours = splitPathCommands(commands);
 
           if (_DEBUG) {
-            console.log('Split into', allContours.length, 'contours');
+            console.log("Split into", allContours.length, "contours");
           }
 
           // Group contours into letters (outer contours with their holes)
           const letterGroups = groupContoursIntoLetters(allContours);
 
           if (_DEBUG) {
-            console.log('Grouped into', letterGroups.length, 'letter groups');
+            console.log("Grouped into", letterGroups.length, "letter groups");
           }
 
           // Process each letter group (outer contour + holes)
@@ -2556,36 +2562,42 @@ function setDebugMode(enabled) {
             // Convert outer contour to points
             const outerPoints = convertCommandsToPoints(letterGroup.outer, {
               bezierSteps: 10,
-              quadSteps: 8
+              quadSteps: 8,
             });
 
             if (outerPoints.length < 3) continue;
 
             // Convert hole contours to points
-            const holePointsArray = letterGroup.holes.map(holeContour => 
-              convertCommandsToPoints(holeContour, {
-                bezierSteps: 10,
-                quadSteps: 8
-              })
-            ).filter(pts => pts.length >= 3);
+            const holePointsArray = letterGroup.holes
+              .map((holeContour) =>
+                convertCommandsToPoints(holeContour, {
+                  bezierSteps: 10,
+                  quadSteps: 8,
+                }),
+              )
+              .filter((pts) => pts.length >= 3);
 
             // Apply current transformation to outer contour
             const transformedOuter = applyCurrentTransformToPoints(outerPoints);
 
             // Apply current transformation to holes
-            const transformedHoles = holePointsArray.map(holePts => 
-              applyCurrentTransformToPoints(holePts)
-            );
+            const transformedHoles = holePointsArray.map((holePts) => applyCurrentTransformToPoints(holePts));
 
             // Handle fill
             if (_doFill) {
               if (_DEBUG) {
-                console.log('Creating fill stitches for letter with', transformedOuter.length, 'outer points and', transformedHoles.length, 'holes');
+                console.log(
+                  "Creating fill stitches for letter with",
+                  transformedOuter.length,
+                  "outer points and",
+                  transformedHoles.length,
+                  "holes",
+                );
               }
 
               try {
                 let fillStitches = [];
-                
+
                 // Use current fill mode with contour support
                 if (transformedHoles.length > 0) {
                   // Fill with holes (only tatami supports this currently)
@@ -2614,11 +2626,11 @@ function setDebugMode(enabled) {
                   }
 
                   if (_DEBUG) {
-                    console.log('Added', fillStitches.length, 'fill stitches');
+                    console.log("Added", fillStitches.length, "fill stitches");
                   }
                 }
               } catch (error) {
-                console.error('Error creating fill stitches for text:', error);
+                console.error("Error creating fill stitches for text:", error);
               }
             }
 
@@ -2626,12 +2638,12 @@ function setDebugMode(enabled) {
             if (_doStroke) {
               // Stroke outer contour
               if (_DEBUG) {
-                console.log('Creating stroke stitches for outer contour with', transformedOuter.length, 'points');
+                console.log("Creating stroke stitches for outer contour with", transformedOuter.length, "points");
               }
 
               try {
                 let strokeStitches;
-                
+
                 if (_strokeSettings.strokeWeight > 0) {
                   switch (_strokeSettings.strokeMode) {
                     case STROKE_MODE.ZIGZAG:
@@ -2658,14 +2670,14 @@ function setDebugMode(enabled) {
                   }
 
                   if (_DEBUG) {
-                    console.log('Added', strokeStitches.length, 'outer stroke stitches');
+                    console.log("Added", strokeStitches.length, "outer stroke stitches");
                   }
                 }
 
                 // Stroke holes
                 for (const holePoints of transformedHoles) {
                   let holeStrokeStitches;
-                  
+
                   if (_strokeSettings.strokeWeight > 0) {
                     switch (_strokeSettings.strokeMode) {
                       case STROKE_MODE.ZIGZAG:
@@ -2692,26 +2704,32 @@ function setDebugMode(enabled) {
                     }
 
                     if (_DEBUG) {
-                      console.log('Added', holeStrokeStitches.length, 'hole stroke stitches');
+                      console.log("Added", holeStrokeStitches.length, "hole stroke stitches");
                     }
                   }
                 }
               } catch (error) {
-                console.error('Error creating stroke stitches for text:', error);
+                console.error("Error creating stroke stitches for text:", error);
               }
             }
           }
         } catch (error) {
-          console.error('Error converting text to embroidery:', error);
-          console.error('Stack:', error.stack);
+          console.error("Error converting text to embroidery:", error);
+          console.error("Stack:", error.stack);
         }
 
         // Call original for visual feedback based on draw mode
         if (_drawMode === "p5") {
-        
           push();
           textSize(mmToPixel(fontSize));
-          _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
+          _originalTextFunc.call(
+            _p5Instance,
+            str,
+            mmToPixel(x),
+            mmToPixel(y),
+            mmToPixel(maxWidth),
+            mmToPixel(maxHeight),
+          );
           pop();
         }
       } else {
@@ -2732,9 +2750,9 @@ function setDebugMode(enabled) {
   function splitPathCommands(commands) {
     const contours = [];
     let currentContour = [];
-    
+
     for (const cmd of commands) {
-      if (cmd.type === 'M') {
+      if (cmd.type === "M") {
         // Start new contour
         if (currentContour.length > 0) {
           contours.push(currentContour);
@@ -2745,12 +2763,12 @@ function setDebugMode(enabled) {
         currentContour.push(cmd);
       }
     }
-    
+
     // Don't forget the last contour
     if (currentContour.length > 0) {
       contours.push(currentContour);
     }
-    
+
     return contours;
   }
 
@@ -2761,12 +2779,12 @@ function setDebugMode(enabled) {
    */
   function groupContoursIntoLetters(contours) {
     if (contours.length === 0) return [];
-    
+
     // Convert each contour to points for area calculation
-    const contourData = contours.map(contour => {
+    const contourData = contours.map((contour) => {
       const points = convertCommandsToPoints(contour, {
         bezierSteps: 10,
-        quadSteps: 8
+        quadSteps: 8,
       });
       const area = calculateSignedArea(points);
       const absArea = Math.abs(area);
@@ -2781,38 +2799,38 @@ function setDebugMode(enabled) {
     // A contour is a hole if it's contained within another larger contour
     const letterGroups = [];
     const processedIndices = new Set();
-    
+
     for (let i = 0; i < contourData.length; i++) {
       if (processedIndices.has(i)) continue;
-      
+
       const outerData = contourData[i];
       const holes = [];
-      
+
       // Find all contours contained within this one
       for (let j = i + 1; j < contourData.length; j++) {
         if (processedIndices.has(j)) continue;
-        
+
         const innerData = contourData[j];
-        
+
         // Check if inner contour's center is inside outer contour
         const innerCenterX = innerData.bounds.x + innerData.bounds.w / 2;
         const innerCenterY = innerData.bounds.y + innerData.bounds.h / 2;
-        
-        if (isPointInPolygon({x: innerCenterX, y: innerCenterY}, outerData.points)) {
+
+        if (isPointInPolygon({ x: innerCenterX, y: innerCenterY }, outerData.points)) {
           // This is a hole of the outer contour
           holes.push(innerData.contour);
           processedIndices.add(j);
         }
       }
-      
+
       // Add this letter group
       letterGroups.push({
         outer: outerData.contour,
         outerPoints: outerData.points,
         outerBounds: outerData.bounds,
-        holes: holes
+        holes: holes,
       });
-      
+
       processedIndices.add(i);
     }
 
@@ -2826,7 +2844,7 @@ function setDebugMode(enabled) {
    */
   function calculateSignedArea(points) {
     if (points.length < 3) return 0;
-    
+
     let area = 0;
     for (let i = 0; i < points.length; i++) {
       const j = (i + 1) % points.length;
@@ -2843,11 +2861,12 @@ function setDebugMode(enabled) {
   function isPointInPolygon(point, polygon) {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-      
-      const intersect = ((yi > point.y) !== (yj > point.y))
-          && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      const xi = polygon[i].x,
+        yi = polygon[i].y;
+      const xj = polygon[j].x,
+        yj = polygon[j].y;
+
+      const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
       if (intersect) inside = !inside;
     }
     return inside;
@@ -2862,68 +2881,52 @@ function setDebugMode(enabled) {
     const points = [];
     const bezierSteps = options.bezierSteps || 10;
     const quadSteps = options.quadSteps || 8;
-    
-    let currentX = 0, currentY = 0;
-    
+
+    let currentX = 0,
+      currentY = 0;
+
     for (const cmd of commands) {
-      if (cmd.type === 'M') {
+      if (cmd.type === "M") {
         // Move to
         currentX = cmd.x;
         currentY = cmd.y;
-        points.push({x: currentX, y: currentY});
-        
-      } else if (cmd.type === 'L') {
+        points.push({ x: currentX, y: currentY });
+      } else if (cmd.type === "L") {
         // Line to
         currentX = cmd.x;
         currentY = cmd.y;
-        points.push({x: currentX, y: currentY});
-        
-      } else if (cmd.type === 'C') {
+        points.push({ x: currentX, y: currentY });
+      } else if (cmd.type === "C") {
         // Cubic bezier curve - sample it
         for (let i = 1; i <= bezierSteps; i++) {
           const t = i / bezierSteps;
-          const point = cubicBezierPoint(
-            currentX, currentY,
-            cmd.x1, cmd.y1,
-            cmd.x2, cmd.y2,
-            cmd.x, cmd.y,
-            t
-          );
+          const point = cubicBezierPoint(currentX, currentY, cmd.x1, cmd.y1, cmd.x2, cmd.y2, cmd.x, cmd.y, t);
           points.push(point);
         }
         currentX = cmd.x;
         currentY = cmd.y;
-        
-      } else if (cmd.type === 'Q') {
+      } else if (cmd.type === "Q") {
         // Quadratic bezier curve - sample it
         for (let i = 1; i <= quadSteps; i++) {
           const t = i / quadSteps;
-          const point = quadraticBezierPoint(
-            currentX, currentY,
-            cmd.x1, cmd.y1,
-            cmd.x, cmd.y,
-            t
-          );
+          const point = quadraticBezierPoint(currentX, currentY, cmd.x1, cmd.y1, cmd.x, cmd.y, t);
           points.push(point);
         }
         currentX = cmd.x;
         currentY = cmd.y;
-        
-      } else if (cmd.type === 'Z') {
+      } else if (cmd.type === "Z") {
         // Close path - add line back to first point if needed
         if (points.length > 0) {
           const first = points[0];
-          const dist = Math.sqrt(
-            Math.pow(currentX - first.x, 2) + 
-            Math.pow(currentY - first.y, 2)
-          );
-          if (dist > 0.1) { // Only add if not already at start
-            points.push({x: first.x, y: first.y});
+          const dist = Math.sqrt(Math.pow(currentX - first.x, 2) + Math.pow(currentY - first.y, 2));
+          if (dist > 0.1) {
+            // Only add if not already at start
+            points.push({ x: first.x, y: first.y });
           }
         }
       }
     }
-    
+
     return points;
   }
 
@@ -2937,10 +2940,10 @@ function setDebugMode(enabled) {
     const mt3 = mt2 * mt;
     const t2 = t * t;
     const t3 = t2 * t;
-    
+
     return {
-      x: mt3*x0 + 3*mt2*t*x1 + 3*mt*t2*x2 + t3*x3,
-      y: mt3*y0 + 3*mt2*t*y1 + 3*mt*t2*y2 + t3*y3
+      x: mt3 * x0 + 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 * x3,
+      y: mt3 * y0 + 3 * mt2 * t * y1 + 3 * mt * t2 * y2 + t3 * y3,
     };
   }
 
@@ -2952,10 +2955,10 @@ function setDebugMode(enabled) {
     const mt = 1 - t;
     const mt2 = mt * mt;
     const t2 = t * t;
-    
+
     return {
-      x: mt2*x0 + 2*mt*t*x1 + t2*x2,
-      y: mt2*y0 + 2*mt*t*y1 + t2*y2
+      x: mt2 * x0 + 2 * mt * t * x1 + t2 * x2,
+      y: mt2 * y0 + 2 * mt * t * y1 + t2 * y2,
     };
   }
 
@@ -2999,10 +3002,10 @@ function setDebugMode(enabled) {
     overrideEndShapeFunction();
     overrideBeginContourFunction();
     overrideEndContourFunction();
-    
+
     // Text functions
     overrideTextFunction();
-    
+
     // Add vertexWidth function to window
     window.vertexWidth = vertexWidth;
   }
@@ -3047,7 +3050,7 @@ function setDebugMode(enabled) {
     window.endShape = _originalEndShapeFunc;
     window.beginContour = _originalBeginContourFunc;
     window.endContour = _originalEndContourFunc;
-    
+
     // Restore text functions
     window.text = _originalTextFunc;
   }
@@ -4699,6 +4702,9 @@ function setDebugMode(enabled) {
       case "dst":
         p5embroidery.exportDST(filename);
         break;
+      case "pes":
+        p5embroidery.exportPES(filename);
+        break;
       case "svg":
         p5embroidery.exportSVG(filename);
         break;
@@ -4858,6 +4864,153 @@ function setDebugMode(enabled) {
   };
 
   /**
+   * Exports the recorded embroidery data as a PES file.
+   * @method exportPES
+   * @for p5
+   * @param {String} [filename='embroideryPattern.pes'] - Output filename
+   * @example
+   *
+   *
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord(this);
+   *   // Draw embroidery patterns
+   *   endRecord();
+   *   exportPES('pattern.pes');
+   * }
+   *
+   *
+   */
+
+  // PES Export for p5.embroidery
+  // Matches DST export structure and calling pattern
+
+  // ===== MAIN EXPORT FUNCTION - Matches DST structure exactly =====
+  p5embroidery.exportPES = function (filename = "embroideryPattern.pes") {
+    const points = [];
+    const pesWriter = new PESWriter();
+
+    if (_DEBUG) console.log("=== Starting PES Export ===");
+    if (_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
+    if (_DEBUG) console.log("Stitch data:", _stitchData);
+
+    let currentThreadIndex = -1;
+
+    for (let threadIndex = 0; threadIndex < _stitchData.threads.length; threadIndex++) {
+      const thread = _stitchData.threads[threadIndex];
+
+      // Skip threads with no stitches
+      if (thread.runs.length === 0 || !thread.runs.some((run) => run.length > 0)) {
+        continue;
+      }
+
+      // DIFFERENCE FROM DST: We track color per stitch rather than using colorChange flag
+      // PES needs the actual color value for palette matching
+      const threadColor = thread.color || 0xff0000; // Default red
+
+      // Convert color from p5 color object to hex if needed
+      let hexColor;
+      if (typeof threadColor === "object") {
+        // p5.Color object - extract RGB
+        hexColor = (Math.round(threadColor.r) << 16) | (Math.round(threadColor.g) << 8) | Math.round(threadColor.b);
+      } else if (typeof threadColor === "string") {
+        // Hex string like "#FF0000"
+        hexColor = parseInt(threadColor.replace("#", ""), 16);
+      } else {
+        // Already a number
+        hexColor = threadColor;
+      }
+
+      if (_DEBUG && currentThreadIndex !== threadIndex) {
+        console.log(`Thread ${threadIndex} color:`, hexColor.toString(16));
+      }
+
+      currentThreadIndex = threadIndex;
+
+      for (const run of thread.runs) {
+        // Handle trim commands (similar to DST)
+        if (run.length === 1 && run[0].command === "trim") {
+          if (_DEBUG) {
+            console.log("Trim command at:", run[0].x, run[0].y);
+          }
+
+          // Validate trim command coordinates
+          if (run[0].x == null || run[0].y == null || !isFinite(run[0].x) || !isFinite(run[0].y)) {
+            if (_DEBUG) console.warn("Skipping invalid trim command with null/NaN coordinates:", run[0]);
+            continue;
+          }
+
+          // Convert from mm to 0.1mm for PES format (same as DST)
+          points.push({
+            x: run[0].x * 10,
+            y: run[0].y * 10,
+            color: hexColor,
+            jump: true,
+            trim: true,
+          });
+          continue;
+        }
+
+        // Normal stitches
+        if (_DEBUG) console.log("=== New Stitch Run ===");
+        if (_DEBUG) console.log("Run:", run);
+
+        for (const stitch of run) {
+          // Validate stitch coordinates before processing
+          if (stitch.x == null || stitch.y == null || !isFinite(stitch.x) || !isFinite(stitch.y)) {
+            if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
+            continue;
+          }
+
+          // Convert from mm to 0.1mm for PES format
+          points.push({
+            x: stitch.x * 10,
+            y: stitch.y * 10,
+            color: hexColor,
+            command: stitch.command,
+            jump: stitch.command === "jump",
+          });
+        }
+      }
+    }
+
+    // Skip export if no points
+    if (points.length === 0) {
+      console.warn("No embroidery points to export");
+      return;
+    }
+
+    if (_DEBUG) {
+      console.log("=== Final Points Array ===");
+      console.log("Total points:", points.length);
+      console.log("First point:", points[0]);
+      console.log("Last point:", points[points.length - 1]);
+
+      // Log bounding box
+      let minX = Infinity,
+        maxX = -Infinity;
+      let minY = Infinity,
+        maxY = -Infinity;
+      for (const point of points) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+      console.log("Bounding box (0.1mm):", {
+        minX,
+        maxX,
+        minY,
+        maxY,
+        width: maxX - minX,
+        height: maxY - minY,
+      });
+    }
+
+    pesWriter.savePES(points, "EmbroideryPattern", filename);
+  };
+
+  /**
    * Exports the recorded embroidery data as a DST file.
    * @method exportDST
    * @for p5
@@ -4875,6 +5028,7 @@ function setDebugMode(enabled) {
    *
    *
    */
+
   p5embroidery.exportDST = function (filename = "embroideryPattern.dst") {
     const points = [];
     const dstWriter = new DSTWriter();
@@ -6110,6 +6264,7 @@ function setDebugMode(enabled) {
   global.endRecord = p5embroidery.endRecord;
   global.exportEmbroidery = p5embroidery.exportEmbroidery;
   global.exportDST = p5embroidery.exportDST;
+  global.exportPES = p5embroidery.exportPES;
   global.exportGcode = p5embroidery.exportGcode;
   global.exportSVG = p5embroidery.exportSVG;
   global.exportPNG = p5embroidery.exportPNG;

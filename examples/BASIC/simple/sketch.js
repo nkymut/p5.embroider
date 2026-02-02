@@ -21,13 +21,13 @@ function setup() {
   exportDstButton.mousePressed(() => {
     exportEmbroidery("simple.dst");
   });
-  exportDstButton.position(0, height + 30);
+  exportDstButton.position(90, height + 30);
 
-  let exportGcodeButton = createButton("Export Gcode");
-  exportGcodeButton.mousePressed(() => {
-    exportGcode("simple.gcode");
+  let exportPesButton = createButton("Export PES");
+  exportPesButton.mousePressed(() => {
+    exportEmbroidery("simple.pes");
   });
-  exportGcodeButton.position(90, height + 30);
+  exportPesButton.position(0, height + 30);
 
   //noLoop(); // Stop the draw loop after exporting
 }
@@ -41,10 +41,10 @@ function draw() {
 
   beginRecord(this);
   // Draw a 100mm square
-  setStitch(0.1, 0.2, 0);
+  setStitch(1, 2, 0);
   setStrokeSettings({
-    stitchLength: 0.5,
-    stitchWidth: 0.2,
+    stitchLength: 3,
+    stitchWidth: 1,
     noise: 0.0,
     stitchInterpolate: true,
   });
@@ -65,7 +65,7 @@ function draw() {
 
   trimThread();
 
-  // Stop recording and export as DST
+  // Stop recording and export
   endRecord();
 }
 

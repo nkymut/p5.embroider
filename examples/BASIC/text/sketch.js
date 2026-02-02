@@ -2,16 +2,14 @@ let font;
 let drawMode = "realistic";
 
 function preload() {
-  font = loadFont('assets/SourceSansPro-Regular.otf');
+  font = loadFont("assets/SourceSansPro-Regular.otf");
 }
-
 
 function setup() {
   createCanvas(mmToPixel(100), mmToPixel(120));
-  
+
   // Load a font
   //font = loadFont('./assets/CloisterBlack.ttf');
-  
 
   let drawModeStitchButton = createButton("Draw Mode: Stitch");
   drawModeStitchButton.mousePressed(() => {
@@ -48,7 +46,7 @@ function draw() {
   setDrawMode(drawMode);
 
   beginRecord(this);
-  
+
   // Configure embroidery settings
   setStitch(0.1, 0.5, 0);
   setFillSettings({
@@ -58,15 +56,14 @@ function draw() {
     noise: 0.0,
     stitchInterpolate: true,
   });
-  
 
   textFont(font);
   textSize(80);
   noStroke();
   strokeWeight(1);
   fill("#39c5bb");
-  text('p5', 5, 80);
-  
+  text("p5", 5, 80);
+
   // End recording
   endRecord();
 }
@@ -81,4 +78,3 @@ function keyPressed() {
       break;
   }
 }
-
