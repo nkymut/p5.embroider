@@ -28,20 +28,20 @@ export class DSTWriter {
   }
 
   encodeRecord(x, y, flag) {
-    if (_DEBUG_DST) {
-      console.log("Encoding record:", {
-        x,
-        y,
-        flag:
-          flag === DSTWriter.JUMP
-            ? "JUMP"
-            : flag === DSTWriter.STITCH
-              ? "STITCH"
-              : flag === DSTWriter.COLOR_CHANGE
-                ? "COLOR_CHANGE"
-                : flag,
-      });
-    }
+    // if (_DEBUG_DST) {
+    //   console.log("Encoding record:", {
+    //     x,
+    //     y,
+    //     flag:
+    //       flag === DSTWriter.JUMP
+    //         ? "JUMP"
+    //         : flag === DSTWriter.STITCH
+    //           ? "STITCH"
+    //           : flag === DSTWriter.COLOR_CHANGE
+    //             ? "COLOR_CHANGE"
+    //             : flag,
+    //   });
+    // }
 
     y = -y; // DST uses a different coordinate system
     let b0 = 0,
@@ -148,14 +148,14 @@ export class DSTWriter {
 
   move(x, y, flag = DSTWriter.STITCH) {
     if (x !== null && y !== null) {
-      if (_DEBUG_DST) {
-        console.log("Move called with:", {
-          targetX: x,
-          targetY: y,
-          flag: flag === DSTWriter.JUMP ? "JUMP" : flag === DSTWriter.STITCH ? "STITCH" : flag,
-          currentPosition: { x: this.currentX, y: this.currentY },
-        });
-      }
+      // if (_DEBUG_DST) {
+      //   console.log("Move called with:", {
+      //     targetX: x,
+      //     targetY: y,
+      //     flag: flag === DSTWriter.JUMP ? "JUMP" : flag === DSTWriter.STITCH ? "STITCH" : flag,
+      //     currentPosition: { x: this.currentX, y: this.currentY },
+      //   });
+      // }
 
       let dx = Math.round(x) - this.currentX;
       let dy = Math.round(y) - this.currentY;
@@ -187,13 +187,13 @@ export class DSTWriter {
       this.minY = Math.min(this.minY, this.currentY);
       this.maxY = Math.max(this.maxY, this.currentY);
 
-      if (_DEBUG_DST) {
-        console.log("After move:", {
-          newPosition: { x: this.currentX, y: this.currentY },
-          dx: dx,
-          dy: dy,
-        });
-      }
+      // if (_DEBUG_DST) {
+      //   console.log("After move:", {
+      //     newPosition: { x: this.currentX, y: this.currentY },
+      //     dx: dx,
+      //     dy: dy,
+      //   });
+      // }
     }
   }
 
@@ -325,9 +325,9 @@ export class DSTWriter {
     // Generate stitches using transformed points
     for (let i = 0; i < transformedPoints.length; i++) {
       const point = transformedPoints[i];
-      if (_DEBUG_DST) {
-        console.log("Processing point:", i, point);
-      }
+      // if (_DEBUG_DST) {
+      //   console.log("Processing point:", i, point);
+      // }
 
       // Handle color change
       if (point.colorChange) {
@@ -354,12 +354,12 @@ export class DSTWriter {
         // First, ensure we're at the correct position
         this.move(point.x, point.y, DSTWriter.JUMP);
 
-        if (_DEBUG_DST) {
-          console.log("After move to trim position:", {
-            targetPosition: { x: point.x, y: point.y },
-            actualPosition: { x: this.currentX, y: this.currentY },
-          });
-        }
+        // if (_DEBUG_DST) {
+        //   console.log("After move to trim position:", {
+        //     targetPosition: { x: point.x, y: point.y },
+        //     actualPosition: { x: this.currentX, y: this.currentY },
+        //   });
+        // }
 
         // Generate a zigzag pattern of 3 jumps that embroidery machines recognize as a trim command
         // These are small relative movements from the current position
@@ -389,13 +389,13 @@ export class DSTWriter {
       const flag = i === 0 || point.jump ? DSTWriter.JUMP : DSTWriter.STITCH;
       this.move(point.x, point.y, flag);
 
-      if (_DEBUG_DST) {
-        console.log("After move:", {
-          point: i,
-          position: { x: this.currentX, y: this.currentY },
-          flag: flag === DSTWriter.JUMP ? "JUMP" : "STITCH",
-        });
-      }
+      // if (_DEBUG_DST) {
+      //   console.log("After move:", {
+      //     point: i,
+      //     position: { x: this.currentX, y: this.currentY },
+      //     flag: flag === DSTWriter.JUMP ? "JUMP" : "STITCH",
+      //   });
+      // }
     }
 
     // Add end record

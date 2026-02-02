@@ -32,18 +32,17 @@ function setup() {
   });
   exportDstButton.position(0, height + 60);
 
+  let exportPesButton = createButton("Export PES");
+  exportPesButton.mousePressed(() => {
+    exportEmbroidery("colourExample.pes");
+  });
+  exportPesButton.position(200, height + 60);
+
   let exportGcodeButton = createButton("Export Gcode");
   exportGcodeButton.mousePressed(() => {
     exportGcode("colorExample.gcode");
   });
   exportGcodeButton.position(90, height + 60);
-
-  let exportPesButton = createButton("Export PES");
-  exportPesButton.mousePressed(() => {
-    console.log('yaaay');
-    exportEmbroidery("colourExample.pes");
-  });
-  exportPesButton.position(200, height + 60);
 
   noLoop();
 }

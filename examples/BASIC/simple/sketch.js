@@ -17,17 +17,17 @@ function setup() {
     drawMode = "p5";
   });
 
-  let exportPesButton = createButton("Export PES");
-  exportPesButton.mousePressed(() => {
-    exportEmbroidery("simple.pes");
-  });
-  exportPesButton.position(0, height + 30);
-
   let exportDstButton = createButton("Export DST");
   exportDstButton.mousePressed(() => {
     exportEmbroidery("simple.dst");
   });
   exportDstButton.position(90, height + 30);
+
+  let exportPesButton = createButton("Export PES");
+  exportPesButton.mousePressed(() => {
+    exportEmbroidery("simple.pes");
+  });
+  exportPesButton.position(0, height + 30);
 
   //noLoop(); // Stop the draw loop after exporting
 }
