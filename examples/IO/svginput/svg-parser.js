@@ -19,6 +19,46 @@ if (typeof window !== "undefined") {
   window.getSvgParserDebug = getSvgParserDebug;
 }
 
+// Deep-clone an EmbroiderPart instance (used by undo system)
+function clonePart(part) {
+  const clone = new EmbroiderPart({
+    id: part.id,
+    name: part.name,
+    elementType: part.elementType,
+    pathData: part.pathData,
+    shapeParams: part.shapeParams ? JSON.parse(JSON.stringify(part.shapeParams)) : null,
+    closed: part.closed,
+    visible: part.visible,
+    strokeSettings: JSON.parse(JSON.stringify(part.strokeSettings)),
+    fillSettings: JSON.parse(JSON.stringify(part.fillSettings)),
+    selected: part.selected,
+  });
+  clone.tx = part.tx;
+  clone.ty = part.ty;
+  clone.rotation = part.rotation;
+  clone.sx = part.sx;
+  clone.sy = part.sy;
+  // Copy extra properties used by outline system
+  if (part.addToOutline !== undefined) clone.addToOutline = part.addToOutline;
+  if (part.isOutline !== undefined) clone.isOutline = part.isOutline;
+  if (part.sourcePartId !== undefined) clone.sourcePartId = part.sourcePartId;
+  if (part.outlineOffset !== undefined) clone.outlineOffset = part.outlineOffset;
+  return clone;
+}
+
+/** Squared distance from point (px,py) to line segment (ax,ay)-(bx,by). */
+function _ptSegDistSq(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return (px - ax) * (px - ax) + (py - ay) * (py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const projX = ax + t * dx;
+  const projY = ay + t * dy;
+  return (px - projX) * (px - projX) + (py - projY) * (py - projY);
+}
+
 // Editable embroidery part with transform state for interactive editing
 class EmbroiderPart {
   constructor(base) {
@@ -379,6 +419,72 @@ class EmbroiderPart {
       }
     }
     return { type: null };
+  }
+
+  /**
+   * Path-proximity hit test in pixel domain.
+   * Returns true if the mouse is within `tolerancePx` screen-pixels of any
+   * path segment (or shape edge) of this part.
+   */
+  hitTestPathPixel(mouseX, mouseY, params, tolerancePx = 8) {
+    // 1. Convert mouse pixel to model (SVG) coordinates
+    const m = this._pixelToModel(mouseX, mouseY, params);
+    if (!m) return false;
+
+    // 2. Undo part's transform to get into local (untransformed) coordinates
+    const frame = this.computeFrame();
+    const cx0 = frame.base.cx0;
+    const cy0 = frame.base.cy0;
+    const tx = this.tx || 0;
+    const ty = this.ty || 0;
+    const sx = this.sx || 1;
+    const sy = this.sy || 1;
+    const rot = this.rotation || 0;
+
+    // Translate: subtract center + translation offset
+    let lx = m.modelX - (cx0 + tx);
+    let ly = m.modelY - (cy0 + ty);
+    // Un-rotate
+    if (rot !== 0) {
+      const cosA = Math.cos(-rot);
+      const sinA = Math.sin(-rot);
+      const rx = lx * cosA - ly * sinA;
+      const ry = lx * sinA + ly * cosA;
+      lx = rx;
+      ly = ry;
+    }
+    // Un-scale
+    if (sx !== 0) lx /= sx;
+    if (sy !== 0) ly /= sy;
+    // Re-add base center to get back into path-data coordinates
+    lx += cx0;
+    ly += cy0;
+
+    // 3. Compute tolerance in model-space units
+    //    (approximate: use the average scale to convert pixel tolerance to model space)
+    const { scaleFactor, previewScale } = params;
+    const pixelsPerModelUnit = mmToPixel(scaleFactor) * previewScale * Math.max(Math.abs(sx), Math.abs(sy));
+    const toleranceModel = pixelsPerModelUnit > 0 ? tolerancePx / pixelsPerModelUnit : 2;
+
+    // 4. Get the path points and check distance to each segment
+    const points = typeof getPathPoints === "function" ? getPathPoints(this.pathData) : [];
+    if (points.length < 2) return false;
+
+    const tSq = toleranceModel * toleranceModel;
+    for (let i = 0; i < points.length - 1; i++) {
+      if (_ptSegDistSq(lx, ly, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y) <= tSq) {
+        return true;
+      }
+    }
+    // If closed shape, also check the closing segment
+    if (this.closed && points.length > 2) {
+      const last = points[points.length - 1];
+      const first = points[0];
+      if (_ptSegDistSq(lx, ly, last.x, last.y, first.x, first.y) <= tSq) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Convert pixel to model (SVG) coordinates by inverting preview and output layout
@@ -757,6 +863,9 @@ function parseCSSStyles(svgDoc) {
 function loadSVGFromTextArea(append = false) {
   const svgText = svgInput.value().trim();
   if (!svgText) return;
+
+  // Save state before loading (undo system lives in sketch.js)
+  if (typeof pushUndo === "function") pushUndo();
 
   svgDebugLog("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
 

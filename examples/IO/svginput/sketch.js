@@ -61,6 +61,79 @@ let editDrag = {
   baseCy0: 0,
 };
 
+// ── Undo system ──────────────────────────────────────────────
+const undoStack = [];
+const redoStack = [];
+const MAX_UNDO = 50;
+let undoSnapshotPending = false;
+let isRestoring = false; // true while restoring a snapshot (suppresses undo recording)
+
+function captureSnapshot() {
+  return {
+    parts: svgParts.map((p) => clonePart(p)),
+    selectedPartIndices: [...selectedPartIndices],
+    globalSettings: JSON.parse(JSON.stringify(globalSettings)),
+    boundingBox: { ...boundingBox },
+  };
+}
+
+/** Push current state onto the undo stack (call BEFORE mutating). */
+function pushUndo() {
+  if (isRestoring) return; // Don't record while restoring
+  undoStack.push(captureSnapshot());
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  // Any new action invalidates the redo history
+  redoStack.length = 0;
+}
+
+/** Coalesced push – only records once per gesture (drag / slider). */
+function pushUndoOnce() {
+  if (isRestoring) return; // Don't record while restoring
+  if (!undoSnapshotPending) {
+    pushUndo();
+    undoSnapshotPending = true;
+  }
+}
+
+function resetUndoPending() {
+  undoSnapshotPending = false;
+}
+
+function restoreSnapshot(snapshot) {
+  isRestoring = true; // Suppress undo recording from UI callbacks
+  svgParts = snapshot.parts;
+  selectedPartIndices = snapshot.selectedPartIndices;
+  Object.assign(globalSettings, snapshot.globalSettings);
+  Object.assign(boundingBox, snapshot.boundingBox);
+
+  // Refresh all UI
+  updateSVGPartsList();
+  updateInfoTable();
+  if (selectedPartIndices.length === 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]]);
+  } else if (selectedPartIndices.length === 0) {
+    updatePartSettings(null);
+  }
+  redraw();
+  isRestoring = false;
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  // Save current state to redo stack before restoring
+  redoStack.push(captureSnapshot());
+  restoreSnapshot(undoStack.pop());
+  console.log(`Undo (${undoStack.length} left)`);
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(captureSnapshot());
+  restoreSnapshot(redoStack.pop());
+  console.log(`Redo (${redoStack.length} left)`);
+}
+// ── End undo system ──────────────────────────────────────────
+
 function setup() {
   // Create canvas
   let canvas = createCanvas(400, 400);
@@ -526,8 +599,8 @@ function draw() {
     return;
   }
 
-  // Hover hit-test updates
-  //updateHoverHitTest();
+  // Hover hit-test updates (enables click-to-select on canvas)
+  updateHoverHitTest();
 
   // Setup preview viewport before beginRecord
   setupPreviewViewport({
@@ -603,9 +676,7 @@ function draw() {
     canvasHeight: height,
   });
 
-  // Remove preview-only transforms
-  pop();
-  // End preview viewport
+  // End preview viewport (pops the push from setupPreviewViewport)
   endPreviewViewport();
 
   // UI overlay (drawn in screen space)
@@ -1111,19 +1182,47 @@ function mousePressed() {
             pickedGroup = true;
           }
         }
-        // Body move (requires 'm')
-        if (!pickedGroup && moveKeyHeld) {
-          if (
-            mouseX >= gx - wPix / 2 &&
-            mouseX <= gx + wPix / 2 &&
-            mouseY >= gy - hPix / 2 &&
-            mouseY <= gy + hPix / 2
-          ) {
-            groupDrag.type = "move";
-            pickedGroup = true;
+        // Body move: allow if 'm' held or if clicking directly on any selected part's path
+        if (!pickedGroup) {
+          let onGroupPath = false;
+          if (!moveKeyHeld) {
+            const gParams = {
+              scaleFactor,
+              offsetX,
+              offsetY,
+              centerOffsetX,
+              centerOffsetY,
+              canvasWidth: width,
+              canvasHeight: height,
+              previewScale,
+              previewPanX,
+              previewPanY,
+            };
+            const tol = Math.max(6, 8 / previewScale);
+            for (const si of selectedPartIndices) {
+              const sp = svgParts[si];
+              if (sp && sp.visible !== false && typeof sp.hitTestPathPixel === "function") {
+                if (sp.hitTestPathPixel(mouseX, mouseY, gParams, tol)) {
+                  onGroupPath = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (moveKeyHeld || onGroupPath) {
+            if (
+              mouseX >= gx - wPix / 2 - 10 &&
+              mouseX <= gx + wPix / 2 + 10 &&
+              mouseY >= gy - hPix / 2 - 10 &&
+              mouseY <= gy + hPix / 2 + 10
+            ) {
+              groupDrag.type = "move";
+              pickedGroup = true;
+            }
           }
         }
         if (pickedGroup) {
+          pushUndoOnce(); // Save state before group drag
           // Initialize group drag snapshot
           const toModel = (mx, my) => {
             const cx = width / 2,
@@ -1184,29 +1283,33 @@ function mousePressed() {
         (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
       const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
       const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
-      const picked = part.mousePressedPixel(
-        mouseX,
-        mouseY,
-        {
-          scaleFactor,
-          offsetX,
-          offsetY,
-          centerOffsetX,
-          centerOffsetY,
-          canvasWidth: width,
-          canvasHeight: height,
-          previewScale,
-          previewPanX,
-          previewPanY,
-        },
-        { allowBodyMove: moveKeyHeld },
-      );
+      const layoutParams = {
+        scaleFactor,
+        offsetX,
+        offsetY,
+        centerOffsetX,
+        centerOffsetY,
+        canvasWidth: width,
+        canvasHeight: height,
+        previewScale,
+        previewPanX,
+        previewPanY,
+      };
+      // Allow body move if 'm' held OR if clicking directly on the path
+      const onPath =
+        typeof part.hitTestPathPixel === "function" &&
+        part.hitTestPathPixel(mouseX, mouseY, layoutParams, Math.max(6, 8 / previewScale));
+      const picked = part.mousePressedPixel(mouseX, mouseY, layoutParams, {
+        allowBodyMove: moveKeyHeld || onPath,
+      });
       if (picked) {
         if (selectedPartIndices.length === 1) {
+          pushUndoOnce(); // Save state before single-part drag
           editDrag.active = true;
           updatePartSettings(svgParts[selectedPartIndices[0]]);
           return false;
         } else {
+          pushUndoOnce(); // Save state before group drag (alt path)
           // Initialize group drag
           const modelStart = svgParts[idx]._pixelToModel
             ? svgParts[idx]._pixelToModel(mouseX, mouseY, {
@@ -1258,6 +1361,73 @@ function mousePressed() {
       }
     }
   }
+  // ── Click-to-select: if no drag/handle was picked, try selecting a part ──
+  if (isPreviewInteracting && !editDrag.active && !groupDrag.active) {
+    const clickedIndex = findPartAtPixel(mouseX, mouseY);
+
+    if (clickedIndex >= 0) {
+      if (keyIsDown(SHIFT)) {
+        // Shift+click: toggle multi-select
+        const pos = selectedPartIndices.indexOf(clickedIndex);
+        if (pos >= 0) {
+          selectedPartIndices.splice(pos, 1);
+          svgParts[clickedIndex].selected = false;
+        } else {
+          selectedPartIndices.push(clickedIndex);
+          svgParts[clickedIndex].selected = true;
+        }
+      } else {
+        // Plain click: single-select
+        svgParts.forEach((p) => (p.selected = false));
+        selectedPartIndices = [clickedIndex];
+        svgParts[clickedIndex].selected = true;
+      }
+      // Update UI panels
+      if (selectedPartIndices.length === 1) {
+        updatePartSettings(svgParts[selectedPartIndices[0]]);
+      } else {
+        updatePartSettings(null);
+      }
+      updateSVGPartsList();
+      updateInfoTable();
+
+      // Immediately initiate a move drag so the user can drag-to-move in one gesture
+      if (selectedPartIndices.length === 1 && !keyIsDown(SHIFT)) {
+        const part = svgParts[selectedPartIndices[0]];
+        const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+        const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+        const scaleFactor = Math.min(scaleXmm, scaleYmm);
+        const offsetX =
+          (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+        const offsetY =
+          (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+        const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+        const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+        const layoutParams = {
+          scaleFactor,
+          offsetX,
+          offsetY,
+          centerOffsetX,
+          centerOffsetY,
+          canvasWidth: width,
+          canvasHeight: height,
+          previewScale,
+          previewPanX,
+          previewPanY,
+        };
+        pushUndoOnce();
+        part.mousePressedPixel(mouseX, mouseY, layoutParams, { allowBodyMove: true });
+        editDrag.active = true;
+      }
+
+      redraw();
+      return false;
+    } else {
+      // Clicked empty canvas space: deselect all
+      clearSelection();
+    }
+  }
+
   // Otherwise, start panning only if inside canvas; don't block UI inputs
   if (isPreviewInteracting) {
     startPreviewPan();
@@ -1278,6 +1448,7 @@ function mouseReleased() {
     if (part && typeof part.mouseReleased === "function") part.mouseReleased();
   }
   groupDrag.active = false;
+  resetUndoPending(); // Allow next gesture to create a new undo snapshot
 }
 
 function mouseWheel(event) {
@@ -1294,6 +1465,9 @@ function mouseWheel(event) {
 function updateHoverHitTest() {
   hoverPartIndex = -1;
   if (svgParts.length === 0) return;
+
+  const { previewScale, previewPanX, previewPanY } = getViewportVars();
+
   // Compute draw-time scale and offset (mirror of draw())
   const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
   const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
@@ -1336,6 +1510,53 @@ function updateHoverHitTest() {
       break;
     }
   }
+
+  // Update cursor to indicate clickable parts
+  const canvasEl = document.querySelector("#canvas-wrapper canvas");
+  if (canvasEl) {
+    canvasEl.style.cursor = hoverPartIndex >= 0 ? "pointer" : "default";
+  }
+}
+
+/** Hit-test all parts at a given pixel coordinate using path proximity.
+ *  Returns the topmost part index whose path is within tolerance, or -1. */
+function findPartAtPixel(mx, my) {
+  if (svgParts.length === 0) return -1;
+
+  const { previewScale, previewPanX, previewPanY } = getViewportVars();
+
+  const scaleXmm = (globalSettings.outputWidth * 0.9) / boundingBox.width;
+  const scaleYmm = (globalSettings.outputHeight * 0.9) / boundingBox.height;
+  const scaleFactor = Math.min(scaleXmm, scaleYmm);
+  const offsetX = (globalSettings.outputWidth - boundingBox.width * scaleFactor) / 2 - boundingBox.minX * scaleFactor;
+  const offsetY = (globalSettings.outputHeight - boundingBox.height * scaleFactor) / 2 - boundingBox.minY * scaleFactor;
+  const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
+  const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
+
+  const params = {
+    scaleFactor,
+    offsetX,
+    offsetY,
+    centerOffsetX,
+    centerOffsetY,
+    canvasWidth: width,
+    canvasHeight: height,
+    previewScale,
+    previewPanX,
+    previewPanY,
+  };
+
+  const tolerancePx = Math.max(6, 8 / previewScale);
+
+  // Iterate in reverse (topmost first); select first part whose path is near the click
+  for (let i = svgParts.length - 1; i >= 0; i--) {
+    const part = svgParts[i];
+    if (!part || part.visible === false) continue;
+    if (typeof part.hitTestPathPixel === "function" && part.hitTestPathPixel(mx, my, params, tolerancePx)) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 function applyPartSettings(part) {
@@ -2125,6 +2346,7 @@ function updatePartSettings(part, propagateToSelection = false) {
   const resetBtn = createButton("Reset Transform");
   resetBtn.parent(btnRow);
   resetBtn.mousePressed(() => {
+    pushUndo(); // Save state before reset
     part.tx = 0;
     part.ty = 0;
     part.sx = 1;
@@ -2869,6 +3091,7 @@ function updateOutlinesForOffset() {
 }
 
 function togglePartOutline(part, shouldHaveOutline) {
+  pushUndo(); // Save state before outline toggle
   if (shouldHaveOutline) {
     createOutlineForPart(part);
   } else {
@@ -2929,6 +3152,7 @@ function exportOutlineSVG() {
 }
 
 function clearCanvas() {
+  pushUndo(); // Save state before clearing
   svgParts = [];
   selectedPartIndices = [];
   svgInput.value("");
@@ -3029,17 +3253,25 @@ function createSliderControl(container, label, min, max, defaultValue, step, cal
   };
 
   slider.input(() => {
+    pushUndoOnce(); // Undo: coalesce while slider is being dragged
     const value = slider.value();
     valueInput.value(value.toFixed(1));
     callback(value);
   });
 
+  // Reset undo coalescing when slider interaction ends
+  slider.elt.addEventListener("mouseup", resetUndoPending);
+  slider.elt.addEventListener("touchend", resetUndoPending);
+
   valueInput.input(() => {
+    pushUndoOnce();
     const value = parseFloat(valueInput.value());
     if (!isNaN(value)) {
       updateValue(value);
     }
   });
+
+  valueInput.elt.addEventListener("change", resetUndoPending);
 
   return { slider, valueDisplay: valueInput };
 }
@@ -3057,10 +3289,13 @@ function createColorControl(container, label, defaultValue, callback) {
   colorPicker.parent(controlDiv);
 
   colorPicker.input(() => {
+    pushUndoOnce(); // Undo: coalesce while picker is open
     const c = colorPicker.color();
     const colorArray = [red(c), green(c), blue(c)];
     callback(colorArray);
   });
+
+  colorPicker.elt.addEventListener("change", resetUndoPending);
 
   return colorPicker;
 }
@@ -3084,6 +3319,7 @@ function createSelectControl(container, label, options, defaultValue, callback) 
   select.selected(options[defaultValue]);
 
   select.changed(() => {
+    pushUndo(); // Undo: select change is a discrete action
     const selectedKey = Object.keys(options).find((key) => options[key] === select.value());
     callback(selectedKey);
   });
@@ -3106,6 +3342,7 @@ function createCheckboxControl(container, label, defaultValue, callback) {
   labelElem.elt.setAttribute("for", label.toLowerCase().replace(/\s+/g, "-"));
 
   checkbox.changed(() => {
+    pushUndo(); // Undo: checkbox toggle is a discrete action
     callback(checkbox.checked());
   });
 
@@ -3170,6 +3407,19 @@ function keyPressed() {
   // Ignore global keybinds when editing a form element
   const ae = document.activeElement;
   if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)) return;
+
+  // Cmd+Z / Ctrl+Z  =  Undo
+  // Cmd+Shift+Z / Ctrl+Shift+Z  =  Redo
+  const metaOrCtrl = keyIsDown(91) || keyIsDown(93) || keyIsDown(17); // 91/93 = Cmd L/R, 17 = Ctrl
+  if (metaOrCtrl && (key === "z" || key === "Z")) {
+    if (keyIsDown(SHIFT)) {
+      redo();
+    } else {
+      undo();
+    }
+    return false; // prevent default
+  }
+
   if (key === "l" || key === "L") {
     loadSVGFromTextArea();
   } else if (key === "c" || key === "C") {
