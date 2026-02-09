@@ -1,0 +1,31 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #2a2a2a;
+}
+
+canvas {
+  display: block;
+}
+
+button {
+  margin: 5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: #4a4a4a;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+button:hover {
+  background-color: #5a5a5a;
+}
+
+.controls {
+  padding: 10px;
+  color: white;
+  font-family: Arial, sans-serif;
+}

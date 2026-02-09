@@ -148,6 +148,7 @@ function setDebugMode(enabled) {
     LINES: "lines", //Deprecated: use PARALLEL instead
     PARALLEL: "parallel",
     SASHIKO: "sashiko",
+    VERTEX: "vertex", 
   };
 
   // Add fill mode constants
@@ -1143,6 +1144,8 @@ function setDebugMode(enabled) {
           return parallelLineStitchFromPath(pathPoints, strokeSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, strokeSettings);
+        case STROKE_MODE.VERTEX:
+          return vertexStitchFromPath(pathPoints, strokeSettings);
         default:
           // For simple paths, use the convertPathToStitches function
           return convertPathToStitches(pathPoints, strokeSettings);
@@ -3203,6 +3206,8 @@ function setDebugMode(enabled) {
           return parallelLineStitch(x1, y1, x2, y2, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitch(x1, y1, x2, y2, stitchSettings);
+        case STROKE_MODE.VERTEX:
+          return vertexStitch(x1, y1, x2, y2, stitchSettings);
         default:
           return straightLineStitch(x1, y1, x2, y2, stitchSettings);
       }
@@ -3248,6 +3253,10 @@ function setDebugMode(enabled) {
         return parallelLineStitchFromPath(pathPoints, stitchSettings);
       case STROKE_MODE.SASHIKO:
         return sashikoStitchFromPath(pathPoints, stitchSettings);
+      case STROKE_MODE.VERTEX:
+        // Vertex mode doesn't use joins - direct 1:1 mapping
+        if (_DEBUG) console.log("Vertex mode: skipping joins, using direct mapping");
+        return vertexStitchFromPath(pathPoints, stitchSettings);
       default:
         return straightLineStitchFromPath(pathPoints, stitchSettings);
     }
@@ -3707,6 +3716,8 @@ function setDebugMode(enabled) {
           return parallelLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.VERTEX:
+          return vertexStitchFromPath(pathPoints, stitchSettings);
         default:
           // For simple straight stitches, we'll need to break this down segment by segment
           const result = [];
@@ -4309,6 +4320,49 @@ function setDebugMode(enabled) {
 
     if (_DEBUG) console.log("Generated straight line stitches:", stitches);
     return stitches;
+  }
+
+  /**
+   * Creates stitches directly from vertex positions (1:1 mapping).
+   * Each vertex becomes exactly one stitch point without interpolation.
+   * @method vertexStitch
+   * @private
+   * @param {number} x1 - Starting x-coordinate in mm
+   * @param {number} y1 - Starting y-coordinate in mm
+   * @param {number} x2 - Ending x-coordinate in mm
+   * @param {number} y2 - Ending y-coordinate in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function vertexStitch(x1, y1, x2, y2, stitchSettings) {
+    // Direct 1:1 mapping - simply return both points as stitches
+    if (_DEBUG) console.log("Generated vertex stitches (direct mapping):", [{ x: x1, y: y1 }, { x: x2, y: y2 }]);
+    return [
+      { x: x1, y: y1 },
+      { x: x2, y: y2 }
+    ];
+  }
+
+  /**
+   * Creates stitches directly from path vertices (1:1 mapping).
+   * Each vertex in the path becomes exactly one stitch point without interpolation.
+   * @method vertexStitchFromPath
+   * @private
+   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Object} stitchSettings - Settings for the stitches
+   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
+   */
+  function vertexStitchFromPath(pathPoints, stitchSettings) {
+    if (!pathPoints || pathPoints.length < 1) {
+      if (_DEBUG) console.log("vertexStitchFromPath: No path points provided");
+      return [];
+    }
+    
+    // Direct 1:1 mapping - each vertex becomes a stitch
+    const result = pathPoints.map(p => ({ x: p.x, y: p.y }));
+    
+    if (_DEBUG) console.log("Generated vertex stitches from path (direct mapping):", result.length, "points");
+    return result;
   }
 
   /**
