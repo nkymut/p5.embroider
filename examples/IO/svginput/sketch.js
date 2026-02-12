@@ -319,27 +319,27 @@ function createUI() {
     .mousePressed(() => loadPreset(4));
 
   // SVG upload button (aligned with presets)
-  createButton("Upload SVG")
-    .parent(svgPresetsContainer)
-    .class("small secondary")
-    .mousePressed(() => {
-      // Create hidden file input
-      const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = ".svg,image/svg+xml";
-      fileInput.style.display = "none";
+  // createButton("Upload SVG")
+  //   .parent(svgPresetsContainer)
+  //   .class("small secondary")
+  //   .mousePressed(() => {
+  //     // Create hidden file input
+  //     const fileInput = document.createElement("input");
+  //     fileInput.type = "file";
+  //     fileInput.accept = ".svg,image/svg+xml";
+  //     fileInput.style.display = "none";
 
-      fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          handleSVGFileUpload(file);
-        }
-      });
+  //     fileInput.addEventListener("change", (e) => {
+  //       const file = e.target.files[0];
+  //       if (file) {
+  //         handleSVGFileUpload(file);
+  //       }
+  //     });
 
-      document.body.appendChild(fileInput);
-      fileInput.click();
-      document.body.removeChild(fileInput);
-    });
+  //     document.body.appendChild(fileInput);
+  //     fileInput.click();
+  //     document.body.removeChild(fileInput);
+  //   });
 
   // Parts control buttons
   createButton("Select All")
@@ -375,10 +375,32 @@ function createUI() {
     });
   })();
 
-  createButton("Load SVG")
+  // createButton("Load SVG")
+  //   .parent(svgButtonsContainer)
+  //   .class("primary")
+  //   .mousePressed(() => loadSVGFromTextArea());
+
+    createButton("Upload SVG")
     .parent(svgButtonsContainer)
     .class("primary")
-    .mousePressed(() => loadSVGFromTextArea());
+    .mousePressed(() => {
+      // Create hidden file input
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".svg,image/svg+xml";
+      fileInput.style.display = "none";
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleSVGFileUpload(file);
+        }
+      });
+
+      document.body.appendChild(fileInput);
+      fileInput.click();
+      document.body.removeChild(fileInput);
+    });
 
   createButton("Add SVG Parts")
     .parent(svgButtonsContainer)
@@ -646,15 +668,37 @@ function draw() {
         translate(offsetX + (cx0 + (part.tx || 0)) * scaleFactor, offsetY + (cy0 + (part.ty || 0)) * scaleFactor);
         rotate(part.rotation || 0);
         scale(part.sx || 1, part.sy || 1);
-        beginShape();
-        for (let j = 0; j < points.length; j++) {
-          const point = points[j];
-          const lx = (point.x - cx0) * scaleFactor;
-          const ly = (point.y - cy0) * scaleFactor;
-          vertex(lx, ly);
+        
+        // Organize subpaths into shapes with contours (holes)
+        const shapes = organizeSubpathsIntoContours(points);
+        
+        for (const shape of shapes) {
+          if (shape.outer.length < 2) continue;
+          
+          beginShape();
+          
+          // Draw outer shape
+          for (const pt of shape.outer) {
+            const lx = (pt.x - cx0) * scaleFactor;
+            const ly = (pt.y - cy0) * scaleFactor;
+            vertex(lx, ly);
+          }
+          
+          // Draw holes as contours
+          for (const hole of shape.holes) {
+            if (hole.length < 2) continue;
+            beginContour();
+            for (const pt of hole) {
+              const lx = (pt.x - cx0) * scaleFactor;
+              const ly = (pt.y - cy0) * scaleFactor;
+              vertex(lx, ly);
+            }
+            endContour();
+          }
+          
+          endShape(CLOSE);
         }
-        if (part.closed) endShape(CLOSE);
-        else endShape();
+        
         pop();
       }
     }
@@ -731,13 +775,33 @@ function drawSelectedOverlay(params) {
       // Draw outline path using transformed points mapped to screen
       const points = getPathPoints(part.pathData);
       if (points.length >= 2) {
-        beginShape();
-        for (const point of points) {
-          const sp = modelPointToWorldPx(part, point.x, point.y, frame);
-          vertex(sp.x, sp.y);
+        // Organize subpaths into shapes with contours (holes)
+        const shapes = organizeSubpathsIntoContours(points);
+        
+        for (const shape of shapes) {
+          if (shape.outer.length < 2) continue;
+          
+          beginShape();
+          
+          // Draw outer shape
+          for (const pt of shape.outer) {
+            const sp = modelPointToWorldPx(part, pt.x, pt.y, frame);
+            vertex(sp.x, sp.y);
+          }
+          
+          // Draw holes as contours
+          for (const hole of shape.holes) {
+            if (hole.length < 2) continue;
+            beginContour();
+            for (const pt of hole) {
+              const sp = modelPointToWorldPx(part, pt.x, pt.y, frame);
+              vertex(sp.x, sp.y);
+            }
+            endContour();
+          }
+          
+          endShape(CLOSE);
         }
-        if (part.closed) endShape(CLOSE);
-        else endShape();
       }
     }
   }
@@ -1131,8 +1195,8 @@ function mousePressed() {
         const cx = width / 2,
           cy = height / 2;
         return {
-          x: centerOffsetX + (px0 - cx) * previewScale + cx + previewPanX,
-          y: centerOffsetY + (py0 - cy) * previewScale + cy + previewPanY,
+          x: (px0 + centerOffsetX - cx) * previewScale + cx + previewPanX,
+          y: (py0 + centerOffsetY - cy) * previewScale + cy + previewPanY,
         };
       };
       for (const si of selectedPartIndices) {
@@ -1477,37 +1541,48 @@ function updateHoverHitTest() {
   const centerOffsetX = (width - mmToPixel(globalSettings.outputWidth)) / 2;
   const centerOffsetY = (height - mmToPixel(globalSettings.outputHeight)) / 2;
 
-  // Iterate in reverse (topmost first)
+  const hoverParams = {
+    scaleFactor,
+    offsetX,
+    offsetY,
+    centerOffsetX,
+    centerOffsetY,
+    canvasWidth: width,
+    canvasHeight: height,
+    previewScale,
+    previewPanX,
+    previewPanY,
+  };
+  const tolerancePx = Math.max(6, 8 / previewScale);
+
+  // First: check selected parts for handle hits (scale/rotate/body)
   for (let i = svgParts.length - 1; i >= 0; i--) {
     const part = svgParts[i];
     if (!part || part.visible === false) continue;
+    if (!selectedPartIndices.includes(i)) continue;
     const hit =
       typeof part.hitTestPixel === "function"
-        ? part.hitTestPixel(
-            mouseX,
-            mouseY,
-            {
-              scaleFactor,
-              offsetX,
-              offsetY,
-              centerOffsetX,
-              centerOffsetY,
-              canvasWidth: width,
-              canvasHeight: height,
-              previewScale,
-              previewPanX,
-              previewPanY,
-            },
-            {
-              handlePx: Math.max(6, 8 / previewScale),
-              rotationHandleOffsetPx: Math.max(20, 30 / previewScale),
-              allowBodyMove: true,
-            },
-          )
+        ? part.hitTestPixel(mouseX, mouseY, hoverParams, {
+            handlePx: Math.max(6, 8 / previewScale),
+            rotationHandleOffsetPx: Math.max(20, 30 / previewScale),
+            allowBodyMove: true,
+          })
         : { type: null };
     if (hit && hit.type) {
       hoverPartIndex = i;
       break;
+    }
+  }
+
+  // Second: if no handle hit, check all parts for path proximity (click-to-select)
+  if (hoverPartIndex < 0) {
+    for (let i = svgParts.length - 1; i >= 0; i--) {
+      const part = svgParts[i];
+      if (!part || part.visible === false) continue;
+      if (typeof part.hitTestPathPixel === "function" && part.hitTestPathPixel(mouseX, mouseY, hoverParams, tolerancePx)) {
+        hoverPartIndex = i;
+        break;
+      }
     }
   }
 
