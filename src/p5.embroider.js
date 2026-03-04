@@ -51,15 +51,6 @@ import {
   handlePreviewControlsDragged,
   handlePreviewControlsReleased,
 } from "./utils/preview-viewport.js";
-
-let _DEBUG = false;
-
-// Allow external control of debug mode
-if (typeof window !== "undefined" && window._DEBUG !== undefined) {
-  _DEBUG = window._DEBUG;
-}
-
-// Import outline utilities
 import {
   embroideryOutline,
   embroideryOutlineFromPath,
@@ -72,6 +63,13 @@ import {
   expandPolygon,
   crossProduct,
 } from "./utils/embroidery-outline.js";
+
+let _DEBUG = false;
+
+// Allow external control of debug mode
+if (typeof window !== "undefined" && window._DEBUG !== undefined) {
+  _DEBUG = window._DEBUG;
+}
 
 // Expose debug control
 function setDebugMode(enabled) {
@@ -139,6 +137,16 @@ function setDebugMode(enabled) {
     jumpThreshold: 10, // mm
     units: "mm",
   };
+
+  // Trim settings for automatic thread trimming between shapes
+  const _trimSettings = {
+    trimByShape: false,    // trim between every shape regardless of distance
+    trimByDistance: false,  // trim when gap between shapes exceeds trimThreshold
+    trimThreshold: 10,     // mm, distance threshold for trimByDistance
+  };
+
+  // Deferred trim annotations — collected during recording, drawn on top at endRecord()
+  let _trimAnnotations = [];
 
   // stroke mode constants
   const STROKE_MODE = {
@@ -300,6 +308,46 @@ function setDebugMode(enabled) {
       return transformPoints(points, _currentTransform.matrix);
     }
     return points;
+  }
+
+  /**
+   * Push a new run to a thread, optionally inserting an auto-trim before it.
+   * When trimByShape is enabled, trims before every new shape.
+   * When trimByDistance is enabled, trims only when the gap exceeds trimThreshold.
+   * trimByShape takes precedence over trimByDistance.
+   * @private
+   */
+  function pushRunToThread(threadIndex, stitches) {
+    if (!stitches || stitches.length === 0) return;
+    const thread = _stitchData.threads[threadIndex];
+
+    if ((_trimSettings.trimByShape || _trimSettings.trimByDistance) && thread.runs.length > 0) {
+      const lastRun = thread.runs[thread.runs.length - 1];
+      if (lastRun.length > 0 && lastRun[lastRun.length - 1].command !== "trim") {
+        const lastStitch = lastRun[0]; 
+        let shouldTrim = false;
+        if (_trimSettings.trimByShape) {
+          shouldTrim = true;
+        } else if (_trimSettings.trimByDistance) {
+          const firstStitch = stitches[0];
+          const distance = Math.sqrt(
+            (firstStitch.x - lastStitch.x) ** 2 +
+            (firstStitch.y - lastStitch.y) ** 2
+          );
+          shouldTrim = distance > _trimSettings.trimThreshold;
+           console.log("thread", thread, thread.runs.length -1);
+           console.log("lastRun", lastRun);
+           console.log("distance", distance);
+           console.log("trimThreshold", _trimSettings.trimThreshold);
+           console.log("shouldTrim", shouldTrim);
+        }
+        if (shouldTrim) {
+          thread.runs.push([{ x: lastStitch.x, y: lastStitch.y, command: "trim" }]);
+          _trimAnnotations.push({ x: lastStitch.x, y: lastStitch.y });
+        }
+      }
+    }
+    thread.runs.push(stitches);
   }
 
   /**
@@ -502,8 +550,40 @@ function setDebugMode(enabled) {
   p5embroidery.endRecord = function () {
     _recording = false;
     restoreP5Functions();
-    //exportEmbroidery(format);
+
+    if (_drawMode === "stitch" || _drawMode === "realistic") {
+      drawTrimAnnotations();
+    }
+    _trimAnnotations = [];
   };
+
+  /**
+   * Draws all collected trim annotations (scissors icons) on top of the canvas.
+   * Called at the end of endRecord() so annotations are never buried under stitches.
+   * @private
+   */
+  function drawTrimAnnotations() {
+    if (_trimAnnotations.length === 0) return;
+    for (const pt of _trimAnnotations) {
+      _p5Instance.push();
+      _originalFillFunc.call(_p5Instance, 0);
+      let lineLength = 10;
+      let endX = mmToPixel(pt.x) + lineLength;
+      let endY = mmToPixel(pt.y) - lineLength;
+      _originalStrokeFunc.call(_p5Instance, 255, 0, 0);
+      _originalStrokeWeightFunc.call(_p5Instance, 0.5);
+      _originalLineFunc.call(_p5Instance, mmToPixel(pt.x), mmToPixel(pt.y), endX, endY);
+      _p5Instance.push();
+      _originalNoStrokeFunc.call(_p5Instance);
+      _originalFillFunc.call(_p5Instance, 255, 255, 255, 150);
+      _p5Instance.ellipseMode(_p5Instance.CENTER);
+      _originalEllipseFunc.call(_p5Instance, endX + 6, endY - 5, 20, 20);
+      _p5Instance.pop();
+      _p5Instance.textSize(14);
+      _p5Instance.text("\u2702\uFE0F", endX, endY);
+      _p5Instance.pop();
+    }
+  }
 
   let _originalBeginShapeFunc;
   function overrideBeginShapeFunction() {
@@ -615,7 +695,7 @@ function setDebugMode(enabled) {
           }
 
           if (fillStitches && fillStitches.length > 0) {
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            pushRunToThread(_fillThreadIndex, fillStitches);
 
             // Draw fill stitches in visual modes
             if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -638,7 +718,7 @@ function setDebugMode(enabled) {
         }
 
         //add stitches to the embroidery data
-        _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+        pushRunToThread(_strokeThreadIndex, stitches);
 
         if (_drawMode === "stitch" || _drawMode === "realistic") {
           if (_DEBUG)
@@ -1173,7 +1253,7 @@ function setDebugMode(enabled) {
           const p2 = applyCurrentTransform(x2, y2);
 
           let stitches = convertLineToStitches(p1.x, p1.y, p2.x, p2.y, _strokeSettings);
-          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+          pushRunToThread(_strokeThreadIndex, stitches);
 
           if (_drawMode === "stitch" || _drawMode === "realistic") {
             drawStitches(stitches, _strokeThreadIndex);
@@ -1210,7 +1290,7 @@ function setDebugMode(enabled) {
             curvePoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
           );
-          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+          pushRunToThread(_strokeThreadIndex, stitches);
 
           if (_drawMode === "stitch" || _drawMode === "realistic") {
             drawStitches(stitches, _strokeThreadIndex);
@@ -1257,7 +1337,7 @@ function setDebugMode(enabled) {
             bezierPoints.map((p) => ({ x: p.x, y: p.y, isVert: true })),
             _strokeSettings,
           );
-          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+          pushRunToThread(_strokeThreadIndex, stitches);
 
           if (_drawMode === "stitch" || _drawMode === "realistic") {
             drawStitches(stitches, _strokeThreadIndex);
@@ -1814,7 +1894,7 @@ function setDebugMode(enabled) {
             }
 
             if (fillStitches && fillStitches.length > 0) {
-              _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+              pushRunToThread(_fillThreadIndex, fillStitches);
 
               // Draw fill stitches in visual modes
               if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -1884,7 +1964,7 @@ function setDebugMode(enabled) {
           }
 
           // Add the ellipse stitches
-          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+          pushRunToThread(_strokeThreadIndex, stitches);
 
           // Draw the stitches
           if (_drawMode === "p5") {
@@ -1935,7 +2015,7 @@ function setDebugMode(enabled) {
             y: p.y,
           },
         ];
-        _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+        pushRunToThread(_strokeThreadIndex, stitches);
 
         if (_drawMode === "stitch" || _drawMode === "realistic" || _drawMode === "p5") {
           _p5Instance.push();
@@ -2085,7 +2165,7 @@ function setDebugMode(enabled) {
 
           if (fillStitches && fillStitches.length > 0) {
             // Add the stitches to the current thread
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            pushRunToThread(_fillThreadIndex, fillStitches);
 
             // Draw fill stitches if in appropriate mode
             if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -2102,7 +2182,7 @@ function setDebugMode(enabled) {
           );
 
           if (strokeStitches && strokeStitches.length > 0) {
-            _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+            pushRunToThread(_strokeThreadIndex, strokeStitches);
 
             // Draw stroke stitches if in appropriate mode
             if (_drawMode === "stitch" || _drawMode === "realistic") {
@@ -2182,7 +2262,7 @@ function setDebugMode(enabled) {
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
           if (fillStitches && fillStitches.length > 0) {
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            pushRunToThread(_fillThreadIndex, fillStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(fillStitches, _fillThreadIndex);
             }
@@ -2195,7 +2275,7 @@ function setDebugMode(enabled) {
             _strokeSettings,
           );
           if (strokeStitches && strokeStitches.length > 0) {
-            _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+            pushRunToThread(_strokeThreadIndex, strokeStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(strokeStitches, _strokeThreadIndex);
             }
@@ -2255,7 +2335,7 @@ function setDebugMode(enabled) {
               fillStitches = createTatamiFillFromPath(transformedPathPoints, _fillSettings);
           }
           if (fillStitches && fillStitches.length > 0) {
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            pushRunToThread(_fillThreadIndex, fillStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(fillStitches, _fillThreadIndex);
             }
@@ -2268,7 +2348,7 @@ function setDebugMode(enabled) {
             _strokeSettings,
           );
           if (strokeStitches && strokeStitches.length > 0) {
-            _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+            pushRunToThread(_strokeThreadIndex, strokeStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(strokeStitches, _strokeThreadIndex);
             }
@@ -2380,7 +2460,7 @@ function setDebugMode(enabled) {
           }
 
           if (fillStitches && fillStitches.length > 0) {
-            _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+            pushRunToThread(_fillThreadIndex, fillStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(fillStitches, _fillThreadIndex);
             }
@@ -2413,7 +2493,7 @@ function setDebugMode(enabled) {
           );
 
           if (strokeStitches && strokeStitches.length > 0) {
-            _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+            pushRunToThread(_strokeThreadIndex, strokeStitches);
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(strokeStitches, _strokeThreadIndex);
             }
@@ -2623,7 +2703,7 @@ function setDebugMode(enabled) {
                 }
 
                 if (fillStitches && fillStitches.length > 0) {
-                  _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+                  pushRunToThread(_fillThreadIndex, fillStitches);
 
                   if (_drawMode === "stitch" || _drawMode === "realistic") {
                     drawStitches(fillStitches, _fillThreadIndex);
@@ -2667,7 +2747,7 @@ function setDebugMode(enabled) {
                 }
 
                 if (strokeStitches && strokeStitches.length > 0) {
-                  _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+                  pushRunToThread(_strokeThreadIndex, strokeStitches);
 
                   if (_drawMode === "stitch" || _drawMode === "realistic") {
                     drawStitches(strokeStitches, _strokeThreadIndex);
@@ -2701,7 +2781,7 @@ function setDebugMode(enabled) {
                   }
 
                   if (holeStrokeStitches && holeStrokeStitches.length > 0) {
-                    _stitchData.threads[_strokeThreadIndex].runs.push(holeStrokeStitches);
+                    pushRunToThread(_strokeThreadIndex, holeStrokeStitches);
 
                     if (_drawMode === "stitch" || _drawMode === "realistic") {
                       drawStitches(holeStrokeStitches, _strokeThreadIndex);
@@ -5011,13 +5091,16 @@ function setDebugMode(enabled) {
         if (_DEBUG) console.log("Run:", run);
 
         for (const stitch of run) {
-          // Validate stitch coordinates before processing
           if (stitch.x == null || stitch.y == null || !isFinite(stitch.x) || !isFinite(stitch.y)) {
             if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
             continue;
           }
 
-          // Convert from mm to 0.1mm for PES format
+          if (stitch.command === "trim") {
+            points.push({ x: stitch.x * 10, y: stitch.y * 10, color: hexColor, jump: true, trim: true });
+            continue;
+          }
+
           points.push({
             x: stitch.x * 10,
             y: stitch.y * 10,
@@ -5147,22 +5230,19 @@ function setDebugMode(enabled) {
         if (_DEBUG) console.log("=== New Stitch Run ===");
         if (_DEBUG) console.log("Run:", run);
         for (const stitch of run) {
-          // Validate stitch coordinates before processing
           if (stitch.x == null || stitch.y == null || !isFinite(stitch.x) || !isFinite(stitch.y)) {
             if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
             continue;
           }
 
-          // if (_DEBUG)
-          //   console.log("Stitch point:", {
-          //     mm: { x: stitch.x, y: stitch.y },
-          //     dst: { x: stitch.x * 10, y: stitch.y * 10 }, // Convert to DST units (0.1mm) for logging
-          //   });
+          if (stitch.command === "trim") {
+            points.push({ x: stitch.x * 10, y: stitch.y * 10, jump: true, trim: true });
+            continue;
+          }
 
-          // Convert from mm to 0.1mm for DST format
           points.push({
-            x: stitch.x * 10, // Convert to DST units (0.1mm)
-            y: stitch.y * 10, // Convert to DST units (0.1mm)
+            x: stitch.x * 10,
+            y: stitch.y * 10,
             command: stitch.command,
             jump: stitch.command === "jump",
           });
@@ -5271,68 +5351,77 @@ function setDebugMode(enabled) {
    *
    *
    */
-  p5embroidery.trimThread = function (threadIndex = _strokeThreadIndex) {
-    if (_recording) {
-      // Get the current thread
-      const currentThread = _stitchData.threads[threadIndex];
+  function insertTrimCommand(threadIndex) {
+    const currentThread = _stitchData.threads[threadIndex];
+    if (!currentThread) return;
 
-      // // Check if there are any runs in the current thread
-      // if (!currentThread || currentThread.runs.length === 0) {
-      //   console.warn("trimThread: No runs found for thread", threadIndex);
+    const lastRun = currentThread.runs[currentThread.runs.length - 1];
+    if (!lastRun || lastRun.length === 0) return;
 
-      //   return; // Nothing to trim
-      // }
+    const lastStitch = lastRun[lastRun.length - 1];
+    if (lastStitch.command === "trim") return;
 
-      // Get the last run in the current thread
-      const lastRun = currentThread.runs[currentThread.runs.length - 1];
+    const currentX = lastStitch.x;
+    const currentY = lastStitch.y;
 
-      // Check if the last run has any stitches
-      if (!lastRun || lastRun.length === 0) {
-        console.warn("trimThread: No stitches to trim for thread", threadIndex);
-        console.trace("Call stack for trimThread:"); // Add this line
+    if (_DEBUG) console.log("Adding trim at position:", currentX, currentY, "thread:", threadIndex);
 
-        return; // No stitches to trim
-      }
+    _stitchData.threads[threadIndex].runs.push([
+      {
+        x: currentX,
+        y: currentY,
+        command: "trim",
+      },
+    ]);
 
-      // Get the last stitch position from the last run (in mm)
-      let lastStitchIndex = lastRun.length - 1;
-      let currentX = lastRun[lastStitchIndex].x;
-      let currentY = lastRun[lastStitchIndex].y;
+    _trimAnnotations.push({ x: currentX, y: currentY });
+  }
 
-      if (_DEBUG) console.log("Adding trim at position:", currentX, currentY);
+  p5embroidery.trimThread = function (threadIndex = null) {
+    if (!_recording) return;
 
-      // Add a special point to indicate thread trim (in mm)
-      _stitchData.threads[threadIndex].runs.push([
-        {
-          x: currentX,
-          y: currentY,
-          command: "trim",
-        },
-      ]);
-
-      if (_drawMode === "stitch") {
-        // draw a scissors emoji at the trim point
-        _p5Instance.push();
-        _originalFillFunc.call(_p5Instance, 0);
-        let lineLength = 10;
-        let endX = mmToPixel(currentX) + lineLength;
-        let endY = mmToPixel(currentY) - lineLength;
-        _originalStrokeFunc.call(_p5Instance, 255, 0, 0); // red for line
-        _originalStrokeWeightFunc.call(_p5Instance, 0.5);
-
-        _originalLineFunc.call(_p5Instance, mmToPixel(currentX), mmToPixel(currentY), endX, endY);
-        // Place translucent white circle at the center of the scissors
-        _p5Instance.push();
-        _originalNoStrokeFunc.call(_p5Instance);
-        _originalFillFunc.call(_p5Instance, 255, 255, 255, 150);
-        _p5Instance.ellipseMode(CENTER);
-        _originalEllipseFunc.call(_p5Instance, endX + 6, endY - 5, 20, 20);
-        _p5Instance.pop();
-        // Place scissors at end of line
-        _p5Instance.text("✂️", endX, endY);
-        _p5Instance.pop();
+    if (threadIndex !== null) {
+      insertTrimCommand(threadIndex);
+    } else {
+      insertTrimCommand(_strokeThreadIndex);
+      if (_fillThreadIndex !== _strokeThreadIndex) {
+        insertTrimCommand(_fillThreadIndex);
       }
     }
+  };
+
+  /**
+   * Enables or disables automatic thread trimming between every shape.
+   * When enabled, a trim command is inserted before each new shape regardless of distance.
+   * @method setTrimByShape
+   * @for p5
+   * @param {boolean} enabled - true to enable, false to disable
+   */
+  p5embroidery.setTrimByShape = function (enabled) {
+    _trimSettings.trimByShape = !!enabled;
+  };
+
+  /**
+   * Enables or disables automatic thread trimming based on distance between shapes.
+   * When enabled, a trim command is inserted only when the gap between the end of
+   * the previous shape and the start of the next shape exceeds the trim threshold.
+   * @method setTrimByDistance
+   * @for p5
+   * @param {boolean} enabled - true to enable, false to disable
+   */
+  p5embroidery.setTrimByDistance = function (enabled) {
+    _trimSettings.trimByDistance = !!enabled;
+  };
+
+  /**
+   * Sets the distance threshold (in mm) used by trimByDistance.
+   * When trimByDistance is enabled, a trim is inserted if the gap exceeds this value.
+   * @method setTrimThreshold
+   * @for p5
+   * @param {number} mm - Distance threshold in millimeters
+   */
+  p5embroidery.setTrimThreshold = function (mm) {
+    _trimSettings.trimThreshold = mm;
   };
 
   /**
@@ -6567,6 +6656,9 @@ function setDebugMode(enabled) {
   global.exportSVG = p5embroidery.exportSVG;
   global.exportPNG = p5embroidery.exportPNG;
   global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
+  global.setTrimByShape = p5embroidery.setTrimByShape;
+  global.setTrimByDistance = p5embroidery.setTrimByDistance;
+  global.setTrimThreshold = p5embroidery.setTrimThreshold;
   global.embroideryOutline = p5embroidery.embroideryOutline;
   global.exportOutline = p5embroidery.exportOutline;
   global.exportSVGFromPath = p5embroidery.exportSVGFromPath;

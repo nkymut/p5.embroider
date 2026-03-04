@@ -218,6 +218,7 @@ export class PESWriter {
     let colorTwo = true;
     let xx = 0,
       yy = 0;
+    let needJumpAfterTrim = false;
 
     for (let i = 0; i < stitches.length; i++) {
       // Check for color change
@@ -252,6 +253,38 @@ export class PESWriter {
         this.writeInt8(0x00);
         dx = 0;
         dy = 0;
+      }
+
+      // Mid-pattern trim: PES/PEC has no native trim command (see pyembroidery#91).
+      // Signal a trim by emitting consecutive zero-displacement JUMP records,
+      // which Brother machines interpret as a trim-and-reposition.
+      if (i > 0 && stitches[i].trim) {
+        for (let t = 0; t < 3; t++) {
+          let jx = this.encodeLongForm(0);
+          jx |= (this.JUMP_CODE << 8);
+          let jy = this.encodeLongForm(0);
+          jy |= (this.JUMP_CODE << 8);
+          this.writeInt16BE(jx);
+          this.writeInt16BE(jy);
+        }
+        needJumpAfterTrim = true;
+        continue;
+      }
+
+      // After a trim, force the next stitch to be a JUMP for repositioning
+      if (needJumpAfterTrim && dx === 0 && dy === 0) {
+        needJumpAfterTrim = false;
+        continue;
+      }
+      if (needJumpAfterTrim) {
+        dx = this.encodeLongForm(dx);
+        dx |= (this.JUMP_CODE << 8);
+        dy = this.encodeLongForm(dy);
+        dy |= (this.JUMP_CODE << 8);
+        this.writeInt16BE(dx);
+        this.writeInt16BE(dy);
+        needJumpAfterTrim = false;
+        continue;
       }
 
       // Short form: -64 to 63
