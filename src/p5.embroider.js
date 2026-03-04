@@ -3,6 +3,7 @@ import { GCodeWriter } from "./io/p5-gcode-writer.js";
 import { SVGWriter } from "./io/p5-svg-writer.js";
 import { JSONWriter } from "./io/p5-json-writer.js";
 import { PESWriter } from "./io/p5-pes-writer.js";
+import { SVGReader } from "./io/p5-svg-reader.js";
 import {
   mmToPixel,
   pixelToMm,
@@ -6312,6 +6313,249 @@ function setDebugMode(enabled) {
     return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
   };
 
+  // --- SVG Import Functions ---
+
+  /**
+   * Parse SVG text and return an array of embroidery part objects (no drawing).
+   * Each part contains pathData (in mm), shapeParams, strokeSettings, and fillSettings.
+   * @method loadSVGParts
+   * @for p5
+   * @param {string} svgText - Raw SVG markup string
+   * @param {Object} [options] - Parse options
+   * @param {number} [options.dpi=96] - DPI for px-to-mm conversion
+   * @param {boolean} [options.debug=false] - Enable debug logging
+   * @returns {{ parts: Array, boundingBox: Object }} Parsed parts and their bounding box
+   * @example
+   * const { parts, boundingBox } = loadSVGParts(svgText);
+   * console.log(`Loaded ${parts.length} parts, size: ${boundingBox.width}x${boundingBox.height}mm`);
+   */
+  p5embroidery.loadSVGParts = function (svgText, options = {}) {
+    const reader = new SVGReader(options);
+    return reader.parseSVG(svgText, options);
+  };
+
+  /**
+   * Draw a single SVG part using p5.js drawing calls.
+   * When used inside beginRecord()/endRecord(), the drawing calls are intercepted
+   * and converted to embroidery stitch data automatically.
+   * @method drawSVGPart
+   * @for p5
+   * @param {Object} part - Part object from loadSVGParts()
+   * @param {Object} [options] - Drawing options
+   * @param {number} [options.scale=1] - Scale factor for the part geometry
+   * @param {number} [options.offsetX=0] - X offset in mm
+   * @param {number} [options.offsetY=0] - Y offset in mm
+   * @example
+   * beginRecord(this);
+   * const { parts } = loadSVGParts(svgText);
+   * drawSVGPart(parts[0]); // Draw first part as embroidery
+   * endRecord();
+   */
+  p5embroidery.drawSVGPart = function (part, options = {}) {
+    if (!part || !part.pathData) {
+      console.warn("🪡 p5.embroider says: Invalid part provided to drawSVGPart");
+      return;
+    }
+
+    const partScale = options.scale !== undefined ? options.scale : 1;
+    const offsetX = options.offsetX || 0;
+    const offsetY = options.offsetY || 0;
+
+    // Apply stroke settings
+    if (part.strokeSettings && part.strokeSettings.enabled && part.strokeSettings.color) {
+      p5embroidery.setStrokeMode(part.strokeSettings.mode || "straight");
+      p5embroidery.setStrokeSettings({
+        stitchLength: part.strokeSettings.stitchLength,
+        minStitchLength: part.strokeSettings.minStitchLength,
+        resampleNoise: part.strokeSettings.resampleNoise,
+        strokeWeight: part.strokeSettings.weight,
+      });
+      if (typeof window.stroke === "function") {
+        window.stroke(part.strokeSettings.color[0], part.strokeSettings.color[1], part.strokeSettings.color[2]);
+      }
+      if (typeof window.strokeWeight === "function") {
+        window.strokeWeight(part.strokeSettings.weight);
+      }
+    } else {
+      if (typeof window.noStroke === "function") {
+        window.noStroke();
+      }
+    }
+
+    // Apply fill settings
+    if (part.fillSettings && part.fillSettings.enabled && part.fillSettings.color) {
+      p5embroidery.setFillMode(part.fillSettings.mode || "tatami");
+      p5embroidery.setFillSettings({
+        stitchLength: part.fillSettings.stitchLength,
+        minStitchLength: part.fillSettings.minStitchLength,
+        resampleNoise: part.fillSettings.resampleNoise,
+        rowSpacing: part.fillSettings.rowSpacing,
+      });
+      if (typeof window.fill === "function") {
+        window.fill(part.fillSettings.color[0], part.fillSettings.color[1], part.fillSettings.color[2]);
+      }
+    } else {
+      if (typeof window.noFill === "function") {
+        window.noFill();
+      }
+    }
+
+    // Draw the part geometry using p5.js calls
+    if (typeof window.push === "function") window.push();
+
+    if (offsetX !== 0 || offsetY !== 0) {
+      if (typeof window.translate === "function") {
+        window.translate(mmToPixel(offsetX), mmToPixel(offsetY));
+      }
+    }
+    if (partScale !== 1) {
+      if (typeof window.scale === "function") {
+        window.scale(partScale, partScale);
+      }
+    }
+
+    // Try drawing primitives first for better stitch generation
+    const sp = part.shapeParams;
+    let drewPrimitive = false;
+
+    if (sp) {
+      switch (part.elementType) {
+        case "circle":
+          if (typeof sp.cx === "number" && typeof sp.cy === "number" && typeof sp.r === "number") {
+            if (typeof window.circle === "function") {
+              window.circle(mmToPixel(sp.cx), mmToPixel(sp.cy), mmToPixel(sp.r * 2));
+              drewPrimitive = true;
+            }
+          }
+          break;
+        case "rect":
+          if (typeof sp.x === "number" && typeof sp.y === "number" && typeof sp.w === "number" && typeof sp.h === "number") {
+            if (typeof window.rect === "function") {
+              window.rect(mmToPixel(sp.x), mmToPixel(sp.y), mmToPixel(sp.w), mmToPixel(sp.h));
+              drewPrimitive = true;
+            }
+          }
+          break;
+        case "ellipse":
+          if (typeof sp.cx === "number" && typeof sp.cy === "number" && typeof sp.rx === "number" && typeof sp.ry === "number") {
+            if (typeof window.ellipse === "function") {
+              window.ellipse(mmToPixel(sp.cx), mmToPixel(sp.cy), mmToPixel(sp.rx * 2), mmToPixel(sp.ry * 2));
+              drewPrimitive = true;
+            }
+          }
+          break;
+        case "line":
+          if (typeof sp.x1 === "number" && typeof sp.y1 === "number" && typeof sp.x2 === "number" && typeof sp.y2 === "number") {
+            if (typeof window.line === "function") {
+              window.line(mmToPixel(sp.x1), mmToPixel(sp.y1), mmToPixel(sp.x2), mmToPixel(sp.y2));
+              drewPrimitive = true;
+            }
+          }
+          break;
+      }
+    }
+
+    // Fallback: draw using path data with beginShape/vertex/endShape
+    if (!drewPrimitive) {
+      const svgReader = new SVGReader();
+      const points = svgReader.parsePathData(part.pathData);
+
+      if (points.length >= 2) {
+        // Organize subpaths into shapes with contours (holes)
+        const shapes = svgReader.organizeSubpathsIntoContours(points);
+
+        for (const shape of shapes) {
+          if (shape.outer.length < 2) continue;
+
+          if (typeof window.beginShape === "function") window.beginShape();
+
+          // Draw outer shape
+          for (const pt of shape.outer) {
+            if (typeof window.vertex === "function") {
+              window.vertex(mmToPixel(pt.x), mmToPixel(pt.y));
+            }
+          }
+
+          // Draw holes as contours
+          for (const hole of shape.holes) {
+            if (hole.length < 2) continue;
+            if (typeof window.beginContour === "function") window.beginContour();
+            for (const pt of hole) {
+              if (typeof window.vertex === "function") {
+                window.vertex(mmToPixel(pt.x), mmToPixel(pt.y));
+              }
+            }
+            if (typeof window.endContour === "function") window.endContour();
+          }
+
+          if (typeof window.endShape === "function") {
+            window.endShape(part.closed ? window.CLOSE : undefined);
+          }
+        }
+      }
+    }
+
+    if (typeof window.pop === "function") window.pop();
+  };
+
+  /**
+   * Parse SVG text and draw all parts as embroidery.
+   * Convenience function that combines loadSVGParts() + drawSVGPart() for each part.
+   * Must be called between beginRecord() and endRecord() to generate stitch data.
+   * @method importSVG
+   * @for p5
+   * @param {string} svgText - Raw SVG markup string
+   * @param {Object} [options] - Import options
+   * @param {number} [options.dpi=96] - DPI for px-to-mm conversion
+   * @param {number} [options.scale=1] - Scale factor for all parts
+   * @param {number} [options.offsetX=0] - X offset in mm for all parts
+   * @param {number} [options.offsetY=0] - Y offset in mm for all parts
+   * @param {Function} [options.filter] - Optional filter function: (part, index) => boolean
+   * @param {boolean} [options.debug=false] - Enable debug logging
+   * @returns {{ parts: Array, boundingBox: Object }} Parsed parts and bounding box
+   * @example
+   * // Simple: import entire SVG
+   * function draw() {
+   *   beginRecord(this);
+   *   importSVG(svgText);
+   *   endRecord();
+   * }
+   *
+   * // With options: scale, offset, and filter
+   * function draw() {
+   *   beginRecord(this);
+   *   importSVG(svgText, {
+   *     scale: 2,
+   *     offsetX: 10,
+   *     offsetY: 5,
+   *     filter: (part) => part.elementType !== 'line'
+   *   });
+   *   endRecord();
+   * }
+   */
+  p5embroidery.importSVG = function (svgText, options = {}) {
+    const result = p5embroidery.loadSVGParts(svgText, options);
+
+    const drawOptions = {
+      scale: options.scale,
+      offsetX: options.offsetX,
+      offsetY: options.offsetY,
+    };
+
+    result.parts.forEach((part, index) => {
+      // Apply filter if provided
+      if (options.filter && typeof options.filter === "function") {
+        if (!options.filter(part, index)) return;
+      }
+
+      if (part.visible !== false) {
+        p5embroidery.drawSVGPart(part, drawOptions);
+      }
+    });
+
+    return result;
+  };
+
   // Expose public functions
   global.p5embroidery = p5embroidery;
   global.beginRecord = p5embroidery.beginRecord;
@@ -6326,6 +6570,10 @@ function setDebugMode(enabled) {
   global.embroideryOutline = p5embroidery.embroideryOutline;
   global.exportOutline = p5embroidery.exportOutline;
   global.exportSVGFromPath = p5embroidery.exportSVGFromPath;
+  global.importSVG = p5embroidery.importSVG;
+  global.loadSVGParts = p5embroidery.loadSVGParts;
+  global.drawSVGPart = p5embroidery.drawSVGPart;
+  global.SVGReader = SVGReader;
   global.setStitch = p5embroidery.setStitch;
   global.setStitchWidth = p5embroidery.setStitchWidth;
   global.setDrawMode = p5embroidery.setDrawMode;

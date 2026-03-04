@@ -15,8 +15,213 @@ let globalSettings = {
   adobeDPI: false,
 };
 
+let svgInput;
+let svgParts = []; // Array of SVG part objects (instances of EmbroiderPart)
+
 let boundingBox = { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
 let outputWidthControl, outputHeightControl;
+
+// SVG Presets with colored elements
+const presets = {
+  1: `<?xml version="1.0" encoding="UTF-8"?>
+    <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470.39 1300.91">
+      <defs>
+        <style>
+          .cls-1 {
+            fill: none;
+            stroke: #000;
+            stroke-linejoin: round;
+          }
+        </style>
+      </defs>
+      <path d="M219.53,340.99c15.83-3.84,49,4.74,64,10,32.27,2.44,58.27-13.17,65-46.01,3.52-39.32-17.67-50.77-44-73-8.45-14.63-21.07-37.76-38-44-26.23-11.25-62.84-1.72-81,20-12.67,29.3-45.76,39.56-57,69-3.83,19.37-2.55,32.69,5,51,5.48,9.46,23.14,18.49,33,22,15.05,2.53,38.76-5.27,53-9Z"/>
+      <path d="M419.53,188.99c2.07-26.72-10.93-41.68-38-41-22.61,5.07-39.89,27.93-44,50-3.66,40.88,27.97,57.04,61,35,11.15-10.36,20.38-28.67,21-44Z"/>
+      <path d="M138.53,194.99c-3.38-16.73-14.64-37.75-31-45-19.48-2.56-32.02-4.42-43,15-10.53,28.19,5.71,67.5,36,75,0,0,20-2,20-2,14.2-10.89,23.36-24.55,18-43Z"/>
+      <path d="M174.53,62.99c-25.14,5.81-28.1,23.17-34,45-3.85,31.43,14.8,71.59,51,69,58.84-11.69,41.41-119.34-17-114"/>
+      <path d="M306.53,58.99c-30.53-2.7-48.64,28.33-55,54-3.39,25.39,5.23,52.31,32,60,60.9,7.76,80-97.36,23-114Z"/>
+      <path class="cls-1" d="M459.25,1300.9c-7.13-253.24-65.36-677.54-56.02-931,9.46-50.12,45.96-99.68,62.02-147,8.38-35.87,7.58-82.88-21.01-110-11.91-13.96-38.93-18.24-56-20-.24-37.6-25.4-79.92-63-90-28.35-6.84-63.62.85-82.68,24.05h0c-29.57-32.73-82.65-33.38-116-6-20.87,16.94-33.56,47.46-34,74-32.5-6.5-64.95,21.3-78,49-19.56,44.39,7.67,103.2,27,143C86.81,345.61-2.39,1212.39.57,1299.94"/>
+    </svg>`,
+  2: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+    <rect x="10" y="10" width="80" height="80" fill="#ff6b6b" stroke="#4ecdc4" stroke-width="2"/>
+    <circle cx="50" cy="50" r="25" fill="#45b7d1" stroke="#f7dc6f" stroke-width="3"/>
+  </svg>`,
+  3: `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="50,10 90,80 10,80" fill="#f39c12" stroke="#34495e" stroke-width="2"/>
+    <circle cx="50" cy="50" r="15" fill="#1abc9c" stroke="#e67e22" stroke-width="2"/>
+  </svg>`,
+};
+
+function loadPreset(num) {
+  if (presets[num]) {
+    svgInput.value(presets[num]);
+    updateCanvasTitle();
+    loadSVGFromTextArea();
+  }
+}
+
+function handleSVGFileUpload(file) {
+  if (file && (file.type === "image/svg+xml" || file.name.toLowerCase().endsWith(".svg"))) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const svgContent = e.target.result;
+      svgInput.value(svgContent);
+      updateCanvasTitle(file.name);
+      loadSVGFromTextArea();
+    };
+    reader.readAsText(file);
+  } else {
+    console.error("Please upload a valid SVG file");
+  }
+}
+
+function loadSVGFromTextArea(append = false) {
+  const svgText = svgInput.value().trim();
+  if (!svgText) return;
+
+  if (typeof pushUndo === "function") pushUndo();
+
+  svgDebugLog("Loading SVG from textarea:", svgText.substring(0, 200) + "...");
+
+  try {
+    const dpi = (typeof globalSettings !== "undefined" && globalSettings && globalSettings.dpi) || 96;
+
+    const reader = _svgReader || new SVGReader({ debug: SVG_PARSER_DEBUG, dpi });
+    reader.dpi = dpi;
+    const { parts: rawParts, boundingBox: bbox } = reader.parseSVG(svgText, { dpi });
+
+    if (!append) svgParts = [];
+    const newPartCount = rawParts.length;
+
+    rawParts.forEach((raw) => {
+      raw.selected = false;
+      raw.addToOutline = false;
+      const wrapped = new EmbroiderPart(raw);
+      svgParts.push(wrapped);
+    });
+
+    if (svgParts.length > 0) {
+      boundingBox = bbox;
+      if (!append) {
+        selectedPartIndices = [0];
+        svgParts.forEach((p) => {
+          p.selected = false;
+          p.tx = 0;
+          p.ty = 0;
+          p.rotation = 0;
+          p.sx = 1;
+          p.sy = 1;
+        });
+        svgParts[0].selected = true;
+      } else {
+        const existingCount = svgParts.length - newPartCount;
+        for (let i = existingCount; i < svgParts.length; i++) {
+          svgParts[i].selected = true;
+          selectedPartIndices.push(i);
+        }
+      }
+      updatePartSettings(svgParts[selectedPartIndices[0]]);
+
+      updateSVGPartsList();
+      updateInfoTable();
+      redraw();
+      svgDebugLog(`Loaded ${svgParts.length} SVG parts as objects`);
+    }
+  } catch (error) {
+    console.error("Error loading SVG:", error);
+  }
+}
+
+function updateSVGPartsList() {
+  const container = select("#svg-parts-list");
+  container.html("");
+
+  if (svgParts.length === 0) {
+    const emptyMsg = createDiv("No parts loaded");
+    emptyMsg.parent(container);
+    emptyMsg.style("color", "#888");
+    emptyMsg.style("font-style", "italic");
+    return;
+  }
+
+  const partsContainer = createDiv();
+  partsContainer.parent(container);
+  partsContainer.class("parts-button-container");
+
+  svgParts.forEach((part, index) => {
+    const partButton = createButton(part.name);
+    partButton.parent(partsContainer);
+    partButton.class("part-button");
+
+    if (part.selected) {
+      partButton.addClass("active");
+    }
+
+    let colorIndicators = "";
+    if (part.strokeSettings.enabled) {
+      colorIndicators += `border-left: 8px solid rgb(${part.strokeSettings.color.join(",")});`;
+    }
+    if (part.fillSettings.enabled) {
+      colorIndicators += `border-right: 8px solid rgb(${part.fillSettings.color.join(",")});`;
+    }
+
+    if (colorIndicators) {
+      partButton.elt.style.cssText += colorIndicators;
+    }
+
+    partButton.mousePressed((event) => {
+      event && event.stopPropagation && event.stopPropagation();
+      selectPart(index, event || window.event);
+    });
+  });
+}
+
+function selectPart(index, event) {
+  if (index < 0 || index >= svgParts.length) return;
+
+  const isCtrlOrCmd = event && (event.ctrlKey || event.metaKey || event.shiftKey);
+
+  if (isCtrlOrCmd) {
+    const isSelected = selectedPartIndices.includes(index);
+    if (isSelected) {
+      selectedPartIndices = selectedPartIndices.filter((i) => i !== index);
+      svgParts[index].selected = false;
+    } else {
+      selectedPartIndices.push(index);
+      svgParts[index].selected = true;
+    }
+  } else {
+    svgParts.forEach((part) => (part.selected = false));
+    selectedPartIndices = [index];
+    svgParts[index].selected = true;
+  }
+
+  if (selectedPartIndices.length === 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]]);
+  } else if (selectedPartIndices.length > 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]], true);
+  } else {
+    updatePartSettings(null);
+  }
+
+  updateSVGPartsList();
+  updateInfoTable();
+  redraw();
+}
+
+function selectAllParts() {
+  if (svgParts.length === 0) return;
+
+  selectedPartIndices = svgParts.map((_, index) => index);
+  svgParts.forEach((part) => (part.selected = true));
+
+  if (selectedPartIndices.length >= 1) {
+    updatePartSettings(svgParts[selectedPartIndices[0]], true);
+  }
+
+  updateSVGPartsList();
+  updateInfoTable();
+  redraw();
+}
 
 // Preview viewport is now handled by shared preview-viewport utility
 let isPreviewInteracting = false;
@@ -300,7 +505,28 @@ function createUI() {
   }
   updateModeButtonStates();
 
-  // Preset buttons
+  // Upload & Preset buttons
+  createButton("Upload SVG")
+  .parent(svgPresetsContainer)
+  .class("primary")
+  .mousePressed(() => {
+    // Create hidden file input
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".svg,image/svg+xml";
+    fileInput.style.display = "none";
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleSVGFileUpload(file);
+      }
+    });
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+  });
   createButton("1")
     .parent(svgPresetsContainer)
     .class("small secondary")
@@ -375,32 +601,12 @@ function createUI() {
     });
   })();
 
-  // createButton("Load SVG")
-  //   .parent(svgButtonsContainer)
-  //   .class("primary")
-  //   .mousePressed(() => loadSVGFromTextArea());
-
-    createButton("Upload SVG")
+  createButton("Load SVG")
     .parent(svgButtonsContainer)
     .class("primary")
-    .mousePressed(() => {
-      // Create hidden file input
-      const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = ".svg,image/svg+xml";
-      fileInput.style.display = "none";
+    .mousePressed(() => loadSVGFromTextArea());
 
-      fileInput.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          handleSVGFileUpload(file);
-        }
-      });
 
-      document.body.appendChild(fileInput);
-      fileInput.click();
-      document.body.removeChild(fileInput);
-    });
 
   createButton("Add SVG Parts")
     .parent(svgButtonsContainer)
@@ -661,7 +867,7 @@ function draw() {
       applyPartSettings(part);
       const points = getPathPoints(part.pathData);
       if (points.length >= 2) {
-        const frame = computeEditFrame(part);
+        const frame = part.computeFrame();
         const cx0 = frame.base.cx0;
         const cy0 = frame.base.cy0;
         push();
@@ -771,7 +977,7 @@ function drawSelectedOverlay(params) {
       const part = svgParts[idx];
       if (!part || part.visible === false) continue;
 
-      const frame = computeEditFrame(part);
+      const frame = part.computeFrame();
       // Draw outline path using transformed points mapped to screen
       const points = getPathPoints(part.pathData);
       if (points.length >= 2) {
@@ -813,7 +1019,7 @@ function drawSelectedOverlay(params) {
   // If single selection, draw interactive frame with handles
   if (selectedPartIndices.length === 1) {
     const part = svgParts[selectedPartIndices[0]];
-    const frame = computeEditFrame(part);
+    const frame = part.computeFrame();
     // Center in world coordinates (transformation is already applied)
     const centerMmX = offsetX + frame.centerMm.x * scaleFactor;
     const centerMmY = offsetY + frame.centerMm.y * scaleFactor;
@@ -891,7 +1097,7 @@ function drawSelectedOverlay(params) {
     for (const idx of selectedPartIndices) {
       const part = svgParts[idx];
       if (!part || !part.visible) continue;
-      const frame = computeEditFrame(part);
+      const frame = part.computeFrame();
       const points = getPathPoints(part.pathData);
       for (const pt of points) {
         const sp = modelPointToWorldPx(part, pt.x, pt.y, frame);
@@ -963,49 +1169,6 @@ function drawSelectedOverlay(params) {
   }
 
   pop();
-}
-
-// Compute transformed edit frame of a part (center/size/rotation in mm)
-function computeEditFrame(part) {
-  // Base bbox in mm
-  const base = getPathPoints(part.pathData);
-  let minX = Infinity,
-    minY = Infinity,
-    maxX = -Infinity,
-    maxY = -Infinity;
-  for (const p of base) {
-    if (isNaN(p.x) || isNaN(p.y)) continue;
-    minX = Math.min(minX, p.x);
-    minY = Math.min(minY, p.y);
-    maxX = Math.max(maxX, p.x);
-    maxY = Math.max(maxY, p.y);
-  }
-  if (minX === Infinity) {
-    return { centerMm: { x: part.tx || 0, y: part.ty || 0 }, widthMm: 10, heightMm: 10, rotation: part.rotation || 0 };
-  }
-
-  const w0 = Math.max(1e-6, maxX - minX);
-  const h0 = Math.max(1e-6, maxY - minY);
-  const cx0 = (minX + maxX) / 2;
-  const cy0 = (minY + maxY) / 2;
-
-  const sx = part.sx || 1;
-  const sy = part.sy || 1;
-  const rot = part.rotation || 0;
-  const tx = part.tx || 0;
-  const ty = part.ty || 0;
-
-  // Center-pivot model: translation shifts the base center; scale/rotation do not move center
-  const cx = cx0 + tx;
-  const cy = cy0 + ty;
-
-  return {
-    centerMm: { x: cx, y: cy },
-    widthMm: w0 * sx,
-    heightMm: h0 * sy,
-    rotation: rot,
-    base: { cx0, cy0, w0, h0 },
-  };
 }
 
 // Interactive preview controls
@@ -1202,7 +1365,7 @@ function mousePressed() {
       for (const si of selectedPartIndices) {
         const p = svgParts[si];
         if (!p || !p.visible) continue;
-        const frame = computeEditFrame(p);
+        const frame = p.computeFrame();
         const pts = getPathPoints(p.pathData);
         for (const q of pts) {
           const sp = mapPoint(p, q.x, q.y, frame);
@@ -1305,7 +1468,7 @@ function mousePressed() {
             gcy = 0;
           const infos = [];
           selectedParts.forEach((p, idxSel) => {
-            const frame = computeEditFrame(p);
+            const frame = p.computeFrame();
             infos.push({
               index: selectedPartIndices[idxSel],
               tx0: p.tx || 0,
@@ -1394,7 +1557,7 @@ function mousePressed() {
             gy = 0;
           selectedPartIndices.forEach((i) => {
             const p = svgParts[i];
-            const frame = computeEditFrame(p);
+            const frame = p.computeFrame();
             partsInfo.push({
               index: i,
               tx0: p.tx || 0,
@@ -1712,37 +1875,6 @@ function usePrimitiveShape(part, scaleFactor, offsetX, offsetY) {
   }
 }
 
-function applyPartSettings(part) {
-  // Apply stroke settings
-  if (part.strokeSettings.enabled && part.strokeSettings.color) {
-    setStrokeMode(part.strokeSettings.mode);
-    setStrokeSettings({
-      stitchLength: part.strokeSettings.stitchLength,
-      minStitchLength: part.strokeSettings.minStitchLength,
-      resampleNoise: part.strokeSettings.resampleNoise,
-      strokeWeight: part.strokeSettings.weight,
-    });
-    stroke(part.strokeSettings.color[0], part.strokeSettings.color[1], part.strokeSettings.color[2]);
-    strokeWeight(part.strokeSettings.weight);
-  } else {
-    noStroke();
-  }
-
-  // Apply fill settings
-  if (part.fillSettings.enabled && part.fillSettings.color) {
-    setFillMode(part.fillSettings.mode);
-    setFillSettings({
-      stitchLength: part.fillSettings.stitchLength,
-      minStitchLength: part.fillSettings.minStitchLength,
-      resampleNoise: part.fillSettings.resampleNoise,
-      rowSpacing: part.fillSettings.rowSpacing,
-    });
-    fill(part.fillSettings.color[0], part.fillSettings.color[1], part.fillSettings.color[2]);
-  } else {
-    noFill();
-  }
-}
-
 function clearSelection() {
   // Clear all selections
   selectedPartIndices = [];
@@ -1767,7 +1899,7 @@ function updateMultiPartSettings() {
   let gcx = 0,
     gcy = 0;
   selectedParts.forEach((p) => {
-    const f = computeEditFrame(p);
+    const f = p.computeFrame();
     gcx += f.centerMm.x;
     gcy += f.centerMm.y;
   });
@@ -1822,7 +1954,7 @@ function updateMultiPartSettings() {
     const dx = (isNaN(ntx) ? gcx : ntx) - gcx;
     const dy = (isNaN(nty) ? gcy : nty) - gcy;
     selectedParts.forEach((p) => {
-      const f = computeEditFrame(p);
+      const f = p.computeFrame();
       const newCx = f.centerMm.x + dx;
       const newCy = f.centerMm.y + dy;
       p.tx = newCx - f.base.cx0;
@@ -2161,7 +2293,7 @@ function updatePartSettings(part, propagateToSelection = false) {
   // Size subsection (Width/Height + Lock Aspect + Scale X/Y)
   const sizeSec = createCollapsibleSection(container, "Size", true);
   (function () {
-    const fsz = computeEditFrame(part);
+    const fsz = part.computeFrame();
     // Width/Height
     const sizeRow = createDiv();
     sizeRow.parent(sizeSec.content);
@@ -2215,7 +2347,7 @@ function updatePartSettings(part, propagateToSelection = false) {
       let hasH = !isNaN(vh);
       if (lockAspect && hasW ^ hasH) {
         // compute live ratio from current frame
-        const fcur = computeEditFrame(part);
+        const fcur = part.computeFrame();
         const ratio = (fcur.heightMm || 1) / Math.max(1e-6, fcur.widthMm || 1);
         if (hasW && !hasH && source === "w") {
           vh = vw * ratio;
@@ -2233,7 +2365,7 @@ function updatePartSettings(part, propagateToSelection = false) {
       const applyTo =
         propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
       applyTo.forEach((p) => {
-        const f = computeEditFrame(p);
+        const f = p.computeFrame();
         const base = f.base;
         if (hasW) {
           const baseW = Math.max(1e-6, base.w0);
@@ -2305,7 +2437,7 @@ function updatePartSettings(part, propagateToSelection = false) {
 
   // Position controls under Transform
   (function () {
-    const frameForPos = computeEditFrame(part);
+    const frameForPos = part.computeFrame();
     const posRow = createDiv();
     posRow.parent(transformSec.content);
     posRow.class("form-row");
@@ -2347,7 +2479,7 @@ function updatePartSettings(part, propagateToSelection = false) {
       const applyTo =
         propagateToSelection && selectedPartIndices.length > 1 ? selectedPartIndices.map((i) => svgParts[i]) : [part];
       applyTo.forEach((p) => {
-        const f = computeEditFrame(p);
+        const f = p.computeFrame();
         const base = f.base;
         p.tx = vx - base.cx0;
         p.ty = vy - base.cy0;

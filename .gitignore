@@ -7,6 +7,7 @@ docs/devdoc/*
 CLAUDE.md
 _Claude/*
 _WIP/*
+apps/*
 
 # macOS
 .DS_Store
