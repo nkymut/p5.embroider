@@ -18,4 +18,7 @@ export default {
     commonjs(),
   ],
   external: ["p5"],
+  watch: {
+    clearScreen: false,
+  },
 };

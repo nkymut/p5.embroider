@@ -5,7 +5,7 @@
   "main": "lib/p5.embroider.js",
   "scripts": {
     "build": "rollup -c",
-    "watch": "rollup -c -w",
+    "watch": "rollup -c --watch",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
@@ -47,7 +47,7 @@
     "jsdoc": "^4.0.2",
     "jsdom": "^26.1.0",
     "prettier": "^3.2.5",
-    "rollup": "^4.12.0",
+    "rollup": "^4.59.0",
     "standard-version": "^9.5.0"
   },
   "type": "module"
