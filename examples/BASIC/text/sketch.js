@@ -1,12 +1,11 @@
 let font;
 let drawMode = "realistic";
 
-function preload() {
-  font = loadFont("assets/SourceSansPro-Regular.otf");
-}
-
-function setup() {
+async function setup() {
   createCanvas(mmToPixel(100), mmToPixel(120));
+
+  // p5.js 2.0: load assets in setup() with await instead of preload()
+  font = await loadFont("assets/SourceSansPro-Regular.otf");
 
   // Load a font
   //font = loadFont('./assets/CloisterBlack.ttf');

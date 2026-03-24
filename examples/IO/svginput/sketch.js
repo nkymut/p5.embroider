@@ -543,7 +543,7 @@ function createUI() {
     .class("secondary")
     .mousePressed(() => {
       if (svgParts.length > 0) {
-        exportSVG();
+        exportSVGFile();
       } else {
         console.warn("No SVG loaded to export");
       }
@@ -2997,7 +2997,7 @@ function setup() {
   URL.revokeObjectURL(url);
 }
 
-function exportSVG() {
+function exportSVGFile() {
   if (svgParts.length === 0) {
     console.warn("No SVG parts to export");
     return;

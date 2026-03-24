@@ -52,6 +52,7 @@ function draw() {
   strokeWeight(5);
   setStrokeMode("parallel");
   noFill();
+  rectMode(CORNER);
   rect(0, 0, 80, 80, 2);
   trimThread();
 

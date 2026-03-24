@@ -258,12 +258,21 @@ function updateStrokeSettings() {
 }
 
 function updateCurveSettings() {
-  // Update p5.js curve detail settings if they exist
-  if (typeof curveDetail === "function") {
-    curveDetail(currentSettings.curveDetail);
+  // p5.js 2.0: curveDetail() and bezierDetail() are WebGL-only.
+  // In 2D mode, wrap in try-catch to avoid crashing.
+  try {
+    if (typeof curveDetail === "function") {
+      curveDetail(currentSettings.curveDetail);
+    }
+  } catch (e) {
+    // curveDetail() is WebGL-only in p5.js 2.0, ignore in 2D
   }
-  if (typeof bezierDetail === "function") {
-    bezierDetail(currentSettings.bezierDetail);
+  try {
+    if (typeof bezierDetail === "function") {
+      bezierDetail(currentSettings.bezierDetail);
+    }
+  } catch (e) {
+    // bezierDetail() is WebGL-only in p5.js 2.0, ignore in 2D
   }
   redraw();
 }
