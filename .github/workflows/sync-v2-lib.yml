@@ -26,15 +26,15 @@ jobs:
           ref: p5_2.0
           fetch-depth: 1
 
+      # No cache: npm — package-lock.json is gitignored in this repo
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: npm
+          node-version: "22"
 
       - name: Install and build
         run: |
-          npm ci
+          npm install
           npm run build
           cp lib/p5.embroider.js /tmp/p5.embroider.v2.js
           test -s /tmp/p5.embroider.v2.js
