@@ -1,0 +1,60 @@
+# Build lib on branch p5_2.0 and copy the bundle to main at lib/v2/p5.embroider.js
+# so GitHub Pages (and raw URLs on main) always expose a stable v2 path without hand-copying.
+#
+# Triggers: every push to p5_2.0, or manual run (Actions tab).
+name: Sync v2 bundle to main
+
+on:
+  push:
+    branches: [p5_2.0]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-v2-lib
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout p5_2.0 and build
+        uses: actions/checkout@v4
+        with:
+          ref: p5_2.0
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+          cp lib/p5.embroider.js /tmp/p5.embroider.v2.js
+          test -s /tmp/p5.embroider.v2.js
+
+      - name: Checkout main and commit lib/v2
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Write lib/v2 and push if changed
+        run: |
+          mkdir -p lib/v2
+          cp /tmp/p5.embroider.v2.js lib/v2/p5.embroider.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/v2/p5.embroider.js
+          if git diff --staged --quiet; then
+            echo "No changes to lib/v2/p5.embroider.js; skipping commit."
+          else
+            git commit -m "chore: sync lib/v2/p5.embroider.js from p5_2.0"
+            git push origin main
+          fi
