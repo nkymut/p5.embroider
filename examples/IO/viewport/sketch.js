@@ -114,10 +114,16 @@ function draw() {
 
     // Petal
     stroke("red");
+    // p5.js 2.0: bezierOrder(3) plus one bezierVertex() per control point.
     beginShape();
     vertex(0, 0);
-    bezierVertex(mmToPixel(5), mmToPixel(-15), mmToPixel(15), mmToPixel(-15), mmToPixel(20), 0);
-    bezierVertex(mmToPixel(15), mmToPixel(5), mmToPixel(5), mmToPixel(5), 0, 0);
+    bezierOrder(3);
+    bezierVertex(mmToPixel(5), mmToPixel(-15));
+    bezierVertex(mmToPixel(15), mmToPixel(-15));
+    bezierVertex(mmToPixel(20), 0);
+    bezierVertex(mmToPixel(15), mmToPixel(5));
+    bezierVertex(mmToPixel(5), mmToPixel(5));
+    bezierVertex(0, 0);
     endShape();
 
     pop();

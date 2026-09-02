@@ -565,7 +565,7 @@ function createUI() {
     .class("secondary")
     .mousePressed(() => {
       if (svgParts.length > 0) {
-        exportOutline();
+        exportOutlineFile();
       } else {
         console.warn("No SVG loaded to export");
       }
@@ -3512,7 +3512,7 @@ function keyReleased() {
   }
 }
 
-function exportOutline() {
+function exportOutlineFile() {
   if (svgParts.length === 0) {
     console.warn("No SVG parts to export");
     return;

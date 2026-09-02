@@ -5,8 +5,9 @@ let currentSettings = {
   stitchWidth: 0.2,
   minStitchLength: 0.5,
   resampleNoise: 0.2,
+  // One setting now covers curves, splines and beziers. p5.js 2.0 removed
+  // bezierDetail() and restricted curveDetail() to WebGL.
   curveDetail: 20,
-  bezierDetail: 20,
 };
 
 let currentStrokeMode = "straight";
@@ -30,7 +31,8 @@ function createLabeledSlider(label, min, max, value, step, yOffset) {
   slider.style("display", "inline-block");
   slider.style("vertical-align", "middle");
 
-  let valueDisplay = createSpan(value);
+  // createSpan() requires a string in p5.js 2.0.
+  let valueDisplay = createSpan(String(value));
   valueDisplay.parent(container);
   valueDisplay.style("margin-left", "10px");
   valueDisplay.style("display", "inline-block");
@@ -192,21 +194,6 @@ function setup() {
     updateCurveSettings();
   });
 
-  // Bezier detail slider
-  let bezierDetailControl = createLabeledSlider(
-    "Bezier Detail",
-    5,
-    50,
-    currentSettings.bezierDetail,
-    1,
-    yStart + ySpacing * 5,
-  );
-  bezierDetailControl.slider.input(() => {
-    currentSettings.bezierDetail = bezierDetailControl.slider.value();
-    bezierDetailControl.valueDisplay.html(currentSettings.bezierDetail);
-    updateCurveSettings();
-  });
-
   // Random variation slider
   let resampleNoiseControl = createLabeledSlider(
     "Random Variation",
@@ -258,22 +245,10 @@ function updateStrokeSettings() {
 }
 
 function updateCurveSettings() {
-  // p5.js 2.0: curveDetail() and bezierDetail() are WebGL-only.
-  // In 2D mode, wrap in try-catch to avoid crashing.
-  try {
-    if (typeof curveDetail === "function") {
-      curveDetail(currentSettings.curveDetail);
-    }
-  } catch (e) {
-    // curveDetail() is WebGL-only in p5.js 2.0, ignore in 2D
-  }
-  try {
-    if (typeof bezierDetail === "function") {
-      bezierDetail(currentSettings.bezierDetail);
-    }
-  } catch (e) {
-    // bezierDetail() is WebGL-only in p5.js 2.0, ignore in 2D
-  }
+  // p5.js 2.0 removed bezierDetail() and made curveDetail() WebGL-only, so
+  // p5.embroider carries its own setting for how finely curves are flattened
+  // into stitches.
+  setCurveDetail(currentSettings.curveDetail);
   redraw();
 }
 
@@ -300,39 +275,48 @@ function draw() {
     bezier(10, 30, 25, 25, 35, 40, 50, 30);
   }
 
-  // Test curve (Catmull-Rom)
+  // Test spline (Catmull-Rom). p5.js 2.0 renamed curve() to spline().
   if (showCurveType === "all" || showCurveType === "curve") {
     stroke(0, 0, 255); // blue
-    curve(5, 50, 15, 45, 35, 55, 55, 45);
+    spline(5, 50, 15, 45, 35, 55, 55, 45);
   }
 
   // Test vertex-based curves
   if (showCurveType === "all" || showCurveType === "vertex") {
-    // Bezier vertex test
+    // Cubic bezier: bezierOrder(3) then one bezierVertex() per control point.
     stroke(255, 0, 255); // magenta
     beginShape();
     vertex(10, 65);
-    bezierVertex(20, 60, 30, 75, 40, 65);
-    bezierVertex(45, 60, 50, 70, 55, 65);
+    bezierOrder(3);
+    bezierVertex(20, 60);
+    bezierVertex(30, 75);
+    bezierVertex(40, 65);
+    bezierVertex(45, 60);
+    bezierVertex(50, 70);
+    bezierVertex(55, 65);
     endShape();
 
-    // Quadratic vertex test
+    // Quadratic bezier: bezierOrder(2), one control point then the end point.
+    // p5.js 2.0 removed quadraticVertex().
     stroke(255, 165, 0); // orange
     beginShape();
     vertex(10, 85);
-    quadraticVertex(25, 80, 40, 85);
-    quadraticVertex(50, 90, 60, 85);
+    bezierOrder(2);
+    bezierVertex(25, 80);
+    bezierVertex(40, 85);
+    bezierVertex(50, 90);
+    bezierVertex(60, 85);
     endShape();
 
-    // Curve vertex test
+    // Spline: p5.js 2.0 renamed curveVertex() to splineVertex().
     stroke(0, 255, 255); // cyan
     beginShape();
-    curveVertex(15, 105);
-    curveVertex(20, 100);
-    curveVertex(30, 110);
-    curveVertex(40, 105);
-    curveVertex(50, 108);
-    curveVertex(55, 102);
+    splineVertex(15, 105);
+    splineVertex(20, 100);
+    splineVertex(30, 110);
+    splineVertex(40, 105);
+    splineVertex(50, 108);
+    splineVertex(55, 102);
     endShape();
   }
 

@@ -30,7 +30,8 @@ function createLabeledSlider(label, min, max, value, step, yOffset) {
   slider.style("display", "inline-block");
   slider.style("vertical-align", "middle");
 
-  let valueDisplay = createSpan(value);
+  // createSpan() requires a string in p5.js 2.0.
+  let valueDisplay = createSpan(String(value));
   valueDisplay.parent(container);
   valueDisplay.style("margin-left", "10px");
   valueDisplay.style("display", "inline-block");
@@ -258,18 +259,36 @@ function drawContourExamples() {
   stroke(0, 0, 255);
   strokeWeight(currentSettings.strokeWeight);
 
+  // p5.js 2.0: bezierOrder(3) sets the degree, then one bezierVertex() per
+  // control point. The starting anchor comes from the preceding vertex().
   beginShape();
   vertex(60, 10);
-  bezierVertex(75, 5, 90, 15, 100, 10);
-  bezierVertex(105, 25, 100, 40, 90, 50);
-  bezierVertex(75, 55, 65, 50, 60, 40);
-  bezierVertex(55, 25, 55, 15, 60, 10);
+  bezierOrder(3);
+  bezierVertex(75, 5);
+  bezierVertex(90, 15);
+  bezierVertex(100, 10);
+  bezierVertex(105, 25);
+  bezierVertex(100, 40);
+  bezierVertex(90, 50);
+  bezierVertex(75, 55);
+  bezierVertex(65, 50);
+  bezierVertex(60, 40);
+  bezierVertex(55, 25);
+  bezierVertex(55, 15);
+  bezierVertex(60, 10);
 
   beginContour();
   vertex(70, 20);
-  bezierVertex(80, 15, 90, 20, 90, 30);
-  bezierVertex(90, 40, 80, 40, 70, 35);
-  bezierVertex(65, 30, 65, 25, 70, 20);
+  bezierOrder(3);
+  bezierVertex(80, 15);
+  bezierVertex(90, 20);
+  bezierVertex(90, 30);
+  bezierVertex(90, 40);
+  bezierVertex(80, 40);
+  bezierVertex(70, 35);
+  bezierVertex(65, 30);
+  bezierVertex(65, 25);
+  bezierVertex(70, 20);
   endContour();
 
   endShape(CLOSE);
@@ -285,11 +304,17 @@ function drawContourExamples() {
   vertex(50, 100);
   vertex(10, 100);
 
+  // p5.js 2.0 removed quadraticVertex(). Use bezierOrder(2) and two
+  // bezierVertex() calls per segment: one control point, then the end point.
   beginContour();
   vertex(20, 70);
-  quadraticVertex(35, 65, 40, 80);
-  quadraticVertex(35, 95, 20, 90);
-  quadraticVertex(15, 80, 20, 70);
+  bezierOrder(2);
+  bezierVertex(35, 65);
+  bezierVertex(40, 80);
+  bezierVertex(35, 95);
+  bezierVertex(20, 90);
+  bezierVertex(15, 80);
+  bezierVertex(20, 70);
   endContour();
 
   endShape(CLOSE);
@@ -299,32 +324,33 @@ function drawContourExamples() {
   stroke(255, 165, 0);
   strokeWeight(currentSettings.strokeWeight);
 
+  // p5.js 2.0: curveVertex() was renamed splineVertex().
   beginShape();
-  curveVertex(60, 60);
-  curveVertex(60, 60);
-  curveVertex(75, 55);
-  curveVertex(90, 60);
-  curveVertex(100, 65);
-  curveVertex(105, 80);
-  curveVertex(100, 95);
-  curveVertex(85, 105);
-  curveVertex(70, 100);
-  curveVertex(55, 95);
-  curveVertex(55, 80);
-  curveVertex(60, 60);
-  curveVertex(60, 60);
+  splineVertex(60, 60);
+  splineVertex(60, 60);
+  splineVertex(75, 55);
+  splineVertex(90, 60);
+  splineVertex(100, 65);
+  splineVertex(105, 80);
+  splineVertex(100, 95);
+  splineVertex(85, 105);
+  splineVertex(70, 100);
+  splineVertex(55, 95);
+  splineVertex(55, 80);
+  splineVertex(60, 60);
+  splineVertex(60, 60);
 
   beginContour();
-  curveVertex(70, 75);
-  curveVertex(70, 75);
-  curveVertex(80, 70);
-  curveVertex(90, 75);
-  curveVertex(90, 85);
-  curveVertex(80, 90);
-  curveVertex(70, 85);
-  curveVertex(65, 80);
-  curveVertex(70, 75);
-  curveVertex(70, 75);
+  splineVertex(70, 75);
+  splineVertex(70, 75);
+  splineVertex(80, 70);
+  splineVertex(90, 75);
+  splineVertex(90, 85);
+  splineVertex(80, 90);
+  splineVertex(70, 85);
+  splineVertex(65, 80);
+  splineVertex(70, 75);
+  splineVertex(70, 75);
   endContour();
 
   endShape(CLOSE);
