@@ -21,7 +21,7 @@
     "release:major": "standard-version --release-as major"
   },
   "files": [
-    "lib",
+    "lib/p5.embroider.js",
     "README.md",
     "MIGRATION.md",
     "LICENSE"

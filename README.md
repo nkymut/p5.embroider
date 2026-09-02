@@ -45,12 +45,12 @@ To use p5.embroider in your project, include the library in your HTML file:
 
 ### p5.js 1.x (frozen)
 
-p5.embroider 0.2.1 is kept under [`v1/`](./v1/) for sketches still on p5.js 1.x.
-It is not maintained.
+p5.embroider 0.2.1 is kept under [`lib/v1/`](./lib/v1/) for sketches still on
+p5.js 1.x. It is not maintained.
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.js"></script>
-<script src="https://nkymut.github.io/p5.embroider/v1/p5.embroider.js"></script>
+<script src="https://nkymut.github.io/p5.embroider/lib/v1/p5.embroider.js"></script>
 ```
 
 

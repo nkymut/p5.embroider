@@ -258,11 +258,11 @@ Recording, export and units are unchanged:
 ## Staying on p5.js 1.x
 
 p5.embroider 0.2.1 is the last release built for p5.js 1.x. A frozen copy is kept
-in this repository under [`v1/`](./v1/) so 1.x sketches have a stable URL:
+in this repository under [`lib/v1/`](./lib/v1/) so 1.x sketches have a stable URL:
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.js"></script>
-<script src="https://nkymut.github.io/p5.embroider/v1/p5.embroider.js"></script>
+<script src="https://nkymut.github.io/p5.embroider/lib/v1/p5.embroider.js"></script>
 ```
 
 You can also pin the published package instead:
@@ -278,7 +278,7 @@ or with npm:
 npm install p5@^1.11.0 p5.embroider@0.2.1
 ```
 
-The `v1/` copy is frozen; fixes and new features only land in the p5.js 2.x build.
+The `lib/v1/` copy is frozen; fixes and new features only land in the p5.js 2.x build.
 
 p5.embroider 0.3 still contains a p5.js 1.x code path, but it is deprecated, is
 not covered by the test suite, and will be removed in a future release. Treat

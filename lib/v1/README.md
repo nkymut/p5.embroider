@@ -11,7 +11,7 @@ It is not maintained. Bug fixes and new features land in the p5.js 2.x build in
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.js"></script>
-<script src="https://nkymut.github.io/p5.embroider/v1/p5.embroider.js"></script>
+<script src="https://nkymut.github.io/p5.embroider/lib/v1/p5.embroider.js"></script>
 ```
 
 Note that the 1.x API differs from the current one, most visibly:
@@ -23,6 +23,6 @@ Note that the 1.x API differs from the current one, most visibly:
 
 ## Moving to the current version
 
-See [MIGRATION.md](../MIGRATION.md). Most sketches need three changes: update the
+See [MIGRATION.md](../../MIGRATION.md). Most sketches need three changes: update the
 p5.js script tag, move asset loading into `async setup()`, and drop the argument
 from `beginRecord()`.
