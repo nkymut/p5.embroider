@@ -91,8 +91,6 @@ function setDebugMode(enabled) {
     width: 0,
     height: 0,
     threads: [],
-    pixelsPerUnit: 1,
-    stitchCount: 0,
   };
 
   // Vertex properties
@@ -126,13 +124,32 @@ function setDebugMode(enabled) {
     fillMode: "tatami",
   };
 
-  // Embroidery settings
+  /**
+   * Global embroidery defaults.
+   *
+   * Fallback values used when a shape does not supply its own stroke/fill
+   * settings; {@link _strokeSettings} and {@link _fillSettings} hold the
+   * per-mode values the stitch generators actually consume. All distances are
+   * in millimetres (mm), the library's canonical unit - convert with
+   * mmToPixel()/pixelToMm() when crossing into p5.js pixel space.
+   *
+   * Written by the public setters setStitch() and setStitchWidth().
+   *
+   * @private
+   * @property {number} stitchLength    Target distance between stitches. mm. Default 3.
+   * @property {number} stitchWidth     Default stitch width. mm. Default 0.2.
+   * @property {number} minStitchLength Stitches shorter than this are dropped. mm. Default 1.
+   * @property {number} resampleNoise   Jitter applied when resampling paths. 0-1, unitless. Default 0.
+   * @property {number} jumpThreshold   Gap above which a jump/trim is inserted. mm. Default 10.
+   * @property {number} maximumJoinDistance        Declared but never read. mm. Default 0.
+   * @property {number} maximumStitchesPerSquareMm Declared but never read. Default 0.
+   * @property {string} units                      Declared but never read. Default "mm".
+   */
   const _embroiderySettings = {
     stitchLength: 3, // mm
     stitchWidth: 0.2,
     minStitchLength: 1, // mm
     resampleNoise: 0, // 0-1 range
-    minimumPathLength: 0,
     maximumJoinDistance: 0,
     maximumStitchesPerSquareMm: 0,
     jumpThreshold: 10, // mm
@@ -172,6 +189,23 @@ function setDebugMode(enabled) {
   let _doFill = false; // Track if fill is enabled
   let _currentFill = null; // Store current fill color and properties
   let _currentFillMode = FILL_MODE.TATAMI;
+  /**
+   * Fill stitch settings, consumed by the tatami/satin/spiral fill generators.
+   *
+   * All distances are in millimetres (mm). Written by the public setter
+   * setFillSettings().
+   *
+   * @private
+   * @property {number}  stitchLength    Target distance between stitches. mm. Default 3.
+   * @property {number}  stitchWidth     Stitch width. mm. Default 0.2.
+   * @property {number}  minStitchLength Stitches shorter than this are dropped. mm. Default 0.5.
+   * @property {number}  resampleNoise   Jitter applied when resampling paths. 0-1, unitless. Default 0.
+   * @property {number}  angle           Fill direction. Radians. Default 0.
+   * @property {number}  rowSpacing      Distance between fill rows. mm. Default 0.8.
+   * @property {number}  tieDistance     Distance between tie-down stitches. mm. Default 15.
+   * @property {boolean} alternateAngle  Alternate the fill angle between shapes. Default false.
+   * @property {{r: number, g: number, b: number}} color Fill thread color, 0-255 per channel. Default black.
+   */
   let _fillSettings = {
     stitchLength: 3, // mm
     stitchWidth: 0.2,
@@ -184,7 +218,28 @@ function setDebugMode(enabled) {
     color: { r: 0, g: 0, b: 0 },
   };
 
-  // Add a stroke settings object to match the other settings objects
+  /**
+   * Stroke stitch settings, consumed by convertVerticesToStitches() and the
+   * straight/zigzag/parallel/sashiko/vertex stroke generators.
+   *
+   * All distances are in millimetres (mm); strokeWeight is passed through
+   * mmToPixel() before being handed back to p5.js for rendering. Written by
+   * the public setter setStrokeSettings() and by the strokeWeight() override.
+   *
+   * @private
+   * @property {number}  stitchLength    Target distance between stitches. mm. Default 3.
+   * @property {number}  stitchWidth     Stitch width. mm. Default 0.2.
+   * @property {number}  minStitchLength Stitches shorter than this are dropped. mm. Default 1.
+   * @property {number}  resampleNoise   Jitter applied when resampling paths. 0-1, unitless. Default 0.
+   * @property {number}  strokeWeight    Width of the embroidery line. mm. Default 0.
+   * @property {string}  strokeMode      One of STROKE_MODE. Default STROKE_MODE.STRAIGHT.
+   * @property {string}  strokeJoin      One of STROKE_JOIN. Default STROKE_JOIN.ROUND.
+   * @property {string}  strokeEntry     Entry side: "right" | "left" | "middle". Default "right".
+   * @property {string}  strokeExit      Exit side: "right" | "left" | "middle". Default "right".
+   * @property {boolean} stitchInterpolate For zigzag: false = follow path normals (sharp
+   *                                       corners), true = interpolate between offset paths
+   *                                       (smooth corners). Default false.
+   */
   let _strokeSettings = {
     stitchLength: 3, // mm
     stitchWidth: 0.2,
@@ -197,6 +252,30 @@ function setDebugMode(enabled) {
     strokeExit: "right", // "right","left","middle"
     stitchInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
   };
+
+  /**
+   * Internal accessor bundling the three settings objects into one namespace.
+   *
+   * Groundwork for the eventual consolidation into a single nested config
+   * (refactor #12 in _Claude/2026-07-02_issue-prioritization-and-roadmap.md).
+   * New internal code should read settings through this accessor so that the
+   * later merge only has to change one place. This is NOT the consolidation
+   * itself - the three objects are still the source of truth.
+   *
+   * Returns live references, not copies: mutating the returned objects mutates
+   * module state. The public setters (setStitch, setStitchWidth,
+   * setStrokeSettings, setFillSettings) remain the supported write path.
+   *
+   * @private
+   * @returns {{embroidery: Object, stroke: Object, fill: Object}} Live settings references.
+   */
+  function getSettings() {
+    return {
+      embroidery: _embroiderySettings,
+      stroke: _strokeSettings,
+      fill: _fillSettings,
+    };
+  }
 
   /**
    * Matrix utility functions for 2D transformations

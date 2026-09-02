@@ -150,7 +150,6 @@ async function exportOutlinePathAsDST(outlinePoints, filename, embroideryState) 
   const embroideryData = {
     width: 200,
     height: 200,
-    pixelsPerUnit: 1,
     threads: [
       {
         color: { r: 0, g: 0, b: 0 },
@@ -178,7 +177,6 @@ async function exportOutlinePathAsGCODE(outlinePoints, filename, embroideryState
   const embroideryData = {
     width: 200,
     height: 200,
-    pixelsPerUnit: 1,
     threads: [
       {
         color: { r: 0, g: 0, b: 0 },
