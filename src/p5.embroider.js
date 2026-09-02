@@ -390,7 +390,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStrokeMode('zigzag');
    *   line(10, 10, 50, 50); // Will use zigzag stitch pattern
    * }
@@ -413,7 +413,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStrokeJoin('miter');
    *   beginShape();
    *   vertex(20, 20);
@@ -546,7 +546,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns here
    *   endRecord();
    * }
@@ -569,7 +569,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    * }
@@ -2637,9 +2637,12 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
           console.warn("p5.embroider: text() does not yet support maxWidth or maxHeight parameters.");
         }
 
-        // Get current font
-        // p5.js 2.0: _renderer.states.textFont, 1.x: _renderer._textFont
-        const font = _p5Instance._renderer?.states?.textFont ?? _p5Instance._renderer?._textFont;
+        // Get current font.
+        // p5.js 2.0 stores textFont as a wrapper, { font, family, size }, where
+        // `font` is the p5.Font (undefined for a system font named by string).
+        // p5.js 1.x stored the p5.Font directly on _renderer._textFont.
+        const fontState = _p5Instance._renderer?.states?.textFont ?? _p5Instance._renderer?._textFont;
+        const font = fontState?.font ?? fontState;
 
         // Get current text size (must be before font check to avoid TDZ)
         const fontSize = _p5Instance._renderer?.states?.textSize ?? _p5Instance._renderer?._textSize;
@@ -2649,18 +2652,14 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
         const hasTextToPaths = font && typeof font.textToPaths === "function";
         const hasGetPath = font && font.font && typeof font._getPath === "function";
         if (!hasTextToPaths && !hasGetPath) {
+          // A system font has no glyph outlines, so there is nothing to stitch.
           if (_drawMode === "p5") {
-            push();
-            textSize(mmToPixel(fontSize));
-            _originalTextFunc.call(
-              _p5Instance,
-              str,
-              mmToPixel(x),
-              mmToPixel(y),
-              mmToPixel(maxWidth),
-              mmToPixel(maxHeight),
+            drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
+          } else {
+            console.warn(
+              "🪡 p5.embroider says: text() needs a font loaded with loadFont(); " +
+              "system fonts have no outlines to convert into stitches.",
             );
-            pop();
           }
           return;
         }
@@ -2869,26 +2868,43 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
 
         // Call original for visual feedback based on draw mode
         if (_drawMode === "p5") {
-          push();
-          textSize(mmToPixel(fontSize));
-          _originalTextFunc.call(
-            _p5Instance,
-            str,
-            mmToPixel(x),
-            mmToPixel(y),
-            mmToPixel(maxWidth),
-            mmToPixel(maxHeight),
-          );
-          pop();
+          drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
         }
       } else {
-        // Not recording, just call original
-        push();
-        textSize(mmToPixel(fontSize));
-        _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
-        pop();
+        // Not recording: the caller is in plain p5 pixel units, so forward as-is.
+        _originalTextFunc.apply(this, arguments);
       }
     };
+  }
+
+  /**
+   * Draws text through p5 for "p5" draw mode, converting the recording's
+   * millimetre coordinates to pixels.
+   *
+   * maxWidth/maxHeight are only forwarded when the caller supplied them.
+   * Passing undefined through mmToPixel() yields NaN, and p5's text() switches
+   * to its text-box layout as soon as a fourth argument is present, which moves
+   * y from the baseline to the top of the box.
+   * @private
+   */
+  function drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize) {
+    push();
+    textSize(mmToPixel(fontSize));
+    if (typeof maxWidth === "undefined") {
+      _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y));
+    } else if (typeof maxHeight === "undefined") {
+      _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth));
+    } else {
+      _originalTextFunc.call(
+        _p5Instance,
+        str,
+        mmToPixel(x),
+        mmToPixel(y),
+        mmToPixel(maxWidth),
+        mmToPixel(maxHeight),
+      );
+    }
+    pop();
   }
 
   /**
@@ -3173,7 +3189,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStitch(1, 3, 0.2); // min 1mm, desired 3mm, 20% noise
    *   // Draw embroidery patterns
    * }
@@ -3200,7 +3216,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStitchWidth(0.2); // width 0.2mm
    *   // Draw embroidery patterns
    * }
@@ -3229,7 +3245,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setCurveDetail(40); // smoother curves, more stitches
    * }
    *
@@ -3281,7 +3297,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setDrawMode('stitch'); // Show stitch points and lines
    *   // Draw embroidery patterns
    * }
@@ -4876,7 +4892,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns here
    *   circle(50, 50, 20);
    *   line(10, 10, 90, 90);
@@ -4921,7 +4937,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportGcode('pattern.gcode');
@@ -4970,7 +4986,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns at specific coordinates
    *   translate(100, 25); // Position at 100mm, 25mm
    *   circle(0, 0, 20);
@@ -5022,7 +5038,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   endRecord();
@@ -5064,7 +5080,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportPES('pattern.pes');
@@ -5211,7 +5227,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportDST('pattern.dst');
@@ -5355,7 +5371,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   line(10, 10, 90, 90);
@@ -5399,7 +5415,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   line(10, 10, 50, 50);
    *   trimThread(); // Cut thread at current position
    *   line(60, 60, 100, 100);
@@ -6558,7 +6574,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   embroideryOutline(5); // Add 5mm outline around the embroidery
@@ -6589,7 +6605,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Create some stitch data
    *   let pathData = [{x: 50, y: 50}, {x: 100, y: 50}, {x: 100, y: 100}];
    *   let outlinePoints = embroideryOutlineFromPath(pathData, 5); // Add 5mm outline
@@ -6629,7 +6645,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   endRecord();
@@ -6657,7 +6673,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *
    *   // Thread 0 - Red circle
    *   stroke(255, 0, 0);

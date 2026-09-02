@@ -11,7 +11,7 @@
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:json": "NODE_OPTIONS=--experimental-vm-modules jest --json --outputFile=test-results.json",
-    "test:browser": "npx http-server . -o /test/browser/index.html",
+    "test:browser": "npx http-server . -o /debug/tester/index.html",
     "jsdoc": "jsdoc -c jsdoc.config.json",
     "serve-docs": "npx http-server ./docs -o",
     "codeformat": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
