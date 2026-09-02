@@ -65,7 +65,7 @@ function draw() {
 
   setDrawMode(drawMode);
   noFill();
-  beginRecord(this);
+  beginRecord();
   strokeCap(SQUARE);
 
   // Reset to no fill for lines

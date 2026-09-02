@@ -57,7 +57,7 @@ function draw() {
   translate(mmToPixel(10), mmToPixel(10));
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
   //strokeWeight(1);
   setStitch(0.1, 0.2, 0);
   // Example 1: Using vertex(x, y, width) - Tapered stroke
@@ -109,12 +109,18 @@ function draw() {
   stroke(255, 150, 0);
   setStrokeMode("zigzag");
 
+  // p5.js 2.0: bezierOrder(3) plus one bezierVertex() per control point.
   beginShape();
   vertex(10, 70, 2);
+  bezierOrder(3);
   vertexWidth(4);
-  bezierVertex(30, 65, 50, 85, 70, 70);
+  bezierVertex(30, 65);
+  bezierVertex(50, 85);
+  bezierVertex(70, 70);
   vertexWidth(2);
-  bezierVertex(75, 68, 80, 65, 90, 70);
+  bezierVertex(75, 68);
+  bezierVertex(80, 65);
+  bezierVertex(90, 70);
   endShape();
   trimThread();
 

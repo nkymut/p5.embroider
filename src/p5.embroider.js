@@ -80,8 +80,107 @@ function setDebugMode(enabled) {
   }
 }
 
-(function (global) {
-  const p5embroidery = global.p5embroidery || {};
+function p5EmbroiderAddon(p5, fn, lifecycles) {
+  const p5embroidery = {};
+
+  // p5.js 2.0 puts constants on prototype (fn), not on the p5 class itself.
+  // Use fn as fallback to support both 1.x (p5.CENTER) and 2.0 (fn.CENTER).
+  const CONSTANTS = {
+    CENTER: p5.CENTER ?? fn.CENTER ?? "center",
+    CORNER: p5.CORNER ?? fn.CORNER ?? "corner",
+    CORNERS: p5.CORNERS ?? fn.CORNERS ?? "corners",
+    RADIUS: p5.RADIUS ?? fn.RADIUS ?? "radius",
+    CLOSE: p5.CLOSE ?? fn.CLOSE ?? "close",
+    OPEN: p5.OPEN ?? fn.OPEN ?? "open",
+    PIE: p5.PIE ?? fn.PIE ?? "pie",
+    CHORD: p5.CHORD ?? fn.CHORD ?? "chord",
+    ROUND: p5.ROUND ?? fn.ROUND ?? "round",
+    MITER: p5.MITER ?? fn.MITER ?? "miter",
+    BEVEL: p5.BEVEL ?? fn.BEVEL ?? "bevel",
+    SQUARE: p5.SQUARE ?? fn.SQUARE ?? "butt",
+    PROJECT: p5.PROJECT ?? fn.PROJECT ?? "square",
+    // Angle modes — used by rotate() to decide whether to convert degrees.
+    DEGREES: p5.DEGREES ?? fn.DEGREES ?? "degrees",
+    RADIANS: p5.RADIANS ?? fn.RADIANS ?? "radians",
+    // beginShape() kinds — must resolve or beginShape(POINTS) is never recognised.
+    POINTS: p5.POINTS ?? fn.POINTS ?? "points",
+    LINES: p5.LINES ?? fn.LINES ?? "lines",
+    TRIANGLES: p5.TRIANGLES ?? fn.TRIANGLES ?? "triangles",
+    TRIANGLE_FAN: p5.TRIANGLE_FAN ?? fn.TRIANGLE_FAN ?? "triangle_fan",
+    TRIANGLE_STRIP: p5.TRIANGLE_STRIP ?? fn.TRIANGLE_STRIP ?? "triangle_strip",
+    QUADS: p5.QUADS ?? fn.QUADS ?? "quads",
+    QUAD_STRIP: p5.QUAD_STRIP ?? fn.QUAD_STRIP ?? "quad_strip",
+  };
+
+  // Host version detection. p5.js 2.x renamed the curve family to spline* and
+  // changed bezierVertex() to one point per call with bezierOrder() setting the
+  // degree. Captured before any override is installed, so it reflects the real host.
+  const _isP5v2 = typeof fn.bezierOrder === "function" && typeof fn.spline === "function";
+
+  // Deprecation notices are emitted once per name, not once per frame, because
+  // these functions are typically called from draw().
+  const _deprecationWarned = new Set();
+
+  /**
+   * Warns once that a p5.js 1.x API is deprecated in p5.embroider.
+   * @private
+   * @param {string} name - The deprecated function name.
+   * @param {string} advice - What to use instead.
+   */
+  function warnDeprecated(name, advice) {
+    if (_deprecationWarned.has(name)) return;
+    _deprecationWarned.add(name);
+    console.warn(
+      `🪡 p5.embroider says: ${advice} The ${name}() alias still works but will be removed in 0.4. See MIGRATION.md.`,
+    );
+  }
+
+  /**
+   * Calls an original p5 function with recording suspended.
+   *
+   * p5.js 2.x implements composite primitives by re-entering the instance's own
+   * public methods — renderer.bezier() calls beginShape()/bezierVertex()/endShape()
+   * on the sketch, and spline() does the same with splineVertex(). Those are our
+   * overrides, so replaying a shape to p5 in "p5" draw mode would otherwise be
+   * recorded a second time, clobbering the vertex buffer mid-shape.
+   * @private
+   * @param {Function} original - The captured p5 function.
+   * @param {p5} thisArg - Instance to call it on.
+   * @param {Array} args - Arguments to forward.
+   */
+  function callOriginalWithoutRecording(original, thisArg, args) {
+    if (!original) return undefined;
+    const wasRecording = _recording;
+    _recording = false;
+    try {
+      return original.apply(thisArg, args);
+    } finally {
+      _recording = wasRecording;
+    }
+  }
+
+  // Segments used when flattening curves/beziers into stitch paths. p5.js 1.x read
+  // this from _curveDetail/_bezierDetail; those are gone in 2.0 and curveDetail()
+  // throws outside WebGL, so the library owns the setting. See setCurveDetail().
+  // null means "not set by the sketch", so the host's value is used when it has one.
+  let _curveDetail = null;
+  const DEFAULT_CURVE_DETAIL = 20;
+
+  /**
+   * Resolves the curve flattening detail, preferring an explicit setCurveDetail()
+   * value and falling back to whatever the host renderer exposes.
+   * @private
+   * @returns {number} Segments per curve segment.
+   */
+  function _getCurveDetail() {
+    return (
+      _curveDetail ??
+      _p5Instance?._renderer?.states?.curveDetail ??
+      _p5Instance?._curveDetail ??
+      _p5Instance?._bezierDetail ??
+      DEFAULT_CURVE_DETAIL
+    );
+  }
 
   // Internal properties
   let _p5Instance;
@@ -388,7 +487,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStrokeMode('zigzag');
    *   line(10, 10, 50, 50); // Will use zigzag stitch pattern
    * }
@@ -411,7 +510,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStrokeJoin('miter');
    *   beginShape();
    *   vertex(20, 20);
@@ -538,27 +637,30 @@ function setDebugMode(enabled) {
 
   /**
    * Begins recording embroidery data.
+   *
+   * While recording, p5.js drawing functions are interpreted in millimetres and
+   * converted into stitches instead of being drawn directly.
+   *
+   * Takes no arguments. p5.embroider registers itself as a p5 addon, so it
+   * already knows the sketch instance. The pre-0.3 form `beginRecord(this)`
+   * still works; the argument is ignored.
    * @method beginRecord
    * @for p5
-   * @param {p5} p5Instance - The p5.js sketch instance
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns here
    *   endRecord();
    * }
    */
-  p5embroidery.beginRecord = function (p5Instance) {
-    if (!p5Instance) {
-      throw new Error("Invalid p5 instance provided to beginRecord().");
-    }
-    _p5Instance = p5Instance;
-    _stitchData.width = p5Instance.width;
-    _stitchData.height = p5Instance.height;
+  p5embroidery.beginRecord = function () {
+    _p5Instance = this;
+    _stitchData.width = this.width;
+    _stitchData.height = this.height;
     _stitchData.threads = [new Thread(0, 0, 0, 0.2)]; // Start with a default black thread
     _recording = true;
-    overrideP5Functions();
+    // fn overrides are always-on (set up once at addon registration time)
   };
 
   /**
@@ -570,7 +672,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    * }
@@ -579,24 +681,23 @@ function setDebugMode(enabled) {
    */
   p5embroidery.endRecord = function () {
     _recording = false;
-    restoreP5Functions();
-    //exportEmbroidery(format);
+    // fn overrides remain in place - they check _recording internally
   };
 
   let _originalBeginShapeFunc;
   function overrideBeginShapeFunction() {
-    _originalBeginShapeFunc = window.beginShape;
+    _originalBeginShapeFunc = fn.beginShape;
 
-    window.beginShape = function (kind) {
+    fn.beginShape = function (kind) {
       if (_recording) {
         if (
-          kind === window.POINTS ||
-          kind === window.LINES ||
-          kind === window.TRIANGLES ||
-          kind === window.TRIANGLE_FAN ||
-          kind === window.TRIANGLE_STRIP ||
-          kind === window.QUADS ||
-          kind === window.QUAD_STRIP
+          kind === CONSTANTS.POINTS ||
+          kind === CONSTANTS.LINES ||
+          kind === CONSTANTS.TRIANGLES ||
+          kind === CONSTANTS.TRIANGLE_FAN ||
+          kind === CONSTANTS.TRIANGLE_STRIP ||
+          kind === CONSTANTS.QUADS ||
+          kind === CONSTANTS.QUAD_STRIP
         ) {
           _shapeKind = kind;
         } else {
@@ -607,6 +708,7 @@ function setDebugMode(enabled) {
         _contourVertices = [];
         _contours = [];
         _currentContour = [];
+        _bezierVertexBuffer = []; // reset bezierVertex accumulation buffer (p5.js 2.0)
 
         if (_drawMode === "p5") {
           _originalBeginShapeFunc.apply(this, arguments);
@@ -619,9 +721,9 @@ function setDebugMode(enabled) {
 
   let _originalEndShapeFunc;
   function overrideEndShapeFunction() {
-    _originalEndShapeFunc = window.endShape;
+    _originalEndShapeFunc = fn.endShape;
 
-    window.endShape = function (mode, count = 1) {
+    fn.endShape = function (mode, count = 1) {
       if (count < 1) {
         console.log("🪡 p5.embroider says: You can not have less than one instance");
         count = 1;
@@ -641,7 +743,7 @@ function setDebugMode(enabled) {
           return this;
         }
 
-        const closeShape = mode === window.CLOSE;
+        const closeShape = mode === CONSTANTS.CLOSE;
 
         if (closeShape && !_isContour) {
           _vertices.push(_vertices[0]);
@@ -770,9 +872,9 @@ function setDebugMode(enabled) {
 
   let _originalVertexFunc;
   function overrideVertexFunction() {
-    _originalVertexFunc = window.vertex;
+    _originalVertexFunc = fn.vertex;
 
-    window.vertex = function (x, y, z_or_moveTo, u, v) {
+    fn.vertex = function (x, y, z_or_moveTo, u, v) {
       if (_recording) {
         // Determine if third parameter is z (width) or moveTo
         let width = null;
@@ -815,7 +917,10 @@ function setDebugMode(enabled) {
         }
 
         if (_drawMode === "p5") {
-          _originalVertexFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y), moveTo, u, v);
+          // Only x/y are forwarded. The third argument here is p5.embroider's own
+          // width/moveTo overload, not p5's z, so passing it through would corrupt
+          // the vertex (and trips argument validation in p5.js 2.0).
+          _originalVertexFunc.call(_p5Instance, mmToPixel(x), mmToPixel(y));
         }
 
         // Add to appropriate container based on contour state
@@ -836,8 +941,9 @@ function setDebugMode(enabled) {
           if (_DEBUG) console.log("Added to vertices (transformed):", vert);
         }
       } else {
-        let args = [mmToPixel(x), mmToPixel(y), z_or_moveTo, u, v];
-        _originalVertexFunc.apply(this, args);
+        // Not recording: the caller is drawing in plain p5 pixel units, so forward
+        // the arguments untouched. Converting mm here moved shapes off-canvas.
+        _originalVertexFunc.apply(this, arguments);
       }
     };
   }
@@ -857,7 +963,7 @@ function setDebugMode(enabled) {
       _nextVertexWidth = arg1;
     } else if (arguments.length === 3) {
       // vertexWidth(x, y, w) - create vertex with width
-      window.vertex(arg1, arg2, arg3);
+      fn.vertex.call(this, arg1, arg2, arg3);
     } else {
       console.warn("vertexWidth() expects 1 or 3 arguments");
     }
@@ -865,185 +971,182 @@ function setDebugMode(enabled) {
 
   /**
    * Overrides p5.js bezierVertex() function.
+   * Supports both p5.js 1.x 6-arg form and p5.js 2.0 single-point-per-call form.
    * @private
    */
   let _originalBezierVertexFunc;
-  function overrideBezierVertexFunction() {
-    _originalBezierVertexFunc = window.bezierVertex;
+  let _originalBezierOrderFunc;
+  // p5.js 2.0: bezierOrder(n) sets degree; points accumulated one per bezierVertex() call
+  let _bezierOrder = 3; // default cubic
+  let _bezierVertexBuffer = []; // accumulates (x,y) points for 2.0 single-point API
 
-    window.bezierVertex = function (x2, y2, x3, y3, x4, y4) {
-      if (_recording) {
-        // Apply current transformation to control points
-        const cp1 = transformPoint({ x: x2, y: y2 }, _currentTransform.matrix);
-        const cp2 = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
-        const endPoint = transformPoint({ x: x4, y: y4 }, _currentTransform.matrix);
+  /**
+   * Replays a bezier segment to the underlying p5 renderer for "p5" draw mode.
+   * p5.js 1.x takes every control point in a single bezierVertex() call; 2.0 takes
+   * one point per call with bezierOrder() setting the degree beforehand.
+   * @private
+   * @param {Array<{x: number, y: number}>} points - Control points then end point.
+   * @param {p5} [target] - Instance to call on. Defaults to the recording instance.
+   * @param {boolean} [convertMm=true] - Convert mm to pixels. False when the caller
+   *   is already working in pixel units (i.e. not recording).
+   */
+  function _passthroughBezierSegment(points, target = _p5Instance, convertMm = true) {
+    if (!_originalBezierVertexFunc) return;
+    const u = (v) => (convertMm ? mmToPixel(v) : v);
+    if (_isP5v2) {
+      // points.length is the curve degree: 3 for cubic, 2 for quadratic.
+      if (_originalBezierOrderFunc) _originalBezierOrderFunc.call(target, points.length);
+      for (const pt of points) {
+        _originalBezierVertexFunc.call(target, u(pt.x), u(pt.y));
+      }
+    } else {
+      const args = [];
+      for (const pt of points) args.push(u(pt.x), u(pt.y));
+      _originalBezierVertexFunc.apply(target, args);
+    }
+  }
 
-        // Get the last vertex as the starting point - check both main vertices and current contour
-        let lastVertex;
-        if (_isContour) {
-          if (_currentContour.length === 0) {
-            console.warn("bezierVertex() called without a previous vertex in contour");
-            return;
-          }
-          lastVertex = _currentContour[_currentContour.length - 1];
-        } else {
-          if (_vertices.length === 0) {
-            console.warn("bezierVertex() called without a previous vertex");
-            return;
-          }
-          lastVertex = _vertices[_vertices.length - 1];
-        }
-        const x1 = lastVertex.x;
-        const y1 = lastVertex.y;
-        const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+  function _processCubicBezierSegment(cp1, cp2, endPt) {
+    let lastVertex;
+    if (_isContour) {
+      if (_currentContour.length === 0) {
+        console.warn("bezierVertex() called without a previous vertex in contour");
+        return;
+      }
+      lastVertex = _currentContour[_currentContour.length - 1];
+    } else {
+      if (_vertices.length === 0) {
+        console.warn("bezierVertex() called without a previous vertex");
+        return;
+      }
+      lastVertex = _vertices[_vertices.length - 1];
+    }
+    const x1 = lastVertex.x;
+    const y1 = lastVertex.y;
+    const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+    let endWidth = startWidth;
+    if (_nextVertexWidth !== null) {
+      endWidth = _nextVertexWidth;
+      _nextVertexWidth = null;
+    }
 
-        // Determine end width
-        let endWidth = startWidth;
-        if (_nextVertexWidth !== null) {
-          endWidth = _nextVertexWidth;
-          _nextVertexWidth = null; // Reset after use
-        }
-
-        // Generate bezier curve points using transformed control points
-        const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPoint.x, endPoint.y);
-
-        // Add all points except the first one (which is the last vertex)
-        for (let i = 1; i < bezierPoints.length; i++) {
-          const point = bezierPoints[i];
-          const t = i / (bezierPoints.length - 1);
-          const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
-
-          if (_isContour) {
-            _currentContour.push({
-              x: point.x,
-              y: point.y,
-              width: interpolatedWidth,
-            });
-          } else {
-            const vert = {
-              x: point.x,
-              y: point.y,
-              width: interpolatedWidth,
-              u: 0,
-              v: 0,
-              isVert: true,
-              isBezier: true,
-            };
-            _vertices.push(vert);
-          }
-
-          if (_drawMode === "p5") {
-            if (i === 1) {
-              // Call bezierVertex with p5 for the first segment using transformed coordinates
-              _originalBezierVertexFunc.call(
-                _p5Instance,
-                mmToPixel(cp1.x),
-                mmToPixel(cp1.y),
-                mmToPixel(cp2.x),
-                mmToPixel(cp2.y),
-                mmToPixel(endPoint.x),
-                mmToPixel(endPoint.y),
-              );
-            }
-          }
-        }
-
-        _isBezier = true;
-        if (_DEBUG) console.log("bezierVertex added points:", bezierPoints.length - 1);
+    const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPt.x, endPt.y);
+    for (let i = 1; i < bezierPoints.length; i++) {
+      const point = bezierPoints[i];
+      const t = i / (bezierPoints.length - 1);
+      const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
+      if (_isContour) {
+        _currentContour.push({ x: point.x, y: point.y, width: interpolatedWidth });
       } else {
-        let args = [mmToPixel(x2), mmToPixel(y2), mmToPixel(x3), mmToPixel(y3), mmToPixel(x4), mmToPixel(y4)];
+        _vertices.push({ x: point.x, y: point.y, width: interpolatedWidth, u: 0, v: 0, isVert: true, isBezier: true });
+      }
+    }
+    if (_drawMode === "p5") {
+      _passthroughBezierSegment([cp1, cp2, endPt]);
+    }
+    _isBezier = true;
+    if (_DEBUG) console.log("bezierVertex added points:", bezierPoints.length - 1);
+  }
+
+  function _processQuadraticBezierSegment(cp, endPt) {
+    let lastVertex;
+    if (_isContour) {
+      if (_currentContour.length === 0) { console.warn("bezierVertex() called without a previous vertex in contour"); return; }
+      lastVertex = _currentContour[_currentContour.length - 1];
+    } else {
+      if (_vertices.length === 0) { console.warn("bezierVertex() called without a previous vertex"); return; }
+      lastVertex = _vertices[_vertices.length - 1];
+    }
+    const x1 = lastVertex.x;
+    const y1 = lastVertex.y;
+    const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+    let endWidth = startWidth;
+    if (_nextVertexWidth !== null) { endWidth = _nextVertexWidth; _nextVertexWidth = null; }
+
+    const quadPoints = generateQuadraticPoints(x1, y1, cp.x, cp.y, endPt.x, endPt.y);
+    for (let i = 1; i < quadPoints.length; i++) {
+      const point = quadPoints[i];
+      const t = i / (quadPoints.length - 1);
+      const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
+      if (_isContour) {
+        _currentContour.push({ x: point.x, y: point.y, width: interpolatedWidth });
+      } else {
+        _vertices.push({ x: point.x, y: point.y, width: interpolatedWidth, u: 0, v: 0, isVert: true, isQuadratic: true });
+      }
+    }
+    if (_drawMode === "p5") {
+      _passthroughBezierSegment([cp, endPt]);
+    }
+    _isQuadratic = true;
+    if (_DEBUG) console.log("bezierVertex (quadratic) added points:", quadPoints.length - 1);
+  }
+
+  function overrideBezierVertexFunction() {
+    _originalBezierVertexFunc = fn.bezierVertex;
+
+    fn.bezierVertex = function (...args) {
+      if (_recording) {
+        if (args.length === 6) {
+          // p5.js 1.x: bezierVertex(cp1x, cp1y, cp2x, cp2y, ex, ey)
+          const cp1 = transformPoint({ x: args[0], y: args[1] }, _currentTransform.matrix);
+          const cp2 = transformPoint({ x: args[2], y: args[3] }, _currentTransform.matrix);
+          const endPt = transformPoint({ x: args[4], y: args[5] }, _currentTransform.matrix);
+          _processCubicBezierSegment(cp1, cp2, endPt);
+        } else if (args.length === 2) {
+          // p5.js 2.0: bezierVertex(x, y) — accumulate points until bezierOrder count reached
+          _bezierVertexBuffer.push(transformPoint({ x: args[0], y: args[1] }, _currentTransform.matrix));
+          if (_bezierOrder === 3 && _bezierVertexBuffer.length >= 3) {
+            const [cp1, cp2, endPt] = _bezierVertexBuffer.splice(0, 3);
+            _processCubicBezierSegment(cp1, cp2, endPt);
+          } else if (_bezierOrder === 2 && _bezierVertexBuffer.length >= 2) {
+            const [cp, endPt] = _bezierVertexBuffer.splice(0, 2);
+            _processQuadraticBezierSegment(cp, endPt);
+          }
+        }
+      } else if (_originalBezierVertexFunc) {
         _originalBezierVertexFunc.apply(this, args);
       }
+    };
+
+    // p5.js 2.0: override bezierOrder() to track the curve degree.
+    // Called with no argument it is a getter, so only update state when an
+    // order is actually supplied — otherwise a read would clear the buffer.
+    _originalBezierOrderFunc = fn.bezierOrder;
+    fn.bezierOrder = function (...args) {
+      if (_recording && args.length > 0 && args[0] !== undefined) {
+        _bezierOrder = args[0];
+        _bezierVertexBuffer = [];
+      }
+      if (_originalBezierOrderFunc) return _originalBezierOrderFunc.apply(this, args);
     };
   }
 
   /**
    * Overrides p5.js quadraticVertex() function.
+   * quadraticVertex() is removed in p5.js 2.0. This shim delegates to the bezierOrder(2)
+   * path for backward compatibility and emits a deprecation warning.
    * @private
    */
   let _originalQuadraticVertexFunc;
   function overrideQuadraticVertexFunction() {
-    _originalQuadraticVertexFunc = window.quadraticVertex;
+    _originalQuadraticVertexFunc = fn.quadraticVertex;
 
-    window.quadraticVertex = function (cx, cy, x3, y3) {
+    fn.quadraticVertex = function (cx, cy, x3, y3) {
+      warnDeprecated(
+        "quadraticVertex",
+        "quadraticVertex() was removed in p5.js 2.0; use bezierOrder(2) then " +
+        "bezierVertex(cx, cy) and bezierVertex(x, y).",
+      );
       if (_recording) {
-        // Apply current transformation to control points
-        const controlPoint = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
-        const endPoint = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
-
-        // Get the last vertex as the starting point - check both main vertices and current contour
-        let lastVertex;
-        if (_isContour) {
-          if (_currentContour.length === 0) {
-            console.warn("quadraticVertex() called without a previous vertex in contour");
-            return;
-          }
-          lastVertex = _currentContour[_currentContour.length - 1];
-        } else {
-          if (_vertices.length === 0) {
-            console.warn("quadraticVertex() called without a previous vertex");
-            return;
-          }
-          lastVertex = _vertices[_vertices.length - 1];
-        }
-        const x1 = lastVertex.x;
-        const y1 = lastVertex.y;
-        const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
-
-        // Determine end width
-        let endWidth = startWidth;
-        if (_nextVertexWidth !== null) {
-          endWidth = _nextVertexWidth;
-          _nextVertexWidth = null; // Reset after use
-        }
-
-        // Generate quadratic bezier curve points using transformed control points
-        const quadraticPoints = generateQuadraticPoints(x1, y1, controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
-
-        // Add all points except the first one (which is the last vertex)
-        for (let i = 1; i < quadraticPoints.length; i++) {
-          const point = quadraticPoints[i];
-          const t = i / (quadraticPoints.length - 1);
-          const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
-
-          if (_isContour) {
-            _currentContour.push({
-              x: point.x,
-              y: point.y,
-              width: interpolatedWidth,
-            });
-          } else {
-            const vert = {
-              x: point.x,
-              y: point.y,
-              width: interpolatedWidth,
-              u: 0,
-              v: 0,
-              isVert: true,
-              isQuadratic: true,
-            };
-            _vertices.push(vert);
-          }
-
-          if (_drawMode === "p5") {
-            if (i === 1) {
-              // Call quadraticVertex with p5 for the first segment using transformed coordinates
-              _originalQuadraticVertexFunc.call(
-                _p5Instance,
-                mmToPixel(controlPoint.x),
-                mmToPixel(controlPoint.y),
-                mmToPixel(endPoint.x),
-                mmToPixel(endPoint.y),
-              );
-            }
-          }
-        }
-
-        _isQuadratic = true;
-        if (_DEBUG) console.log("quadraticVertex added points:", quadraticPoints.length - 1);
+        const cp = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
+        const endPt = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
+        _processQuadraticBezierSegment(cp, endPt);
+      } else if (_originalQuadraticVertexFunc) {
+        // p5.js 1.x: forward unchanged — the caller is already in pixel units.
+        _originalQuadraticVertexFunc.apply(this, arguments);
       } else {
-        let args = [mmToPixel(cx), mmToPixel(cy), mmToPixel(x3), mmToPixel(y3)];
-        _originalQuadraticVertexFunc.apply(this, args);
+        // p5.js 2.0 removed quadraticVertex(); emit the bezierOrder(2) equivalent.
+        _passthroughBezierSegment([{ x: cx, y: cy }, { x: x3, y: y3 }], this, false);
       }
     };
   }
@@ -1054,9 +1157,12 @@ function setDebugMode(enabled) {
    */
   let _originalCurveVertexFunc;
   function overrideCurveVertexFunction() {
-    _originalCurveVertexFunc = window.curveVertex;
+    // p5.js 2.0 has no curveVertex(); splineVertex() is the renamed equivalent.
+    // Capture whichever the host provides BEFORE installing either override,
+    // otherwise the passthrough calls below dereference undefined.
+    _originalCurveVertexFunc = fn.curveVertex ?? fn.splineVertex;
 
-    window.curveVertex = function (x, y) {
+    const splineVertexImpl = function (x, y) {
       if (_recording) {
         // Apply current transformation to the curve vertex
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
@@ -1125,15 +1231,24 @@ function setDebugMode(enabled) {
           }
         }
 
-        if (_drawMode === "p5") {
+        if (_drawMode === "p5" && _originalCurveVertexFunc) {
           _originalCurveVertexFunc.call(_p5Instance, mmToPixel(transformedPoint.x), mmToPixel(transformedPoint.y));
         }
 
         _isCurve = true;
-        if (_DEBUG) console.log("curveVertex added, contour length:", _contourVertices.length);
-      } else {
+        if (_DEBUG) console.log("curveVertex/splineVertex added, contour length:", _contourVertices.length);
+      } else if (_originalCurveVertexFunc) {
         _originalCurveVertexFunc.apply(this, arguments);
       }
+    };
+
+    // splineVertex() is the p5.js 2.x name and the one to use.
+    fn.splineVertex = splineVertexImpl;
+
+    // curveVertex() is the p5.js 1.x name, kept as a deprecated alias.
+    fn.curveVertex = function (x, y) {
+      warnDeprecated("curveVertex", "curveVertex() was renamed splineVertex() in p5.js 2.0.");
+      return splineVertexImpl.call(this, x, y);
     };
   }
 
@@ -1143,12 +1258,12 @@ function setDebugMode(enabled) {
    */
   function generateQuadraticPoints(x1, y1, cx, cy, x3, y3) {
     const points = [];
-    const bezierDetail = _p5Instance._bezierDetail || 20;
+    const bezierDetail = _getCurveDetail();
 
     for (let i = 0; i <= bezierDetail; i++) {
       const t = i / bezierDetail;
-      const x = quadraticBezierPoint(x1, cx, x3, t);
-      const y = quadraticBezierPoint(y1, cy, y3, t);
+      const x = quadraticBezierCoord(x1, cx, x3, t);
+      const y = quadraticBezierCoord(y1, cy, y3, t);
       points.push({ x, y });
     }
 
@@ -1156,10 +1271,19 @@ function setDebugMode(enabled) {
   }
 
   /**
-   * Calculate a point on a quadratic Bezier curve.
+   * Calculate a single coordinate on a quadratic Bezier curve.
+   *
+   * Named distinctly from quadraticBezierPoint(), which samples a whole point
+   * and lives in the same scope — two identically named function declarations
+   * would silently collide, with the later one winning.
    * @private
+   * @param {number} a - Start coordinate.
+   * @param {number} b - Control coordinate.
+   * @param {number} c - End coordinate.
+   * @param {number} t - Parameter in [0, 1].
+   * @returns {number} The interpolated coordinate.
    */
-  function quadraticBezierPoint(a, b, c, t) {
+  function quadraticBezierCoord(a, b, c, t) {
     const mt = 1 - t;
     const mt2 = mt * mt;
     const t2 = t * t;
@@ -1242,8 +1366,8 @@ function setDebugMode(enabled) {
    */
   let _originalLineFunc;
   function overrideLineFunction() {
-    _originalLineFunc = window.line;
-    window.line = function (x1, y1, x2, y2) {
+    _originalLineFunc = fn.line;
+    fn.line = function (x1, y1, x2, y2) {
       if (_recording) {
         if (_doStroke) {
           // Apply current transformation to coordinates
@@ -1272,8 +1396,10 @@ function setDebugMode(enabled) {
    */
   let _originalCurveFunc;
   function overrideCurveFunction() {
-    _originalCurveFunc = window.curve;
-    window.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+    // p5.js 2.0 has no curve(); spline() is the renamed equivalent. Capture
+    // whichever the host provides BEFORE installing either override.
+    _originalCurveFunc = fn.curve ?? fn.spline;
+    const splineImpl = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         if (_doStroke) {
           // Apply current transformation to control points
@@ -1292,10 +1418,10 @@ function setDebugMode(enabled) {
 
           if (_drawMode === "stitch" || _drawMode === "realistic") {
             drawStitches(stitches, _strokeThreadIndex);
-          } else if (_drawMode === "p5") {
+          } else if (_drawMode === "p5" && _originalCurveFunc) {
             _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
-            _originalCurveFunc.call(
-              _p5Instance,
+            // p5.js 2.x spline() re-enters splineVertex(); suspend recording.
+            callOriginalWithoutRecording(_originalCurveFunc, _p5Instance, [
               mmToPixel(x1),
               mmToPixel(y1),
               mmToPixel(x2),
@@ -1304,12 +1430,21 @@ function setDebugMode(enabled) {
               mmToPixel(y3),
               mmToPixel(x4),
               mmToPixel(y4),
-            );
+            ]);
           }
         }
-      } else {
+      } else if (_originalCurveFunc) {
         _originalCurveFunc.apply(this, arguments);
       }
+    };
+
+    // spline() is the p5.js 2.x name and the one to use.
+    fn.spline = splineImpl;
+
+    // curve() is the p5.js 1.x name, kept as a deprecated alias.
+    fn.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+      warnDeprecated("curve", "curve() was renamed spline() in p5.js 2.0.");
+      return splineImpl.call(this, x1, y1, x2, y2, x3, y3, x4, y4);
     };
   }
 
@@ -1319,8 +1454,8 @@ function setDebugMode(enabled) {
    */
   let _originalBezierFunc;
   function overrideBezierFunction() {
-    _originalBezierFunc = window.bezier;
-    window.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+    _originalBezierFunc = fn.bezier;
+    fn.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         if (_doStroke) {
           // Apply current transformation to control points
@@ -1341,8 +1476,9 @@ function setDebugMode(enabled) {
             drawStitches(stitches, _strokeThreadIndex);
           } else if (_drawMode === "p5") {
             _originalStrokeWeightFunc.call(_p5Instance, mmToPixel(_strokeSettings.strokeWeight));
-            _originalBezierFunc.call(
-              _p5Instance,
+            // p5.js 2.x bezier() re-enters beginShape()/bezierVertex()/endShape();
+            // suspend recording so the replay is not recorded a second time.
+            callOriginalWithoutRecording(_originalBezierFunc, _p5Instance, [
               mmToPixel(x1),
               mmToPixel(y1),
               mmToPixel(x2),
@@ -1351,7 +1487,7 @@ function setDebugMode(enabled) {
               mmToPixel(y3),
               mmToPixel(x4),
               mmToPixel(y4),
-            );
+            ]);
           }
         }
       } else {
@@ -1366,7 +1502,7 @@ function setDebugMode(enabled) {
    */
   function generateCurvePoints(x1, y1, x2, y2, x3, y3, x4, y4) {
     const points = [];
-    const curveDetail = _p5Instance._curveDetail || 20;
+    const curveDetail = _getCurveDetail();
 
     for (let i = 0; i <= curveDetail; i++) {
       const t = i / curveDetail;
@@ -1384,7 +1520,7 @@ function setDebugMode(enabled) {
    */
   function generateBezierPoints(x1, y1, x2, y2, x3, y3, x4, y4) {
     const points = [];
-    const bezierDetail = _p5Instance._bezierDetail || 20;
+    const bezierDetail = _getCurveDetail();
 
     for (let i = 0; i <= bezierDetail; i++) {
       const t = i / bezierDetail;
@@ -1425,8 +1561,8 @@ function setDebugMode(enabled) {
    */
   let _originalStrokeFunc;
   function overrideStrokeFunction() {
-    _originalStrokeFunc = window.stroke;
-    window.stroke = function () {
+    _originalStrokeFunc = fn.stroke;
+    fn.stroke = function () {
       if (_recording) {
         // Get color values from arguments
         let r, g, b;
@@ -1492,8 +1628,8 @@ function setDebugMode(enabled) {
    */
   let _originalNoStrokeFunc;
   function overrideNoStrokeFunction() {
-    _originalNoStrokeFunc = window.noStroke;
-    window.noStroke = function () {
+    _originalNoStrokeFunc = fn.noStroke;
+    fn.noStroke = function () {
       if (_recording) {
         _doStroke = false;
       }
@@ -1507,8 +1643,8 @@ function setDebugMode(enabled) {
    */
   let _originalFillFunc;
   function overrideFillFunction() {
-    _originalFillFunc = window.fill;
-    window.fill = function () {
+    _originalFillFunc = fn.fill;
+    fn.fill = function () {
       if (_recording) {
         // Get color values from arguments
         let r, g, b;
@@ -1571,8 +1707,8 @@ function setDebugMode(enabled) {
    */
   let _originalNoFillFunc;
   function overrideNoFillFunction() {
-    _originalNoFillFunc = window.noFill;
-    window.noFill = function () {
+    _originalNoFillFunc = fn.noFill;
+    fn.noFill = function () {
       if (_recording) {
         _doFill = false;
         _fillSettings.color = null;
@@ -1587,9 +1723,9 @@ function setDebugMode(enabled) {
    */
   let _originalStrokeWeightFunc;
   function overrideStrokeWeightFunction() {
-    _originalStrokeWeightFunc = window.strokeWeight;
+    _originalStrokeWeightFunc = fn.strokeWeight;
 
-    window.strokeWeight = function (weight) {
+    fn.strokeWeight = function (weight) {
       if (_recording) {
         // Set the stroke weight in the stroke settings
         _strokeSettings.strokeWeight = weight;
@@ -1608,17 +1744,17 @@ function setDebugMode(enabled) {
    */
   let _originalStrokeJoinFunc;
   function overrideStrokeJoinFunction() {
-    _originalStrokeJoinFunc = window.strokeJoin;
+    _originalStrokeJoinFunc = fn.strokeJoin;
 
-    window.strokeJoin = function (join) {
+    fn.strokeJoin = function (join) {
       if (_recording) {
         // Map p5.js constants to our internal format
         let mappedJoin;
-        if (join === window.ROUND || join === "round") {
+        if (join === CONSTANTS.ROUND || join === "round") {
           mappedJoin = STROKE_JOIN.ROUND;
-        } else if (join === window.MITER || join === "miter") {
+        } else if (join === CONSTANTS.MITER || join === "miter") {
           mappedJoin = STROKE_JOIN.MITER;
-        } else if (join === window.BEVEL || join === "bevel") {
+        } else if (join === CONSTANTS.BEVEL || join === "bevel") {
           mappedJoin = STROKE_JOIN.BEVEL;
         } else {
           console.warn(`Invalid stroke join: ${join}. Using default: ${_currentStrokeJoin}`);
@@ -1641,9 +1777,9 @@ function setDebugMode(enabled) {
    */
   let _originalPushFunc;
   function overridePushFunction() {
-    _originalPushFunc = window.push;
+    _originalPushFunc = fn.push;
 
-    window.push = function () {
+    const newPush = function () {
       if (_recording) {
         // Save current embroidery transformation state
         _transformStack.push({
@@ -1670,6 +1806,13 @@ function setDebugMode(enabled) {
       // Always call original p5.js push for visual modes
       _originalPushFunc.apply(this, arguments);
     };
+
+    // Use Object.defineProperty to safely override (p5.js 2.0 may define push as non-writable)
+    Object.defineProperty(fn, 'push', {
+      value: newPush,
+      writable: true,
+      configurable: true,
+    });
   }
 
   /**
@@ -1678,9 +1821,9 @@ function setDebugMode(enabled) {
    */
   let _originalPopFunc;
   function overridePopFunction() {
-    _originalPopFunc = window.pop;
+    _originalPopFunc = fn.pop;
 
-    window.pop = function () {
+    const newPop = function () {
       if (_recording) {
         if (_transformStack.length === 0) {
           console.warn("🪡 p5.embroider says: pop() called without matching push()");
@@ -1711,6 +1854,13 @@ function setDebugMode(enabled) {
       // Always call original p5.js pop for visual modes
       _originalPopFunc.apply(this, arguments);
     };
+
+    // Use Object.defineProperty to safely override (p5.js 2.0 may define pop as non-writable)
+    Object.defineProperty(fn, 'pop', {
+      value: newPop,
+      writable: true,
+      configurable: true,
+    });
   }
 
   /**
@@ -1719,9 +1869,9 @@ function setDebugMode(enabled) {
    */
   let _originalTranslateFunc;
   function overrideTranslateFunction() {
-    _originalTranslateFunc = window.translate;
+    _originalTranslateFunc = fn.translate;
 
-    window.translate = function (x, y, z) {
+    fn.translate = function (x, y, z) {
       if (_recording) {
         // Apply translation to current transformation matrix
         const translationMatrix = createTranslationMatrix(x, y || 0);
@@ -1746,12 +1896,15 @@ function setDebugMode(enabled) {
    */
   let _originalRotateFunc;
   function overrideRotateFunction() {
-    _originalRotateFunc = window.rotate;
+    _originalRotateFunc = fn.rotate;
 
-    window.rotate = function (angle, axis) {
+    fn.rotate = function (angle, axis) {
       if (_recording) {
         // Convert angle to radians if needed (p5.js handles this internally)
-        const radians = _p5Instance._angleMode === _p5Instance.DEGREES ? angle * (Math.PI / 180) : angle;
+        // p5.js 2.0 keeps _angleMode on the instance, but the DEGREES constant
+        // lives on the prototype only, so compare against the resolved constant.
+        const angleMode = _p5Instance._angleMode ?? _p5Instance._renderer?.states?.angleMode;
+        const radians = angleMode === CONSTANTS.DEGREES ? angle * (Math.PI / 180) : angle;
 
         // Apply rotation to current transformation matrix
         const rotationMatrix = createRotationMatrix(radians);
@@ -1775,9 +1928,9 @@ function setDebugMode(enabled) {
    */
   let _originalScaleFunc;
   function overrideScaleFunction() {
-    _originalScaleFunc = window.scale;
+    _originalScaleFunc = fn.scale;
 
-    window.scale = function (x, y, z) {
+    fn.scale = function (x, y, z) {
       if (_recording) {
         // Handle different parameter formats like p5.js
         let sx = x,
@@ -1815,26 +1968,27 @@ function setDebugMode(enabled) {
    */
   let _originalEllipseFunc;
   function overrideEllipseFunction() {
-    _originalEllipseFunc = window.ellipse;
-    window.ellipse = function (x, y, w, h) {
+    _originalEllipseFunc = fn.ellipse;
+    fn.ellipse = function (x, y, w, h) {
       if (_recording) {
-        const ellipseMode = _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
+        // p5.js 2.0: _renderer.states.ellipseMode, 1.x: _ellipseMode or _renderer._ellipseMode
+        const ellipseMode = _p5Instance._renderer?.states?.ellipseMode ?? _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
         let centerX;
         let centerY;
         let diameterX;
         let diameterY;
 
-        if (ellipseMode === _p5Instance.CORNER) {
+        if (ellipseMode === CONSTANTS.CORNER) {
           centerX = x + w / 2;
           centerY = y + h / 2;
           diameterX = w;
           diameterY = h;
-        } else if (ellipseMode === _p5Instance.CENTER) {
+        } else if (ellipseMode === CONSTANTS.CENTER) {
           centerX = x;
           centerY = y;
           diameterX = w;
           diameterY = h;
-        } else if (ellipseMode === _p5Instance.CORNERS) {
+        } else if (ellipseMode === CONSTANTS.CORNERS) {
           centerX = x;
           centerY = y;
           diameterX = w - x;
@@ -1984,10 +2138,10 @@ function setDebugMode(enabled) {
    */
   let _originalCircleFunc;
   function overrideCircleFunction() {
-    _originalCircleFunc = window.circle;
-    window.circle = function (x, y, r) {
+    _originalCircleFunc = fn.circle;
+    fn.circle = function (x, y, r) {
       if (_recording) {
-        window.ellipse.call(this, x, y, r, r);
+        fn.ellipse.call(this, x, y, r, r);
       } else {
         _originalCircleFunc.apply(this, arguments);
       }
@@ -2000,8 +2154,8 @@ function setDebugMode(enabled) {
    */
   let _originalPointFunc;
   function overridePointFunction() {
-    _originalPointFunc = window.point;
-    window.point = function (x, y) {
+    _originalPointFunc = fn.point;
+    fn.point = function (x, y) {
       if (_recording) {
         // Apply current transformation to coordinates
         const p = applyCurrentTransform(x, y);
@@ -2035,16 +2189,17 @@ function setDebugMode(enabled) {
    */
   let _originalRectFunc;
   function overrideRectFunction() {
-    _originalRectFunc = window.rect;
-    window.rect = function (x, y, w, h, ...cornerRs) {
+    _originalRectFunc = fn.rect;
+    fn.rect = function (x, y, w, h, ...cornerRs) {
       if (_recording) {
-        const rectMode = _p5Instance._rectMode ?? _p5Instance._renderer?._rectMode;
+        // p5.js 2.0: _renderer.states.rectMode, 1.x: _rectMode or _renderer._rectMode
+        const rectMode = _p5Instance._renderer?.states?.rectMode ?? _p5Instance._rectMode ?? _p5Instance._renderer?._rectMode;
         let x1, y1;
 
-        if (rectMode === _p5Instance.CENTER) {
+        if (rectMode === CONSTANTS.CENTER) {
           x1 = x - w / 2;
           y1 = y - h / 2;
-        } else if (rectMode === _p5Instance.CORNERS) {
+        } else if (rectMode === CONSTANTS.CORNERS) {
           // In CORNERS mode, w is x2 and h is y2. Re-calculate w and h to be width and height.
           w = w - x;
           h = h - y;
@@ -2213,10 +2368,10 @@ function setDebugMode(enabled) {
    */
   let _originalSquareFunc;
   function overrideSquareFunction() {
-    _originalSquareFunc = window.square;
-    window.square = function (x, y, w) {
+    _originalSquareFunc = fn.square;
+    fn.square = function (x, y, w) {
       if (_recording) {
-        window.rect.call(this, x, y, w, w);
+        fn.rect.call(this, x, y, w, w);
       } else {
         _originalSquareFunc.apply(this, arguments);
       }
@@ -2229,8 +2384,8 @@ function setDebugMode(enabled) {
    */
   let _originalTriangleFunc;
   function overrideTriangleFunction() {
-    _originalTriangleFunc = window.triangle;
-    window.triangle = function (x1, y1, x2, y2, x3, y3) {
+    _originalTriangleFunc = fn.triangle;
+    fn.triangle = function (x1, y1, x2, y2, x3, y3) {
       if (_recording) {
         // Build path points for triangle
         const pathPoints = [
@@ -2302,8 +2457,8 @@ function setDebugMode(enabled) {
    */
   let _originalQuadFunc;
   function overrideQuadFunction() {
-    _originalQuadFunc = window.quad;
-    window.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+    _originalQuadFunc = fn.quad;
+    fn.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         const pathPoints = [
           { x: x1, y: y1 },
@@ -2377,8 +2532,8 @@ function setDebugMode(enabled) {
    */
   let _originalArcFunc;
   function overrideArcFunction() {
-    _originalArcFunc = window.arc;
-    window.arc = function (x, y, w, h, start, stop, mode) {
+    _originalArcFunc = fn.arc;
+    fn.arc = function (x, y, w, h, start, stop, mode) {
       if (_recording) {
         if (_DEBUG) {
           console.log("Arc called with:", { x, y, w, h, start, stop, mode, _doFill, _doStroke });
@@ -2386,7 +2541,7 @@ function setDebugMode(enabled) {
 
         // Default mode to OPEN if not specified
         if (mode === undefined) {
-          mode = window.OPEN || "open";
+          mode = CONSTANTS.OPEN;
         }
 
         // Approximate arc as polyline
@@ -2418,11 +2573,11 @@ function setDebugMode(enabled) {
         if (_doFill) {
           let fillPathPoints = [...transformedPathPoints];
 
-          if (mode === window.PIE || mode === "pie") {
+          if (mode === CONSTANTS.PIE || mode === "pie") {
             // PIE mode: close to center and back to start
             fillPathPoints.push({ x: transformedCenter.x, y: transformedCenter.y });
             fillPathPoints.push(transformedPathPoints[0]);
-          } else if (mode === window.CHORD || mode === "chord") {
+          } else if (mode === CONSTANTS.CHORD || mode === "chord") {
             // CHORD mode: close with straight line from end to start
             if (transformedPathPoints.length > 1) {
               fillPathPoints.push(transformedPathPoints[0]); // Close the path
@@ -2470,13 +2625,13 @@ function setDebugMode(enabled) {
           let strokePathPoints = transformedPathPoints;
 
           // For PIE mode, include lines to center for stroke
-          if (mode === window.PIE || mode === "pie") {
+          if (mode === CONSTANTS.PIE || mode === "pie") {
             strokePathPoints = [
               { x: transformedCenter.x, y: transformedCenter.y }, // Start at center
               ...transformedPathPoints, // Arc points
               { x: transformedCenter.x, y: transformedCenter.y }, // Back to center
             ];
-          } else if (mode === window.CHORD || mode === "chord") {
+          } else if (mode === CONSTANTS.CHORD || mode === "chord") {
             // For CHORD mode, add the chord line
             strokePathPoints = [
               ...transformedPathPoints,
@@ -2514,9 +2669,9 @@ function setDebugMode(enabled) {
    */
   let _originalBeginContourFunc;
   function overrideBeginContourFunction() {
-    _originalBeginContourFunc = window.beginContour;
+    _originalBeginContourFunc = fn.beginContour;
 
-    window.beginContour = function () {
+    fn.beginContour = function () {
       if (_recording) {
         if (_DEBUG) console.log("beginContour called");
         _isContour = true;
@@ -2537,9 +2692,11 @@ function setDebugMode(enabled) {
    */
   let _originalEndContourFunc;
   function overrideEndContourFunction() {
-    _originalEndContourFunc = window.endContour;
+    _originalEndContourFunc = fn.endContour;
 
-    window.endContour = function () {
+    // p5.js 2.0 changed the default to endContour(OPEN); 1.x behaved as CLOSE.
+    // Default to CLOSE so existing sketches keep producing holes.
+    fn.endContour = function (mode = CONSTANTS.CLOSE) {
       if (_recording) {
         if (_DEBUG) console.log("endContour called, current contour length:", _currentContour.length);
 
@@ -2563,10 +2720,10 @@ function setDebugMode(enabled) {
         _isContour = false;
 
         if (_drawMode === "p5") {
-          _originalEndContourFunc.call(_p5Instance);
+          _originalEndContourFunc.call(_p5Instance, mode);
         }
       } else {
-        _originalEndContourFunc.apply(this, arguments);
+        _originalEndContourFunc.call(this, mode);
       }
     };
   }
@@ -2578,48 +2735,64 @@ function setDebugMode(enabled) {
    */
   let _originalTextFunc;
   function overrideTextFunction() {
-    _originalTextFunc = window.text;
+    _originalTextFunc = fn.text;
 
-    window.text = function (str, x, y, maxWidth, maxHeight) {
+    fn.text = function (str, x, y, maxWidth, maxHeight) {
       if (_recording) {
         // Warn if maxWidth or maxHeight are provided
         if (typeof maxWidth !== "undefined" || typeof maxHeight !== "undefined") {
           console.warn("p5.embroider: text() does not yet support maxWidth or maxHeight parameters.");
         }
 
-        // Get current font
-        const font = _p5Instance._renderer._textFont;
+        // Get current font.
+        // p5.js 2.0 stores textFont as a wrapper, { font, family, size }, where
+        // `font` is the p5.Font (undefined for a system font named by string).
+        // p5.js 1.x stored the p5.Font directly on _renderer._textFont.
+        const fontState = _p5Instance._renderer?.states?.textFont ?? _p5Instance._renderer?._textFont;
+        const font = fontState?.font ?? fontState;
+
+        // Get current text size (must be before font check to avoid TDZ)
+        const fontSize = _p5Instance._renderer?.states?.textSize ?? _p5Instance._renderer?._textSize;
 
         // Check if valid p5.Font (not system font)
-        if (!(font && font.font)) {
-          // console.warn('p5.embroider: text() requires a font loaded with loadFont(). System fonts are not supported for embroidery.');
+        // p5.js 2.0: font has textToPaths(); 1.x: font has font property (OpenType.js)
+        const hasTextToPaths = font && typeof font.textToPaths === "function";
+        const hasGetPath = font && font.font && typeof font._getPath === "function";
+        if (!hasTextToPaths && !hasGetPath) {
+          // A system font has no glyph outlines, so there is nothing to stitch.
           if (_drawMode === "p5") {
-            push();
-            textSize(mmToPixel(fontSize));
-            _originalTextFunc.call(
-              _p5Instance,
-              str,
-              mmToPixel(x),
-              mmToPixel(y),
-              mmToPixel(maxWidth),
-              mmToPixel(maxHeight),
+            drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
+          } else {
+            console.warn(
+              "🪡 p5.embroider says: text() needs a font loaded with loadFont(); " +
+              "system fonts have no outlines to convert into stitches.",
             );
-            pop();
           }
           return;
         }
-
-        // Get current text size
-        const fontSize = _p5Instance._renderer._textSize;
 
         if (_DEBUG) {
           console.log("text() called:", str, "at", x, y, "size:", fontSize);
         }
 
         try {
-          // Get OpenType path with actual bezier commands (Approach B)
-          const path = font._getPath(str, x, y, {});
-          const commands = path.commands;
+          let commands;
+          if (hasTextToPaths) {
+            // p5.js 2.0: textToPaths returns arrays like ['M', x, y], ['C', x1, y1, x2, y2, x, y]
+            const pathArrays = font.textToPaths(str, x, y);
+            commands = pathArrays.map((cmd) => {
+              const type = cmd[0];
+              if (type === "M" || type === "L") return { type, x: cmd[1], y: cmd[2] };
+              if (type === "Q") return { type, x1: cmd[1], y1: cmd[2], x: cmd[3], y: cmd[4] };
+              if (type === "C") return { type, x1: cmd[1], y1: cmd[2], x2: cmd[3], y2: cmd[4], x: cmd[5], y: cmd[6] };
+              if (type === "Z") return { type };
+              return { type };
+            });
+          } else {
+            // p5.js 1.x: _getPath returns object with commands array of {type, x, y, ...}
+            const path = font._getPath(str, x, y, {});
+            commands = path.commands;
+          }
 
           if (_DEBUG) {
             console.log("OpenType path has", commands.length, "commands");
@@ -2802,26 +2975,43 @@ function setDebugMode(enabled) {
 
         // Call original for visual feedback based on draw mode
         if (_drawMode === "p5") {
-          push();
-          textSize(mmToPixel(fontSize));
-          _originalTextFunc.call(
-            _p5Instance,
-            str,
-            mmToPixel(x),
-            mmToPixel(y),
-            mmToPixel(maxWidth),
-            mmToPixel(maxHeight),
-          );
-          pop();
+          drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
         }
       } else {
-        // Not recording, just call original
-        push();
-        textSize(mmToPixel(fontSize));
-        _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth), mmToPixel(maxHeight));
-        pop();
+        // Not recording: the caller is in plain p5 pixel units, so forward as-is.
+        _originalTextFunc.apply(this, arguments);
       }
     };
+  }
+
+  /**
+   * Draws text through p5 for "p5" draw mode, converting the recording's
+   * millimetre coordinates to pixels.
+   *
+   * maxWidth/maxHeight are only forwarded when the caller supplied them.
+   * Passing undefined through mmToPixel() yields NaN, and p5's text() switches
+   * to its text-box layout as soon as a fourth argument is present, which moves
+   * y from the baseline to the top of the box.
+   * @private
+   */
+  function drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize) {
+    push();
+    textSize(mmToPixel(fontSize));
+    if (typeof maxWidth === "undefined") {
+      _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y));
+    } else if (typeof maxHeight === "undefined") {
+      _originalTextFunc.call(_p5Instance, str, mmToPixel(x), mmToPixel(y), mmToPixel(maxWidth));
+    } else {
+      _originalTextFunc.call(
+        _p5Instance,
+        str,
+        mmToPixel(x),
+        mmToPixel(y),
+        mmToPixel(maxWidth),
+        mmToPixel(maxHeight),
+      );
+    }
+    pop();
   }
 
   /**
@@ -3089,53 +3279,10 @@ function setDebugMode(enabled) {
     overrideTextFunction();
 
     // Add vertexWidth function to window
-    window.vertexWidth = vertexWidth;
+    fn.vertexWidth = vertexWidth;
   }
 
-  /**
-   * Restores original p5.js functions.
-   * @private
-   */
-  function restoreP5Functions() {
-    // Restore transformation functions
-    window.push = _originalPushFunc;
-    window.pop = _originalPopFunc;
-    window.translate = _originalTranslateFunc;
-    window.rotate = _originalRotateFunc;
-    window.scale = _originalScaleFunc;
-
-    // Restore drawing functions
-    window.line = _originalLineFunc;
-    window.curve = _originalCurveFunc;
-    window.bezier = _originalBezierFunc;
-    window.ellipse = _originalEllipseFunc;
-    window.circle = _originalCircleFunc;
-    window.strokeWeight = _originalStrokeWeightFunc;
-    window.strokeJoin = _originalStrokeJoinFunc;
-    window.point = _originalPointFunc;
-    window.stroke = _originalStrokeFunc;
-    window.noStroke = _originalNoStrokeFunc;
-    window.fill = _originalFillFunc;
-    window.noFill = _originalNoFillFunc;
-    window.rect = _originalRectFunc;
-    window.square = _originalSquareFunc;
-    window.triangle = _originalTriangleFunc;
-    window.quad = _originalQuadFunc;
-    window.arc = _originalArcFunc;
-
-    // Restore shape vertex functions
-    window.vertex = _originalVertexFunc;
-    window.bezierVertex = _originalBezierVertexFunc;
-    window.quadraticVertex = _originalQuadraticVertexFunc;
-    window.curveVertex = _originalCurveVertexFunc;
-    window.beginShape = _originalBeginShapeFunc;
-    window.endShape = _originalEndShapeFunc;
-    window.beginContour = _originalBeginContourFunc;
-    window.endContour = _originalEndContourFunc;
-
-    // Restore text functions
-    window.text = _originalTextFunc;
-  }
+  // restoreP5Functions() removed — fn overrides are always-on and check _recording internally
 
   /**
    * Sets the stitch parameters for embroidery.
@@ -3149,7 +3296,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStitch(1, 3, 0.2); // min 1mm, desired 3mm, 20% noise
    *   // Draw embroidery patterns
    * }
@@ -3176,7 +3323,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setStitchWidth(0.2); // width 0.2mm
    *   // Draw embroidery patterns
    * }
@@ -3187,6 +3334,40 @@ function setDebugMode(enabled) {
     _embroiderySettings.stitchWidth = Math.max(0, width);
     _strokeSettings.stitchWidth = _embroiderySettings.stitchWidth;
     _fillSettings.stitchWidth = _embroiderySettings.stitchWidth;
+  };
+
+  /**
+   * Sets how many segments are used when flattening curves, splines and beziers
+   * into stitch paths. Higher values follow the curve more closely at the cost of
+   * more stitches.
+   *
+   * p5.js 1.x exposed this through curveDetail() and bezierDetail(). In p5.js 2.0
+   * curveDetail() throws outside WebGL mode, so p5.embroider carries its own
+   * setting for 2D sketches.
+   * @method setCurveDetail
+   * @for p5
+   * @param {Number} detail - Segments per curve segment. Minimum 1, default 20.
+   *   Pass null to fall back to the renderer's own value.
+   * @example
+   *
+   * function setup() {
+   *   createCanvas(400, 400);
+   *   beginRecord();
+   *   setCurveDetail(40); // smoother curves, more stitches
+   * }
+   *
+   */
+  p5embroidery.setCurveDetail = function (detail) {
+    if (detail === null || detail === undefined) {
+      _curveDetail = null;
+      return;
+    }
+    const n = Math.floor(Number(detail));
+    if (!Number.isFinite(n)) {
+      console.warn("🪡 p5.embroider says: setCurveDetail() expects a number");
+      return;
+    }
+    _curveDetail = Math.max(1, n);
   };
 
   /**
@@ -3223,7 +3404,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   setDrawMode('stitch'); // Show stitch points and lines
    *   // Draw embroidery patterns
    * }
@@ -4818,7 +4999,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns here
    *   circle(50, 50, 20);
    *   line(10, 10, 90, 90);
@@ -4863,7 +5044,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportGcode('pattern.gcode');
@@ -4912,7 +5093,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns at specific coordinates
    *   translate(100, 25); // Position at 100mm, 25mm
    *   circle(0, 0, 20);
@@ -4964,7 +5145,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   endRecord();
@@ -5006,7 +5187,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportPES('pattern.pes');
@@ -5153,7 +5334,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   endRecord();
    *   exportDST('pattern.dst');
@@ -5297,7 +5478,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   line(10, 10, 90, 90);
@@ -5341,7 +5522,7 @@ function setDebugMode(enabled) {
    *
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   line(10, 10, 50, 50);
    *   trimThread(); // Cut thread at current position
    *   line(60, 60, 100, 100);
@@ -6392,102 +6573,89 @@ function setDebugMode(enabled) {
   };
 
   // Expose public functions
-  global.p5embroidery = p5embroidery;
-  global.beginRecord = p5embroidery.beginRecord;
-  global.endRecord = p5embroidery.endRecord;
-  global.exportEmbroidery = p5embroidery.exportEmbroidery;
-  global.exportDST = p5embroidery.exportDST;
-  global.exportPES = p5embroidery.exportPES;
-  global.exportGcode = p5embroidery.exportGcode;
-  global.exportSVG = p5embroidery.exportSVG;
-  global.exportPNG = p5embroidery.exportPNG;
-  global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
-  global.embroideryOutline = p5embroidery.embroideryOutline;
-  global.exportOutline = p5embroidery.exportOutline;
-  global.exportSVGFromPath = p5embroidery.exportSVGFromPath;
-  global.setStitch = p5embroidery.setStitch;
-  global.setStitchWidth = p5embroidery.setStitchWidth;
-  global.setDrawMode = p5embroidery.setDrawMode;
-  global.drawStitches = p5embroidery.drawStitches;
-  global.mmToPixel = mmToPixel;
-  global.pixelToMm = pixelToMm;
-  global.px2mm = px2mm;
-  global.mm2px = mm2px;
-  global.setStrokeMode = p5embroidery.setStrokeMode;
-  global.setStrokeJoin = p5embroidery.setStrokeJoin;
-  global.STROKE_MODE = STROKE_MODE;
-  global.STROKE_JOIN = STROKE_JOIN;
-  global.FILL_MODE = FILL_MODE;
-  global.setFillMode = p5embroidery.setFillMode;
-  global.setFillSettings = p5embroidery.setFillSettings;
-  global.setStrokeSettings = p5embroidery.setStrokeSettings;
-  global.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
-  global.setStitchInterpolate = p5embroidery.setStitchInterpolate;
+  fn.p5embroidery = p5embroidery;
+  fn.beginRecord = p5embroidery.beginRecord;
+  fn.endRecord = p5embroidery.endRecord;
+  fn.exportEmbroidery = p5embroidery.exportEmbroidery;
+  fn.exportDST = p5embroidery.exportDST;
+  fn.exportPES = p5embroidery.exportPES;
+  fn.exportGcode = p5embroidery.exportGcode;
+  fn.exportSVG = p5embroidery.exportSVG;
+  fn.exportPNG = p5embroidery.exportPNG;
+  fn.trimThread = p5embroidery.trimThread; // Renamed from cutThread
+  fn.embroideryOutline = p5embroidery.embroideryOutline;
+  fn.exportOutline = p5embroidery.exportOutline;
+  fn.exportSVGFromPath = p5embroidery.exportSVGFromPath;
+  fn.setStitch = p5embroidery.setStitch;
+  fn.setStitchWidth = p5embroidery.setStitchWidth;
+  fn.setCurveDetail = p5embroidery.setCurveDetail;
+  fn.setDrawMode = p5embroidery.setDrawMode;
+  fn.drawStitches = p5embroidery.drawStitches;
+  fn.mmToPixel = mmToPixel;
+  fn.pixelToMm = pixelToMm;
+  fn.px2mm = px2mm;
+  fn.mm2px = mm2px;
+  fn.setStrokeMode = p5embroidery.setStrokeMode;
+  fn.setStrokeJoin = p5embroidery.setStrokeJoin;
+  fn.STROKE_MODE = STROKE_MODE;
+  fn.STROKE_JOIN = STROKE_JOIN;
+  fn.FILL_MODE = FILL_MODE;
+  fn.setFillMode = p5embroidery.setFillMode;
+  fn.setFillSettings = p5embroidery.setFillSettings;
+  fn.setStrokeSettings = p5embroidery.setStrokeSettings;
+  fn.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
+  fn.setStitchInterpolate = p5embroidery.setStitchInterpolate;
 
   // Expose new path-based functions
-  global.convertPathToStitches = convertPathToStitches;
-  global.parallelLineStitchingFromPath = parallelLineStitchFromPath;
-  global.sashikoStitchingFromPath = sashikoStitchFromPath;
+  fn.convertPathToStitches = convertPathToStitches;
+  fn.parallelLineStitchingFromPath = parallelLineStitchFromPath;
+  fn.sashikoStitchingFromPath = sashikoStitchFromPath;
 
   // Expose embroidery guide utilities
-  global.drawGrid = drawGrid;
-  global.drawHoopGuides = drawHoopGuides;
-  global.drawHoop = drawHoop;
-  global.drawManualHoop = drawManualHoop;
-  global.drawMachineHoop = drawMachineHoop;
-  global.drawCornerMarks = drawCornerMarks;
-  global.drawPaperGuides = drawPaperGuides;
-  global.drawEmbroideryWorkspace = drawEmbroideryWorkspace;
-  global.PAPER_SIZES = PAPER_SIZES;
-  global.HOOP_PRESETS = HOOP_PRESETS;
-  global.getHoopPreset = getHoopPreset;
-  global.getPaperSize = getPaperSize;
-  global.getHoopsByBrand = getHoopsByBrand;
-  global.getHoopsByType = getHoopsByType;
-  global.getHoopsBySize = getHoopsBySize;
-  global.findBestHoop = findBestHoop;
-  global.getHoopBrands = getHoopBrands;
-  global.getHoopTypes = getHoopTypes;
+  fn.drawGrid = drawGrid;
+  fn.drawHoopGuides = drawHoopGuides;
+  fn.drawHoop = drawHoop;
+  fn.drawManualHoop = drawManualHoop;
+  fn.drawMachineHoop = drawMachineHoop;
+  fn.drawCornerMarks = drawCornerMarks;
+  fn.drawPaperGuides = drawPaperGuides;
+  fn.drawEmbroideryWorkspace = drawEmbroideryWorkspace;
+  fn.PAPER_SIZES = PAPER_SIZES;
+  fn.HOOP_PRESETS = HOOP_PRESETS;
+  fn.getHoopPreset = getHoopPreset;
+  fn.getPaperSize = getPaperSize;
+  fn.getHoopsByBrand = getHoopsByBrand;
+  fn.getHoopsByType = getHoopsByType;
+  fn.getHoopsBySize = getHoopsBySize;
+  fn.findBestHoop = findBestHoop;
+  fn.getHoopBrands = getHoopBrands;
+  fn.getHoopTypes = getHoopTypes;
 
   // Expose preview viewport utilities
-  global.setupPreviewViewport = setupPreviewViewport;
-  global.endPreviewViewport = endPreviewViewport;
-  global.handlePreviewZoom = handlePreviewZoom;
-  global.handlePreviewPan = handlePreviewPan;
-  global.startPreviewPan = startPreviewPan;
-  global.stopPreviewPan = stopPreviewPan;
-  global.resetPreviewViewport = resetPreviewViewport;
-  global.fitPreviewToContent = fitPreviewToContent;
-  global.getPreviewState = getPreviewState;
-  global.screenToWorld = screenToWorld;
-  global.worldToScreen = worldToScreen;
-  global.drawPreviewControls = drawPreviewControls;
-  global.handlePreviewControlsPressed = handlePreviewControlsPressed;
-  global.handlePreviewControlsDragged = handlePreviewControlsDragged;
-  global.handlePreviewControlsReleased = handlePreviewControlsReleased;
+  fn.setupPreviewViewport = setupPreviewViewport;
+  fn.endPreviewViewport = endPreviewViewport;
+  fn.handlePreviewZoom = handlePreviewZoom;
+  fn.handlePreviewPan = handlePreviewPan;
+  fn.startPreviewPan = startPreviewPan;
+  fn.stopPreviewPan = stopPreviewPan;
+  fn.resetPreviewViewport = resetPreviewViewport;
+  fn.fitPreviewToContent = fitPreviewToContent;
+  fn.getPreviewState = getPreviewState;
+  fn.screenToWorld = screenToWorld;
+  fn.worldToScreen = worldToScreen;
+  fn.drawPreviewControls = drawPreviewControls;
+  fn.handlePreviewControlsPressed = handlePreviewControlsPressed;
+  fn.handlePreviewControlsDragged = handlePreviewControlsDragged;
+  fn.handlePreviewControlsReleased = handlePreviewControlsReleased;
 
-  global.zigzagStitchFromPath = zigzagStitchFromPath;
-  global.rampStitchFromPath = rampStitchFromPath;
-  global.squareStitchFromPath = squareStitchFromPath;
+  fn.zigzagStitchFromPath = zigzagStitchFromPath;
+  fn.rampStitchFromPath = rampStitchFromPath;
+  fn.squareStitchFromPath = squareStitchFromPath;
 
   // Expose debug function
-  global.setDebugMode = setDebugMode;
+  fn.setDebugMode = setDebugMode;
 
-  // Expose contour functions
-  global.beginContour =
-    p5embroidery.beginContour ||
-    function () {
-      if (window.beginContour && typeof window.beginContour === "function") {
-        return window.beginContour.apply(this, arguments);
-      }
-    };
-  global.endContour =
-    p5embroidery.endContour ||
-    function () {
-      if (window.endContour && typeof window.endContour === "function") {
-        return window.endContour.apply(this, arguments);
-      }
-    };
+  // beginContour and endContour are handled by overrideP5Functions() called at end of addon setup
 
   // Create embroidery state object for outline functions
   const getEmbroideryState = () => ({
@@ -6513,7 +6681,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   embroideryOutline(5); // Add 5mm outline around the embroidery
@@ -6521,7 +6689,7 @@ function setDebugMode(enabled) {
    *   endRecord();
    * }
    */
-  global.embroideryOutline = function (
+  fn.embroideryOutline = function (
     offsetDistance,
     threadIndex = _strokeThreadIndex,
     outlineType = "convex",
@@ -6544,7 +6712,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Create some stitch data
    *   let pathData = [{x: 50, y: 50}, {x: 100, y: 50}, {x: 100, y: 100}];
    *   let outlinePoints = embroideryOutlineFromPath(pathData, 5); // Add 5mm outline
@@ -6553,7 +6721,7 @@ function setDebugMode(enabled) {
    *   endRecord();
    * }
    */
-  global.embroideryOutlineFromPath = function (
+  fn.embroideryOutlineFromPath = function (
     stitchDataArray,
     offsetDistance,
     threadIndex = _strokeThreadIndex,
@@ -6584,7 +6752,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *   // Draw embroidery patterns
    *   circle(50, 50, 20);
    *   endRecord();
@@ -6596,7 +6764,7 @@ function setDebugMode(enabled) {
    *   exportOutline(0, 10, "cut-outline.gcode", "bounding");
    * }
    */
-  global.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
+  fn.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
     return await exportOutline(threadIndex, offsetDistance, filename, outlineType, getEmbroideryState());
   };
 
@@ -6612,7 +6780,7 @@ function setDebugMode(enabled) {
    * @example
    * function setup() {
    *   createCanvas(400, 400);
-   *   beginRecord(this);
+   *   beginRecord();
    *
    *   // Thread 0 - Red circle
    *   stroke(255, 0, 0);
@@ -6631,14 +6799,36 @@ function setDebugMode(enabled) {
    *   exportSVG("thread0-path.svg", { threads: [0] });
    * }
    */
-  global.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
+  fn.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
     if (!_stitchData || !_stitchData.threads) {
       console.warn("🪡 p5.embroider says: No embroidery data to export");
       return false;
     }
     return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
   };
-})(typeof globalThis !== "undefined" ? globalThis : window);
+
+  // Set up all fn overrides once at addon registration time (always-on, check _recording internally)
+  overrideP5Functions();
+}
+
+// ============================================================
+// p5.js Registration
+// ============================================================
+if (typeof p5 !== "undefined") {
+  if (typeof p5.registerAddon === "function") {
+    // p5.js 2.x — the supported path.
+    p5.registerAddon(p5EmbroiderAddon);
+  } else {
+    // p5.js 1.x — DEPRECATED. This path is not covered by the test suite and
+    // will be removed in 0.4. Use p5.embroider 0.2.1 for p5.js 1.x sketches,
+    // or follow MIGRATION.md to move the sketch to p5.js 2.x.
+    console.warn(
+      "🪡 p5.embroider says: p5.js 1.x support is deprecated and will be removed in 0.4. " +
+      "Upgrade to p5.js 2.x (see MIGRATION.md), or pin p5.embroider@0.2.1 for 1.x sketches.",
+    );
+    p5EmbroiderAddon(p5, p5.prototype, null);
+  }
+}
 
 /**
  * Creates straight line stitches from an array of path points

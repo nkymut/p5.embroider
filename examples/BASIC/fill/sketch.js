@@ -28,7 +28,8 @@ function createLabeledSlider(label, min, max, value, step, yOffset) {
   slider.style("display", "inline-block");
   slider.style("vertical-align", "middle");
 
-  let valueDisplay = createSpan(value);
+  // createSpan() requires a string in p5.js 2.0.
+  let valueDisplay = createSpan(String(value));
   valueDisplay.parent(container);
   valueDisplay.style("margin-left", "10px");
   valueDisplay.style("display", "inline-block");
@@ -250,7 +251,7 @@ function draw() {
   background("#FFF5DC");
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
 
   strokeWeight(1);
   setFillMode(fillMode);
@@ -317,9 +318,13 @@ function drawSelectedShape() {
       break;
 
     case "vertices":
+      // p5.js 2.0: bezierOrder(3) plus one bezierVertex() per control point.
       beginShape();
       vertex(30, 30);
-      bezierVertex(70, 20, 70, 60, 50, 70);
+      bezierOrder(3);
+      bezierVertex(70, 20);
+      bezierVertex(70, 60);
+      bezierVertex(50, 70);
       vertex(30, 60);
       vertex(30, 30);
       endShape(CLOSE);

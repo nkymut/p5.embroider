@@ -58,7 +58,7 @@ function draw() {
 
   setDrawMode(drawMode);
   noFill();
-  beginRecord(this);
+  beginRecord();
   strokeCap(SQUARE);
 
   setStitch(zigzagSettings.minStitchLength, zigzagSettings.stitchLength, 0);

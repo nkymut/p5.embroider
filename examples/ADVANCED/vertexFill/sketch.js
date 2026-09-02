@@ -91,7 +91,7 @@ function draw() {
   setDrawMode(drawMode);
 
   // Start recording embroidery
-  beginRecord(this);
+  beginRecord();
 
   // Set up fill with red thread
   fill(255, 155, 0);

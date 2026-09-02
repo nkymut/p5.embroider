@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en" style="font-size:16px"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Source: p5.embroider.js</title><!--[if lt IE 9]>
       <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]--><script src="scripts/third-party/hljs.js" defer="defer"></script><script src="scripts/third-party/hljs-line-num.js" defer="defer"></script><script src="scripts/third-party/popper.js" defer="defer"></script><script src="scripts/third-party/tippy.js" defer="defer"></script><script src="scripts/third-party/tocbot.min.js"></script><script>var baseURL="/",locationPathname="";baseURL=(locationPathname=document.location.pathname).substr(0,locationPathname.lastIndexOf("/")+1)</script><link rel="stylesheet" href="styles/clean-jsdoc-theme.min.css"><svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none"><defs><symbol id="copy-icon" viewbox="0 0 488.3 488.3"><g><path d="M314.25,85.4h-227c-21.3,0-38.6,17.3-38.6,38.6v325.7c0,21.3,17.3,38.6,38.6,38.6h227c21.3,0,38.6-17.3,38.6-38.6V124    C352.75,102.7,335.45,85.4,314.25,85.4z M325.75,449.6c0,6.4-5.2,11.6-11.6,11.6h-227c-6.4,0-11.6-5.2-11.6-11.6V124    c0-6.4,5.2-11.6,11.6-11.6h227c6.4,0,11.6,5.2,11.6,11.6V449.6z"/><path d="M401.05,0h-227c-21.3,0-38.6,17.3-38.6,38.6c0,7.5,6,13.5,13.5,13.5s13.5-6,13.5-13.5c0-6.4,5.2-11.6,11.6-11.6h227    c6.4,0,11.6,5.2,11.6,11.6v325.7c0,6.4-5.2,11.6-11.6,11.6c-7.5,0-13.5,6-13.5,13.5s6,13.5,13.5,13.5c21.3,0,38.6-17.3,38.6-38.6    V38.6C439.65,17.3,422.35,0,401.05,0z"/></g></symbol><symbol id="search-icon" viewBox="0 0 512 512"><g><g><path d="M225.474,0C101.151,0,0,101.151,0,225.474c0,124.33,101.151,225.474,225.474,225.474    c124.33,0,225.474-101.144,225.474-225.474C450.948,101.151,349.804,0,225.474,0z M225.474,409.323    c-101.373,0-183.848-82.475-183.848-183.848S124.101,41.626,225.474,41.626s183.848,82.475,183.848,183.848    S326.847,409.323,225.474,409.323z"/></g></g><g><g><path d="M505.902,476.472L386.574,357.144c-8.131-8.131-21.299-8.131-29.43,0c-8.131,8.124-8.131,21.306,0,29.43l119.328,119.328    c4.065,4.065,9.387,6.098,14.715,6.098c5.321,0,10.649-2.033,14.715-6.098C514.033,497.778,514.033,484.596,505.902,476.472z"/></g></g></symbol><symbol id="font-size-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11.246 15H4.754l-2 5H.6L7 4h2l6.4 16h-2.154l-2-5zm-.8-2L8 6.885 5.554 13h4.892zM21 12.535V12h2v8h-2v-.535a4 4 0 1 1 0-6.93zM19 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol><symbol id="add-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol><symbol id="minus-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M5 11h14v2H5z"/></symbol><symbol id="dark-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol><symbol id="light-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></symbol><symbol id="reset-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M18.537 19.567A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3a8 8 0 1 0-2.46 5.772l.997 1.795z"/></symbol><symbol id="down-icon" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.7803 6.21967C13.0732 6.51256 13.0732 6.98744 12.7803 7.28033L8.53033 11.5303C8.23744 11.8232 7.76256 11.8232 7.46967 11.5303L3.21967 7.28033C2.92678 6.98744 2.92678 6.51256 3.21967 6.21967C3.51256 5.92678 3.98744 5.92678 4.28033 6.21967L8 9.93934L11.7197 6.21967C12.0126 5.92678 12.4874 5.92678 12.7803 6.21967Z"></path></symbol><symbol id="codepen-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M16.5 13.202L13 15.535v3.596L19.197 15 16.5 13.202zM14.697 12L12 10.202 9.303 12 12 13.798 14.697 12zM20 10.869L18.303 12 20 13.131V10.87zM19.197 9L13 4.869v3.596l3.5 2.333L19.197 9zM7.5 10.798L11 8.465V4.869L4.803 9 7.5 10.798zM4.803 15L11 19.131v-3.596l-3.5-2.333L4.803 15zM4 13.131L5.697 12 4 10.869v2.262zM2 9a1 1 0 0 1 .445-.832l9-6a1 1 0 0 1 1.11 0l9 6A1 1 0 0 1 22 9v6a1 1 0 0 1-.445.832l-9 6a1 1 0 0 1-1.11 0l-9-6A1 1 0 0 1 2 15V9z"/></symbol><symbol id="close-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"/></symbol><symbol id="menu-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></symbol></defs></svg></head><body data-theme="dark"><div class="sidebar-container"><div class="sidebar" id="sidebar"><div class="sidebar-items-container"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DSTWriter.html">DSTWriter</a></div><div class="sidebar-section-children"><a href="Thread.html">Thread</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#beginRecord">beginRecord</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutline">embroideryOutline</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutlineFromPath">embroideryOutlineFromPath</a></div><div class="sidebar-section-children"><a href="global.html#endRecord">endRecord</a></div><div class="sidebar-section-children"><a href="global.html#exportDST">exportDST</a></div><div class="sidebar-section-children"><a href="global.html#exportEmbroidery">exportEmbroidery</a></div><div class="sidebar-section-children"><a href="global.html#exportGcode">exportGcode</a></div><div class="sidebar-section-children"><a href="global.html#exportJSON">exportJSON</a></div><div class="sidebar-section-children"><a href="global.html#exportOutline">exportOutline</a></div><div class="sidebar-section-children"><a href="global.html#exportPNG">exportPNG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVG">exportSVG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVGFromPath">exportSVGFromPath</a></div><div class="sidebar-section-children"><a href="global.html#mm2px">mm2px</a></div><div class="sidebar-section-children"><a href="global.html#mmToPixel">mmToPixel</a></div><div class="sidebar-section-children"><a href="global.html#pixelToMm">pixelToMm</a></div><div class="sidebar-section-children"><a href="global.html#px2mm">px2mm</a></div><div class="sidebar-section-children"><a href="global.html#setDrawMode">setDrawMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillMode">setFillMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setStitch">setStitch</a></div><div class="sidebar-section-children"><a href="global.html#setStitchWidth">setStitchWidth</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeEntryExit">setStrokeEntryExit</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeInterpolate">setStrokeInterpolate</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeJoin">setStrokeJoin</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeMode">setStrokeMode</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeSettings">setStrokeSettings</a></div><div class="sidebar-section-children"><a href="global.html#trimThread">trimThread</a></div></div></div></div></div><div class="navbar-container" id="VuAckcnZhf"><nav class="navbar"><div class="navbar-left-items"></div><div class="navbar-right-items"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div><nav></nav></nav></div><div class="toc-container"><div class="toc-content"><span class="bold">On this page</span><div id="eed4d2a0bfd64539bb9df78095dec881"></div></div></div><div class="body-wrapper"><div class="main-content"><div class="main-wrapper"><section id="source-page" class="source-page"><header><h1 id="title" class="has-anchor">p5.embroider.js</h1></header><article><pre class="prettyprint source lang-js"><code>(function (factory) {
+    <![endif]--><script src="scripts/third-party/hljs.js" defer="defer"></script><script src="scripts/third-party/hljs-line-num.js" defer="defer"></script><script src="scripts/third-party/popper.js" defer="defer"></script><script src="scripts/third-party/tippy.js" defer="defer"></script><script src="scripts/third-party/tocbot.min.js"></script><script>var baseURL="/",locationPathname="";baseURL=(locationPathname=document.location.pathname).substr(0,locationPathname.lastIndexOf("/")+1)</script><link rel="stylesheet" href="styles/clean-jsdoc-theme.min.css"><svg aria-hidden="true" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none"><defs><symbol id="copy-icon" viewbox="0 0 488.3 488.3"><g><path d="M314.25,85.4h-227c-21.3,0-38.6,17.3-38.6,38.6v325.7c0,21.3,17.3,38.6,38.6,38.6h227c21.3,0,38.6-17.3,38.6-38.6V124    C352.75,102.7,335.45,85.4,314.25,85.4z M325.75,449.6c0,6.4-5.2,11.6-11.6,11.6h-227c-6.4,0-11.6-5.2-11.6-11.6V124    c0-6.4,5.2-11.6,11.6-11.6h227c6.4,0,11.6,5.2,11.6,11.6V449.6z"/><path d="M401.05,0h-227c-21.3,0-38.6,17.3-38.6,38.6c0,7.5,6,13.5,13.5,13.5s13.5-6,13.5-13.5c0-6.4,5.2-11.6,11.6-11.6h227    c6.4,0,11.6,5.2,11.6,11.6v325.7c0,6.4-5.2,11.6-11.6,11.6c-7.5,0-13.5,6-13.5,13.5s6,13.5,13.5,13.5c21.3,0,38.6-17.3,38.6-38.6    V38.6C439.65,17.3,422.35,0,401.05,0z"/></g></symbol><symbol id="search-icon" viewBox="0 0 512 512"><g><g><path d="M225.474,0C101.151,0,0,101.151,0,225.474c0,124.33,101.151,225.474,225.474,225.474    c124.33,0,225.474-101.144,225.474-225.474C450.948,101.151,349.804,0,225.474,0z M225.474,409.323    c-101.373,0-183.848-82.475-183.848-183.848S124.101,41.626,225.474,41.626s183.848,82.475,183.848,183.848    S326.847,409.323,225.474,409.323z"/></g></g><g><g><path d="M505.902,476.472L386.574,357.144c-8.131-8.131-21.299-8.131-29.43,0c-8.131,8.124-8.131,21.306,0,29.43l119.328,119.328    c4.065,4.065,9.387,6.098,14.715,6.098c5.321,0,10.649-2.033,14.715-6.098C514.033,497.778,514.033,484.596,505.902,476.472z"/></g></g></symbol><symbol id="font-size-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11.246 15H4.754l-2 5H.6L7 4h2l6.4 16h-2.154l-2-5zm-.8-2L8 6.885 5.554 13h4.892zM21 12.535V12h2v8h-2v-.535a4 4 0 1 1 0-6.93zM19 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></symbol><symbol id="add-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></symbol><symbol id="minus-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M5 11h14v2H5z"/></symbol><symbol id="dark-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M10 7a7 7 0 0 0 12 4.9v.1c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2h.1A6.979 6.979 0 0 0 10 7zm-6 5a8 8 0 0 0 15.062 3.762A9 9 0 0 1 8.238 4.938 7.999 7.999 0 0 0 4 12z"/></symbol><symbol id="light-theme-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm0-2a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM11 1h2v3h-2V1zm0 19h2v3h-2v-3zM3.515 4.929l1.414-1.414L7.05 5.636 5.636 7.05 3.515 4.93zM16.95 18.364l1.414-1.414 2.121 2.121-1.414 1.414-2.121-2.121zm2.121-14.85l1.414 1.415-2.121 2.121-1.414-1.414 2.121-2.121zM5.636 16.95l1.414 1.414-2.121 2.121-1.414-1.414 2.121-2.121zM23 11v2h-3v-2h3zM4 11v2H1v-2h3z"/></symbol><symbol id="reset-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M18.537 19.567A9.961 9.961 0 0 1 12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10c0 2.136-.67 4.116-1.81 5.74L17 12h3a8 8 0 1 0-2.46 5.772l.997 1.795z"/></symbol><symbol id="down-icon" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M12.7803 6.21967C13.0732 6.51256 13.0732 6.98744 12.7803 7.28033L8.53033 11.5303C8.23744 11.8232 7.76256 11.8232 7.46967 11.5303L3.21967 7.28033C2.92678 6.98744 2.92678 6.51256 3.21967 6.21967C3.51256 5.92678 3.98744 5.92678 4.28033 6.21967L8 9.93934L11.7197 6.21967C12.0126 5.92678 12.4874 5.92678 12.7803 6.21967Z"></path></symbol><symbol id="codepen-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M16.5 13.202L13 15.535v3.596L19.197 15 16.5 13.202zM14.697 12L12 10.202 9.303 12 12 13.798 14.697 12zM20 10.869L18.303 12 20 13.131V10.87zM19.197 9L13 4.869v3.596l3.5 2.333L19.197 9zM7.5 10.798L11 8.465V4.869L4.803 9 7.5 10.798zM4.803 15L11 19.131v-3.596l-3.5-2.333L4.803 15zM4 13.131L5.697 12 4 10.869v2.262zM2 9a1 1 0 0 1 .445-.832l9-6a1 1 0 0 1 1.11 0l9 6A1 1 0 0 1 22 9v6a1 1 0 0 1-.445.832l-9 6a1 1 0 0 1-1.11 0l-9-6A1 1 0 0 1 2 15V9z"/></symbol><symbol id="close-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M12 10.586l4.95-4.95 1.414 1.414-4.95 4.95 4.95 4.95-1.414 1.414-4.95-4.95-4.95 4.95-1.414-1.414 4.95-4.95-4.95-4.95L7.05 5.636z"/></symbol><symbol id="menu-icon" viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></symbol></defs></svg></head><body data-theme="dark"><div class="sidebar-container"><div class="sidebar" id="sidebar"><div class="sidebar-items-container"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DSTWriter.html">DSTWriter</a></div><div class="sidebar-section-children"><a href="Thread.html">Thread</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#beginRecord">beginRecord</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutline">embroideryOutline</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutlineFromPath">embroideryOutlineFromPath</a></div><div class="sidebar-section-children"><a href="global.html#endRecord">endRecord</a></div><div class="sidebar-section-children"><a href="global.html#exportDST">exportDST</a></div><div class="sidebar-section-children"><a href="global.html#exportEmbroidery">exportEmbroidery</a></div><div class="sidebar-section-children"><a href="global.html#exportGcode">exportGcode</a></div><div class="sidebar-section-children"><a href="global.html#exportJSON">exportJSON</a></div><div class="sidebar-section-children"><a href="global.html#exportOutline">exportOutline</a></div><div class="sidebar-section-children"><a href="global.html#exportPES">exportPES</a></div><div class="sidebar-section-children"><a href="global.html#exportPNG">exportPNG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVG">exportSVG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVGFromPath">exportSVGFromPath</a></div><div class="sidebar-section-children"><a href="global.html#mm2px">mm2px</a></div><div class="sidebar-section-children"><a href="global.html#mmToPixel">mmToPixel</a></div><div class="sidebar-section-children"><a href="global.html#pixelToMm">pixelToMm</a></div><div class="sidebar-section-children"><a href="global.html#px2mm">px2mm</a></div><div class="sidebar-section-children"><a href="global.html#setCurveDetail">setCurveDetail</a></div><div class="sidebar-section-children"><a href="global.html#setDrawMode">setDrawMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillMode">setFillMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setStitch">setStitch</a></div><div class="sidebar-section-children"><a href="global.html#setStitchInterpolate">setStitchInterpolate</a></div><div class="sidebar-section-children"><a href="global.html#setStitchWidth">setStitchWidth</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeEntryExit">setStrokeEntryExit</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeJoin">setStrokeJoin</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeMode">setStrokeMode</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeSettings">setStrokeSettings</a></div><div class="sidebar-section-children"><a href="global.html#trimThread">trimThread</a></div></div></div></div></div><div class="navbar-container" id="VuAckcnZhf"><nav class="navbar"><div class="navbar-left-items"></div><div class="navbar-right-items"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div><nav></nav></nav></div><div class="toc-container"><div class="toc-content"><span class="bold">On this page</span><div id="eed4d2a0bfd64539bb9df78095dec881"></div></div></div><div class="body-wrapper"><div class="main-content"><div class="main-wrapper"><section id="source-page" class="source-page"><header><h1 id="title" class="has-anchor">p5.embroider.js</h1></header><article><pre class="prettyprint source lang-js"><code>(function (factory) {
   typeof define === 'function' &amp;&amp; define.amd ? define(factory) :
   factory();
 })((function () { 'use strict';
@@ -33,20 +33,20 @@
     }
 
     encodeRecord(x, y, flag) {
-      {
-        console.log("Encoding record:", {
-          x,
-          y,
-          flag:
-            flag === DSTWriter.JUMP
-              ? "JUMP"
-              : flag === DSTWriter.STITCH
-                ? "STITCH"
-                : flag === DSTWriter.COLOR_CHANGE
-                  ? "COLOR_CHANGE"
-                  : flag,
-        });
-      }
+      // if (_DEBUG_DST) {
+      //   console.log("Encoding record:", {
+      //     x,
+      //     y,
+      //     flag:
+      //       flag === DSTWriter.JUMP
+      //         ? "JUMP"
+      //         : flag === DSTWriter.STITCH
+      //           ? "STITCH"
+      //           : flag === DSTWriter.COLOR_CHANGE
+      //             ? "COLOR_CHANGE"
+      //             : flag,
+      //   });
+      // }
 
       y = -y; // DST uses a different coordinate system
       let b0 = 0,
@@ -153,14 +153,14 @@
 
     move(x, y, flag = DSTWriter.STITCH) {
       if (x !== null &amp;&amp; y !== null) {
-        {
-          console.log("Move called with:", {
-            targetX: x,
-            targetY: y,
-            flag: flag === DSTWriter.JUMP ? "JUMP" : flag === DSTWriter.STITCH ? "STITCH" : flag,
-            currentPosition: { x: this.currentX, y: this.currentY },
-          });
-        }
+        // if (_DEBUG_DST) {
+        //   console.log("Move called with:", {
+        //     targetX: x,
+        //     targetY: y,
+        //     flag: flag === DSTWriter.JUMP ? "JUMP" : flag === DSTWriter.STITCH ? "STITCH" : flag,
+        //     currentPosition: { x: this.currentX, y: this.currentY },
+        //   });
+        // }
 
         let dx = Math.round(x) - this.currentX;
         let dy = Math.round(y) - this.currentY;
@@ -192,13 +192,13 @@
         this.minY = Math.min(this.minY, this.currentY);
         this.maxY = Math.max(this.maxY, this.currentY);
 
-        {
-          console.log("After move:", {
-            newPosition: { x: this.currentX, y: this.currentY },
-            dx: dx,
-            dy: dy,
-          });
-        }
+        // if (_DEBUG_DST) {
+        //   console.log("After move:", {
+        //     newPosition: { x: this.currentX, y: this.currentY },
+        //     dx: dx,
+        //     dy: dy,
+        //   });
+        // }
       }
     }
 
@@ -330,9 +330,9 @@
       // Generate stitches using transformed points
       for (let i = 0; i &lt; transformedPoints.length; i++) {
         const point = transformedPoints[i];
-        {
-          console.log("Processing point:", i, point);
-        }
+        // if (_DEBUG_DST) {
+        //   console.log("Processing point:", i, point);
+        // }
 
         // Handle color change
         if (point.colorChange) {
@@ -359,12 +359,12 @@
           // First, ensure we're at the correct position
           this.move(point.x, point.y, DSTWriter.JUMP);
 
-          {
-            console.log("After move to trim position:", {
-              targetPosition: { x: point.x, y: point.y },
-              actualPosition: { x: this.currentX, y: this.currentY },
-            });
-          }
+          // if (_DEBUG_DST) {
+          //   console.log("After move to trim position:", {
+          //     targetPosition: { x: point.x, y: point.y },
+          //     actualPosition: { x: this.currentX, y: this.currentY },
+          //   });
+          // }
 
           // Generate a zigzag pattern of 3 jumps that embroidery machines recognize as a trim command
           // These are small relative movements from the current position
@@ -394,13 +394,13 @@
         const flag = i === 0 || point.jump ? DSTWriter.JUMP : DSTWriter.STITCH;
         this.move(point.x, point.y, flag);
 
-        {
-          console.log("After move:", {
-            point: i,
-            position: { x: this.currentX, y: this.currentY },
-            flag: flag === DSTWriter.JUMP ? "JUMP" : "STITCH",
-          });
-        }
+        // if (_DEBUG_DST) {
+        //   console.log("After move:", {
+        //     point: i,
+        //     position: { x: this.currentX, y: this.currentY },
+        //     flag: flag === DSTWriter.JUMP ? "JUMP" : "STITCH",
+        //   });
+        // }
       }
 
       // Add end record
@@ -2281,6 +2281,522 @@
     }
   }
 
+  class PESWriter {
+    constructor() {
+      this.VERSION = 1;
+      this.TRUNCATED = false;
+
+      this.MASK_07_BIT = 0b01111111;
+      this.JUMP_CODE = 0b00010000;
+      this.TRIM_CODE = 0b00100000;
+      this.FLAG_LONG = 0b10000000;
+
+      this.PEC_ICON_WIDTH = 48;
+      this.PEC_ICON_HEIGHT = 38;
+
+      this.position = 0;
+      this.buffer = [];
+      this.streamStack = [];
+    }
+
+    // ===== Binary Writing Methods =====
+
+    writeInt8(value) {
+      this.position += 1;
+      this.buffer.push(value &amp; 0xff);
+    }
+
+    writeInt16LE(value) {
+      this.position += 2;
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+    }
+
+    writeInt16BE(value) {
+      this.position += 2;
+      this.buffer.push((value >> 8) &amp; 0xff);
+      this.buffer.push(value &amp; 0xff);
+    }
+
+    writeInt24LE(value) {
+      this.position += 3;
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+      this.buffer.push((value >> 16) &amp; 0xff);
+    }
+
+    writeInt32LE(value) {
+      this.position += 4;
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+      this.buffer.push((value >> 16) &amp; 0xff);
+      this.buffer.push((value >>> 24) &amp; 0xff);
+    }
+
+    floatToIntBits(float) {
+      const buffer = new ArrayBuffer(4);
+      const floatView = new Float32Array(buffer);
+      const intView = new Int32Array(buffer);
+      floatView[0] = float;
+      return intView[0];
+    }
+
+    writeInt32LEFloat(value) {
+      const bits = this.floatToIntBits(value);
+      this.writeInt32LE(bits);
+    }
+
+    tell() {
+      return this.position;
+    }
+
+    writeString(string) {
+      this.position += string.length;
+      for (let i = 0; i &lt; string.length; i++) {
+        this.buffer.push(string.charCodeAt(i));
+      }
+    }
+
+    writeBytes(bytes) {
+      this.position += bytes.length;
+      this.buffer.push(...bytes);
+    }
+
+    spaceHolder(skip) {
+      this.position += skip;
+      const newBuffer = [];
+      this.streamStack.push({
+        buffer: this.buffer,
+        position: this.position - skip,
+      });
+      this.buffer = newBuffer;
+    }
+
+    writeSpaceHolder16LE(value) {
+      const popped = this.streamStack.pop();
+      const tempBuffer = this.buffer;
+      this.buffer = popped.buffer;
+
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+      // Use loop instead of spread to avoid stack overflow on large buffers
+      for (let i = 0; i &lt; tempBuffer.length; i++) {
+        this.buffer.push(tempBuffer[i]);
+      }
+    }
+
+    writeSpaceHolder24LE(value) {
+      const popped = this.streamStack.pop();
+      const tempBuffer = this.buffer;
+      this.buffer = popped.buffer;
+
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+      this.buffer.push((value >> 16) &amp; 0xff);
+      // Use loop instead of spread to avoid stack overflow on large buffers
+      for (let i = 0; i &lt; tempBuffer.length; i++) {
+        this.buffer.push(tempBuffer[i]);
+      }
+    }
+
+    writeSpaceHolder32LE(value) {
+      const popped = this.streamStack.pop();
+      const tempBuffer = this.buffer;
+      this.buffer = popped.buffer;
+
+      this.buffer.push(value &amp; 0xff);
+      this.buffer.push((value >> 8) &amp; 0xff);
+      this.buffer.push((value >> 16) &amp; 0xff);
+      this.buffer.push((value >>> 24) &amp; 0xff);
+      // Use loop instead of spread to avoid stack overflow on large buffers
+      for (let i = 0; i &lt; tempBuffer.length; i++) {
+        this.buffer.push(tempBuffer[i]);
+      }
+    }
+
+    // ===== PEC Color Palette Matching =====
+
+    findColor(color) {
+      const r = (color >> 16) &amp; 255;
+      const g = (color >> 8) &amp; 255;
+      const b = color &amp; 255;
+
+      const std = [
+        0x1a0a94, 0x0f75ff, 0x00934c, 0xbabdfe, 0xec0000, 0xe4995a, 0xcc48ab, 0xfdc4fa, 0xdd84cd, 0x6bd38a, 0xe4a945,
+        0xffbd42, 0xffe600, 0x6cd900, 0xc1a941, 0xb5ad97, 0xba9c5f, 0xfaf59e, 0x808080, 0x000000, 0x001cdf, 0xdf00b8,
+        0x626262, 0x69260d, 0xff0060, 0xbf8200, 0xf39178, 0xff6805, 0xf0f0f0, 0xc832cd, 0xb0bf9b, 0x65bfeb, 0xffba04,
+        0xfff06c, 0xfeca15, 0xf38101, 0x37a923, 0x23465f, 0xa6a695, 0xcebfa6, 0x96aa02, 0xffe3c6, 0xff99d7, 0x007004,
+        0xedccfb, 0xc089d8, 0xe7d9b4, 0xe90e86, 0xcf6829, 0x408615, 0xdb1797, 0xffa704, 0xb9ffff, 0x228927, 0xb612cd,
+        0x00aa00, 0xfea9dc, 0xfed510, 0x0097df, 0xffff84, 0xcfe774, 0xffc864, 0xffc8c8, 0xffc8c8,
+      ];
+
+      let minDist = 195075;
+      let minIndex = 0;
+
+      for (let i = 0; i &lt; std.length; i++) {
+        const r0 = (std[i] >> 16) &amp; 255;
+        const g0 = (std[i] >> 8) &amp; 255;
+        const b0 = std[i] &amp; 255;
+        const dist = Math.pow(r - r0, 2) + Math.pow(g - g0, 2) + Math.pow(b - b0, 2);
+
+        if (dist &lt; minDist) {
+          minDist = dist;
+          minIndex = i;
+        }
+      }
+
+      return minIndex + 1;
+    }
+
+    // ===== Bounds Calculation (matching DST) =====
+
+    calculateBorderSize(points) {
+      let minX = Infinity,
+        maxX = -Infinity;
+      let minY = Infinity,
+        maxY = -Infinity;
+
+      for (let point of points) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+
+      const result = {
+        left: Math.floor(minX),
+        top: Math.floor(minY),
+        right: Math.ceil(maxX),
+        bottom: Math.ceil(maxY),
+        width: Math.ceil(maxX - minX),
+        height: Math.ceil(maxY - minY),
+        bounds: { minX, maxX, minY, maxY },
+      };
+
+      {
+        console.log("PES Border calculation:", {
+          points: points.length,
+          result,
+        });
+      }
+
+      return result;
+    }
+
+    // ===== PEC Encoding =====
+
+    encodeLongForm(value) {
+      value &amp;= 0b0000111111111111;
+      value |= 0b1000000000000000;
+      return value;
+    }
+
+    flagTrim(longForm) {
+      return longForm | (this.TRIM_CODE &lt;&lt; 8);
+    }
+
+    pecEncode(stitches, colors) {
+      let colorTwo = true;
+      let xx = 0,
+        yy = 0;
+
+      for (let i = 0; i &lt; stitches.length; i++) {
+        // Check for color change
+        if (i > 0 &amp;&amp; colors[i] !== colors[i - 1]) {
+          this.writeInt8(0xfe);
+          this.writeInt8(0xb0);
+          this.writeInt8(colorTwo ? 2 : 1);
+          colorTwo = !colorTwo;
+
+          {
+            console.log("PEC color change at stitch", i);
+          }
+        }
+
+        const x = stitches[i].x;
+        const y = stitches[i].y;
+
+        let dx = Math.round(x - xx);
+        let dy = Math.round(y - yy);
+        xx += dx;
+        yy += dy;
+
+        // First stitch special handling
+        if (i === 0) {
+          dx = this.encodeLongForm(dx);
+          dx = this.flagTrim(dx);
+          dy = this.encodeLongForm(dy);
+          dy = this.flagTrim(dy);
+          this.writeInt16BE(dx);
+          this.writeInt16BE(dy);
+          this.writeInt8(0x00);
+          this.writeInt8(0x00);
+          dx = 0;
+          dy = 0;
+        }
+
+        // Short form: -64 to 63
+        if (dx &lt; 63 &amp;&amp; dx > -64 &amp;&amp; dy &lt; 63 &amp;&amp; dy > -64) {
+          this.writeInt8(dx &amp; this.MASK_07_BIT);
+          this.writeInt8(dy &amp; this.MASK_07_BIT);
+        } else {
+          // Long form
+          dx = this.encodeLongForm(dx);
+          dy = this.encodeLongForm(dy);
+          this.writeInt16BE(dx);
+          this.writeInt16BE(dy);
+        }
+      }
+
+      this.writeInt8(0xff); // End marker
+    }
+
+    // ===== PEC Header and Blocks =====
+
+    writePecHeader(title, colors) {
+      const colorIndexList = [];
+
+      // Title line (16 chars padded, with \r)
+      const titleLine = `LA:${title.padEnd(16).substring(0, 16)}\r`;
+      this.writeString(titleLine);
+
+      // 12 spaces
+      for (let i = 0; i &lt; 12; i++) {
+        this.writeInt8(0x20);
+      }
+      this.writeInt8(0xff);
+      this.writeInt8(0x00);
+
+      // Icon dimensions
+      this.writeInt8(this.PEC_ICON_WIDTH / 8);
+      this.writeInt8(this.PEC_ICON_HEIGHT);
+
+      // Build palette - unique consecutive colors
+      const palette = [];
+      for (let i = 0; i &lt; colors.length; i++) {
+        if (i === 0 || colors[i] !== colors[i - 1]) {
+          palette.push(colors[i]);
+        }
+      }
+
+      {
+        console.log(
+          "PES Color palette:",
+          palette.map((c) => c.toString(16)),
+        );
+      }
+
+      // 12 more spaces
+      for (let i = 0; i &lt; 12; i++) {
+        this.writeInt8(0x20);
+      }
+
+      // Write color count and indices
+      colorIndexList.push(palette.length - 1);
+      this.writeInt8(palette.length - 1);
+
+      for (let i = 0; i &lt; palette.length; i++) {
+        const idx = this.findColor(palette[i]);
+        colorIndexList.push(idx);
+        this.writeInt8(idx);
+      }
+
+      // Padding (463 - palette.length spaces)
+      for (let i = 0; i &lt; 463 - palette.length; i++) {
+        this.writeInt8(0x20);
+      }
+
+      return { colorIndexList, palette };
+    }
+
+    writePecBlock(bounds, stitches, colors) {
+      const width = Math.round(bounds.width);
+      const height = Math.round(bounds.height);
+
+      const stitchBlockStart = this.tell();
+      this.writeInt8(0x00);
+      this.writeInt8(0x00);
+      this.spaceHolder(3);
+
+      this.writeInt8(0x31);
+      this.writeInt8(0xff);
+      this.writeInt8(0xf0);
+
+      this.writeInt16LE(width);
+      this.writeInt16LE(height);
+
+      this.writeInt16LE(0x1e0);
+      this.writeInt16LE(0x1b0);
+
+      // Use the actual bounds, not [0] and [1] indices
+      this.writeInt16BE(0x9000 | (-Math.round(bounds.minX) &amp; 0xffff));
+      this.writeInt16BE(0x9000 | (-Math.round(bounds.minY) &amp; 0xffff));
+
+      this.pecEncode(stitches, colors);
+
+      const stitchBlockLength = this.tell() - stitchBlockStart;
+      this.writeSpaceHolder24LE(stitchBlockLength);
+    }
+
+    writePecGraphics() {
+      this.writeBytes([
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x04,
+        0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
+        0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
+        0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
+        0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00,
+        0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40,
+        0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02,
+        0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
+        0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
+        0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
+        0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x00, 0x00, 0x00,
+        0x20, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      ]);
+    }
+
+    writePec(title, stitches, colors, border) {
+      const colorInfo = this.writePecHeader(title, colors);
+      this.writePecBlock(border, stitches, colors);
+
+      // Write graphics for each color
+      this.writePecGraphics();
+      this.writePecGraphics();
+
+      for (let i = 1; i &lt; colors.length; i++) {
+        if (colors[i] !== colors[i - 1]) {
+          this.writePecGraphics();
+        }
+      }
+
+      return colorInfo;
+    }
+
+    // Version 1 truncated (PEC-only) - simplest format
+    writeTruncatedVersion1(title, stitches, colors, border) {
+      this.writeString("#PES0001");
+      this.writeInt8(0x16);
+      for (let i = 0; i &lt; 13; i++) {
+        this.writeInt8(0x00);
+      }
+      this.writePec(title, stitches, colors, border);
+    }
+
+    // ===== Main Generation Function (matching DST pattern) =====
+
+    generatePES(points, title) {
+      {
+        console.log("=== PESWriter generatePES ===");
+        console.log("Points to process:", points.length);
+      }
+
+      // Reset state
+      this.position = 0;
+      this.buffer = [];
+      this.streamStack = [];
+
+      // Calculate border size BEFORE transformation (same as DST)
+      let border = this.calculateBorderSize(points);
+      {
+        console.log("Original border size:", border);
+      }
+
+      // need to shift by minX
+      const centerX = border.width / 2;
+      const centerY = border.height / 2;
+      const offsetX = border.left + centerX;
+      const offsetY = border.top + centerY;
+
+      {
+        console.log("Transformation values:", {
+          centerX,
+          centerY,
+          left: border.left,
+          top: border.top,
+          offset: {
+            x: border.left + centerX,
+            y: border.top + centerY,
+          },
+        });
+      }
+
+      const transformedPoints = points.map((point) => {
+        const newPoint = { ...point };
+        // Transform coordinates to center-origin
+        newPoint.x = point.x - offsetX;
+        newPoint.y = point.y - offsetY;
+        return newPoint;
+      });
+
+      {
+        console.log("Coordinate transformation:", {
+          centerX,
+          centerY,
+          originalFirstPoint: points[0],
+          transformedFirstPoint: transformedPoints[0],
+        });
+      }
+
+      // Recalculate border size after transformation
+      border = this.calculateBorderSize(transformedPoints);
+      {
+        console.log("Transformed border size:", border);
+      }
+
+      // Extract stitches and colors arrays from transformed points
+      const stitches = transformedPoints.map((p) => ({ x: p.x, y: p.y }));
+      const colors = transformedPoints.map((p) => p.color || 0xff0000);
+
+      // Write the file
+      this.writeTruncatedVersion1(title, stitches, colors, border);
+
+      return new Uint8Array(this.buffer);
+    }
+
+    // ===== Save Function (matching DST pattern) =====
+
+    saveBytes(data, filename) {
+      let blob = new Blob([data], { type: "application/octet-stream" });
+      let link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+
+      link.onclick = function (e) {
+        setTimeout(() => e.preventDefault(), 10);
+        setTimeout(() => {
+          URL.revokeObjectURL(link.href);
+          document.body.removeChild(link);
+        }, 100);
+      };
+
+      document.body.appendChild(link);
+      link.click();
+    }
+
+    /**
+     * Saves embroidery data as a PES file.
+     * @memberof PESWriter
+     * @param {Array} points - Array of stitch points with x, y, color properties
+     * @param {String} title - Title for the PES file header
+     * @param {String} filename - Output filename
+     */
+    savePES(points, title, filename) {
+      let pesData = this.generatePES(points, title);
+      this.saveBytes(pesData, filename);
+      {
+        console.log("PES file saved!");
+        console.log("File size:", pesData.length, "bytes");
+      }
+    }
+  }
+
+  // Add this check to support both direct browser usage and ES modules
+  if (typeof exports !== "undefined") {
+    exports.PESWriter = PESWriter;
+  } else if (typeof window !== "undefined") {
+    window.PESWriter = PESWriter;
+  }
+
   /**
    * p5.embroider Unit Conversion Utilities
    * Functions for converting between different units (mm, pixels, inches, etc.)
@@ -3780,8 +4296,107 @@
     }
   }
 
-  (function (global) {
-    const p5embroidery = global.p5embroidery || {};
+  function p5EmbroiderAddon(p5, fn, lifecycles) {
+    const p5embroidery = {};
+
+    // p5.js 2.0 puts constants on prototype (fn), not on the p5 class itself.
+    // Use fn as fallback to support both 1.x (p5.CENTER) and 2.0 (fn.CENTER).
+    const CONSTANTS = {
+      CENTER: p5.CENTER ?? fn.CENTER ?? "center",
+      CORNER: p5.CORNER ?? fn.CORNER ?? "corner",
+      CORNERS: p5.CORNERS ?? fn.CORNERS ?? "corners",
+      RADIUS: p5.RADIUS ?? fn.RADIUS ?? "radius",
+      CLOSE: p5.CLOSE ?? fn.CLOSE ?? "close",
+      OPEN: p5.OPEN ?? fn.OPEN ?? "open",
+      PIE: p5.PIE ?? fn.PIE ?? "pie",
+      CHORD: p5.CHORD ?? fn.CHORD ?? "chord",
+      ROUND: p5.ROUND ?? fn.ROUND ?? "round",
+      MITER: p5.MITER ?? fn.MITER ?? "miter",
+      BEVEL: p5.BEVEL ?? fn.BEVEL ?? "bevel",
+      SQUARE: p5.SQUARE ?? fn.SQUARE ?? "butt",
+      PROJECT: p5.PROJECT ?? fn.PROJECT ?? "square",
+      // Angle modes — used by rotate() to decide whether to convert degrees.
+      DEGREES: p5.DEGREES ?? fn.DEGREES ?? "degrees",
+      RADIANS: p5.RADIANS ?? fn.RADIANS ?? "radians",
+      // beginShape() kinds — must resolve or beginShape(POINTS) is never recognised.
+      POINTS: p5.POINTS ?? fn.POINTS ?? "points",
+      LINES: p5.LINES ?? fn.LINES ?? "lines",
+      TRIANGLES: p5.TRIANGLES ?? fn.TRIANGLES ?? "triangles",
+      TRIANGLE_FAN: p5.TRIANGLE_FAN ?? fn.TRIANGLE_FAN ?? "triangle_fan",
+      TRIANGLE_STRIP: p5.TRIANGLE_STRIP ?? fn.TRIANGLE_STRIP ?? "triangle_strip",
+      QUADS: p5.QUADS ?? fn.QUADS ?? "quads",
+      QUAD_STRIP: p5.QUAD_STRIP ?? fn.QUAD_STRIP ?? "quad_strip",
+    };
+
+    // Host version detection. p5.js 2.x renamed the curve family to spline* and
+    // changed bezierVertex() to one point per call with bezierOrder() setting the
+    // degree. Captured before any override is installed, so it reflects the real host.
+    const _isP5v2 = typeof fn.bezierOrder === "function" &amp;&amp; typeof fn.spline === "function";
+
+    // Deprecation notices are emitted once per name, not once per frame, because
+    // these functions are typically called from draw().
+    const _deprecationWarned = new Set();
+
+    /**
+     * Warns once that a p5.js 1.x API is deprecated in p5.embroider.
+     * @private
+     * @param {string} name - The deprecated function name.
+     * @param {string} advice - What to use instead.
+     */
+    function warnDeprecated(name, advice) {
+      if (_deprecationWarned.has(name)) return;
+      _deprecationWarned.add(name);
+      console.warn(
+        `🪡 p5.embroider says: ${advice} The ${name}() alias still works but will be removed in 0.4. See MIGRATION.md.`,
+      );
+    }
+
+    /**
+     * Calls an original p5 function with recording suspended.
+     *
+     * p5.js 2.x implements composite primitives by re-entering the instance's own
+     * public methods — renderer.bezier() calls beginShape()/bezierVertex()/endShape()
+     * on the sketch, and spline() does the same with splineVertex(). Those are our
+     * overrides, so replaying a shape to p5 in "p5" draw mode would otherwise be
+     * recorded a second time, clobbering the vertex buffer mid-shape.
+     * @private
+     * @param {Function} original - The captured p5 function.
+     * @param {p5} thisArg - Instance to call it on.
+     * @param {Array} args - Arguments to forward.
+     */
+    function callOriginalWithoutRecording(original, thisArg, args) {
+      if (!original) return undefined;
+      const wasRecording = _recording;
+      _recording = false;
+      try {
+        return original.apply(thisArg, args);
+      } finally {
+        _recording = wasRecording;
+      }
+    }
+
+    // Segments used when flattening curves/beziers into stitch paths. p5.js 1.x read
+    // this from _curveDetail/_bezierDetail; those are gone in 2.0 and curveDetail()
+    // throws outside WebGL, so the library owns the setting. See setCurveDetail().
+    // null means "not set by the sketch", so the host's value is used when it has one.
+    let _curveDetail = null;
+    const DEFAULT_CURVE_DETAIL = 20;
+
+    /**
+     * Resolves the curve flattening detail, preferring an explicit setCurveDetail()
+     * value and falling back to whatever the host renderer exposes.
+     * @private
+     * @returns {number} Segments per curve segment.
+     */
+    function _getCurveDetail() {
+      return (
+        _curveDetail ??
+        _p5Instance?._renderer?.states?.curveDetail ??
+        _p5Instance?._curveDetail ??
+        _p5Instance?._bezierDetail ??
+        DEFAULT_CURVE_DETAIL
+      );
+    }
 
     // Internal properties
     let _p5Instance;
@@ -3834,6 +4449,7 @@
       LINES: "lines", //Deprecated: use PARALLEL instead
       PARALLEL: "parallel",
       SASHIKO: "sashiko",
+      VERTEX: "vertex", 
     };
 
     // Add fill mode constants
@@ -3879,7 +4495,7 @@
       strokeJoin: STROKE_JOIN.ROUND, // Add join setting
       strokeEntry: "right", // "right","left","middle"
       strokeExit: "right", // "right","left","middle"
-      strokeInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
+      stitchInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
     };
 
     /**
@@ -3980,7 +4596,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStrokeMode('zigzag');
      *   line(10, 10, 50, 50); // Will use zigzag stitch pattern
      * }
@@ -4003,7 +4619,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStrokeJoin('miter');
      *   beginShape();
      *   vertex(20, 20);
@@ -4057,12 +4673,12 @@
 
     /**
      * Sets whether zigzag stitches should interpolate smoothly around corners.
-     * @method setStrokeInterpolate
+     * @method setStitchInterpolate
      * @for p5
      * @param {boolean} enabled - false = follow path normals with sharp corners (default), true = interpolate for smooth corners
      */
-    p5embroidery.setStrokeInterpolate = function (enabled) {
-      _strokeSettings.strokeInterpolate = !!enabled;
+    p5embroidery.setStitchInterpolate = function (enabled) {
+      _strokeSettings.stitchInterpolate = !!enabled;
     };
 
     /**
@@ -4130,27 +4746,30 @@
 
     /**
      * Begins recording embroidery data.
+     *
+     * While recording, p5.js drawing functions are interpreted in millimetres and
+     * converted into stitches instead of being drawn directly.
+     *
+     * Takes no arguments. p5.embroider registers itself as a p5 addon, so it
+     * already knows the sketch instance. The pre-0.3 form `beginRecord(this)`
+     * still works; the argument is ignored.
      * @method beginRecord
      * @for p5
-     * @param {p5} p5Instance - The p5.js sketch instance
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns here
      *   endRecord();
      * }
      */
-    p5embroidery.beginRecord = function (p5Instance) {
-      if (!p5Instance) {
-        throw new Error("Invalid p5 instance provided to beginRecord().");
-      }
-      _p5Instance = p5Instance;
-      _stitchData.width = p5Instance.width;
-      _stitchData.height = p5Instance.height;
+    p5embroidery.beginRecord = function () {
+      _p5Instance = this;
+      _stitchData.width = this.width;
+      _stitchData.height = this.height;
       _stitchData.threads = [new Thread(0, 0, 0, 0.2)]; // Start with a default black thread
       _recording = true;
-      overrideP5Functions();
+      // fn overrides are always-on (set up once at addon registration time)
     };
 
     /**
@@ -4162,7 +4781,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      * }
@@ -4171,24 +4790,23 @@
      */
     p5embroidery.endRecord = function () {
       _recording = false;
-      restoreP5Functions();
-      //exportEmbroidery(format);
+      // fn overrides remain in place - they check _recording internally
     };
 
     let _originalBeginShapeFunc;
     function overrideBeginShapeFunction() {
-      _originalBeginShapeFunc = window.beginShape;
+      _originalBeginShapeFunc = fn.beginShape;
 
-      window.beginShape = function (kind) {
+      fn.beginShape = function (kind) {
         if (_recording) {
           if (
-            kind === window.POINTS ||
-            kind === window.LINES ||
-            kind === window.TRIANGLES ||
-            kind === window.TRIANGLE_FAN ||
-            kind === window.TRIANGLE_STRIP ||
-            kind === window.QUADS ||
-            kind === window.QUAD_STRIP
+            kind === CONSTANTS.POINTS ||
+            kind === CONSTANTS.LINES ||
+            kind === CONSTANTS.TRIANGLES ||
+            kind === CONSTANTS.TRIANGLE_FAN ||
+            kind === CONSTANTS.TRIANGLE_STRIP ||
+            kind === CONSTANTS.QUADS ||
+            kind === CONSTANTS.QUAD_STRIP
           ) {
             _shapeKind = kind;
           } else {
@@ -4199,6 +4817,7 @@
           _contourVertices = [];
           _contours = [];
           _currentContour = [];
+          _bezierVertexBuffer = []; // reset bezierVertex accumulation buffer (p5.js 2.0)
 
           if (_drawMode === "p5") {
             _originalBeginShapeFunc.apply(this, arguments);
@@ -4211,9 +4830,9 @@
 
     let _originalEndShapeFunc;
     function overrideEndShapeFunction() {
-      _originalEndShapeFunc = window.endShape;
+      _originalEndShapeFunc = fn.endShape;
 
-      window.endShape = function (mode, count = 1) {
+      fn.endShape = function (mode, count = 1) {
         if (count &lt; 1) {
           console.log("🪡 p5.embroider says: You can not have less than one instance");
           count = 1;
@@ -4233,7 +4852,7 @@
             return this;
           }
 
-          const closeShape = mode === window.CLOSE;
+          const closeShape = mode === CONSTANTS.CLOSE;
 
           if (closeShape &amp;&amp; !_isContour) {
             _vertices.push(_vertices[0]);
@@ -4357,9 +4976,9 @@
 
     let _originalVertexFunc;
     function overrideVertexFunction() {
-      _originalVertexFunc = window.vertex;
+      _originalVertexFunc = fn.vertex;
 
-      window.vertex = function (x, y, z_or_moveTo, u, v) {
+      fn.vertex = function (x, y, z_or_moveTo, u, v) {
         if (_recording) {
           // Determine if third parameter is z (width) or moveTo
           let width = null;
@@ -4402,7 +5021,10 @@
           }
 
           if (_drawMode === "p5") {
-            _originalVertexFunc.call(_p5Instance, mmToPixel$1(x), mmToPixel$1(y), moveTo, u, v);
+            // Only x/y are forwarded. The third argument here is p5.embroider's own
+            // width/moveTo overload, not p5's z, so passing it through would corrupt
+            // the vertex (and trips argument validation in p5.js 2.0).
+            _originalVertexFunc.call(_p5Instance, mmToPixel$1(x), mmToPixel$1(y));
           }
 
           // Add to appropriate container based on contour state
@@ -4423,8 +5045,9 @@
             if (_DEBUG) console.log("Added to vertices (transformed):", vert);
           }
         } else {
-          let args = [mmToPixel$1(x), mmToPixel$1(y), z_or_moveTo, u, v];
-          _originalVertexFunc.apply(this, args);
+          // Not recording: the caller is drawing in plain p5 pixel units, so forward
+          // the arguments untouched. Converting mm here moved shapes off-canvas.
+          _originalVertexFunc.apply(this, arguments);
         }
       };
     }
@@ -4444,7 +5067,7 @@
         _nextVertexWidth = arg1;
       } else if (arguments.length === 3) {
         // vertexWidth(x, y, w) - create vertex with width
-        window.vertex(arg1, arg2, arg3);
+        fn.vertex.call(this, arg1, arg2, arg3);
       } else {
         console.warn("vertexWidth() expects 1 or 3 arguments");
       }
@@ -4452,181 +5075,180 @@
 
     /**
      * Overrides p5.js bezierVertex() function.
+     * Supports both p5.js 1.x 6-arg form and p5.js 2.0 single-point-per-call form.
      * @private
      */
     let _originalBezierVertexFunc;
-    function overrideBezierVertexFunction() {
-      _originalBezierVertexFunc = window.bezierVertex;
+    let _originalBezierOrderFunc;
+    // p5.js 2.0: bezierOrder(n) sets degree; points accumulated one per bezierVertex() call
+    let _bezierOrder = 3; // default cubic
+    let _bezierVertexBuffer = []; // accumulates (x,y) points for 2.0 single-point API
 
-      window.bezierVertex = function (x2, y2, x3, y3, x4, y4) {
-        if (_recording) {
-          // Apply current transformation to control points
-          const cp1 = transformPoint({ x: x2, y: y2 }, _currentTransform.matrix);
-          const cp2 = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
-          const endPoint = transformPoint({ x: x4, y: y4 }, _currentTransform.matrix);
+    /**
+     * Replays a bezier segment to the underlying p5 renderer for "p5" draw mode.
+     * p5.js 1.x takes every control point in a single bezierVertex() call; 2.0 takes
+     * one point per call with bezierOrder() setting the degree beforehand.
+     * @private
+     * @param {Array&lt;{x: number, y: number}>} points - Control points then end point.
+     * @param {p5} [target] - Instance to call on. Defaults to the recording instance.
+     * @param {boolean} [convertMm=true] - Convert mm to pixels. False when the caller
+     *   is already working in pixel units (i.e. not recording).
+     */
+    function _passthroughBezierSegment(points, target = _p5Instance, convertMm = true) {
+      if (!_originalBezierVertexFunc) return;
+      const u = (v) => (convertMm ? mmToPixel$1(v) : v);
+      if (_isP5v2) {
+        // points.length is the curve degree: 3 for cubic, 2 for quadratic.
+        if (_originalBezierOrderFunc) _originalBezierOrderFunc.call(target, points.length);
+        for (const pt of points) {
+          _originalBezierVertexFunc.call(target, u(pt.x), u(pt.y));
+        }
+      } else {
+        const args = [];
+        for (const pt of points) args.push(u(pt.x), u(pt.y));
+        _originalBezierVertexFunc.apply(target, args);
+      }
+    }
 
-          // Get the last vertex as the starting point - check both main vertices and current contour
-          let lastVertex;
-          if (_isContour) {
-            if (_currentContour.length === 0) {
-              console.warn("bezierVertex() called without a previous vertex in contour");
-              return;
-            }
-            lastVertex = _currentContour[_currentContour.length - 1];
-          } else {
-            if (_vertices.length === 0) {
-              console.warn("bezierVertex() called without a previous vertex");
-              return;
-            }
-            lastVertex = _vertices[_vertices.length - 1];
-          }
-          const x1 = lastVertex.x;
-          const y1 = lastVertex.y;
-          const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+    function _processCubicBezierSegment(cp1, cp2, endPt) {
+      let lastVertex;
+      if (_isContour) {
+        if (_currentContour.length === 0) {
+          console.warn("bezierVertex() called without a previous vertex in contour");
+          return;
+        }
+        lastVertex = _currentContour[_currentContour.length - 1];
+      } else {
+        if (_vertices.length === 0) {
+          console.warn("bezierVertex() called without a previous vertex");
+          return;
+        }
+        lastVertex = _vertices[_vertices.length - 1];
+      }
+      const x1 = lastVertex.x;
+      const y1 = lastVertex.y;
+      const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+      let endWidth = startWidth;
+      if (_nextVertexWidth !== null) {
+        endWidth = _nextVertexWidth;
+        _nextVertexWidth = null;
+      }
 
-          // Determine end width
-          let endWidth = startWidth;
-          if (_nextVertexWidth !== null) {
-            endWidth = _nextVertexWidth;
-            _nextVertexWidth = null; // Reset after use
-          }
-
-          // Generate bezier curve points using transformed control points
-          const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPoint.x, endPoint.y);
-
-          // Add all points except the first one (which is the last vertex)
-          for (let i = 1; i &lt; bezierPoints.length; i++) {
-            const point = bezierPoints[i];
-            const t = i / (bezierPoints.length - 1);
-            const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
-
-            if (_isContour) {
-              _currentContour.push({
-                x: point.x,
-                y: point.y,
-                width: interpolatedWidth,
-              });
-            } else {
-              const vert = {
-                x: point.x,
-                y: point.y,
-                width: interpolatedWidth,
-                u: 0,
-                v: 0,
-                isVert: true,
-                isBezier: true,
-              };
-              _vertices.push(vert);
-            }
-
-            if (_drawMode === "p5") {
-              if (i === 1) {
-                // Call bezierVertex with p5 for the first segment using transformed coordinates
-                _originalBezierVertexFunc.call(
-                  _p5Instance,
-                  mmToPixel$1(cp1.x),
-                  mmToPixel$1(cp1.y),
-                  mmToPixel$1(cp2.x),
-                  mmToPixel$1(cp2.y),
-                  mmToPixel$1(endPoint.x),
-                  mmToPixel$1(endPoint.y),
-                );
-              }
-            }
-          }
-          if (_DEBUG) console.log("bezierVertex added points:", bezierPoints.length - 1);
+      const bezierPoints = generateBezierPoints(x1, y1, cp1.x, cp1.y, cp2.x, cp2.y, endPt.x, endPt.y);
+      for (let i = 1; i &lt; bezierPoints.length; i++) {
+        const point = bezierPoints[i];
+        const t = i / (bezierPoints.length - 1);
+        const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
+        if (_isContour) {
+          _currentContour.push({ x: point.x, y: point.y, width: interpolatedWidth });
         } else {
-          let args = [mmToPixel$1(x2), mmToPixel$1(y2), mmToPixel$1(x3), mmToPixel$1(y3), mmToPixel$1(x4), mmToPixel$1(y4)];
+          _vertices.push({ x: point.x, y: point.y, width: interpolatedWidth, u: 0, v: 0, isVert: true, isBezier: true });
+        }
+      }
+      if (_drawMode === "p5") {
+        _passthroughBezierSegment([cp1, cp2, endPt]);
+      }
+      if (_DEBUG) console.log("bezierVertex added points:", bezierPoints.length - 1);
+    }
+
+    function _processQuadraticBezierSegment(cp, endPt) {
+      let lastVertex;
+      if (_isContour) {
+        if (_currentContour.length === 0) { console.warn("bezierVertex() called without a previous vertex in contour"); return; }
+        lastVertex = _currentContour[_currentContour.length - 1];
+      } else {
+        if (_vertices.length === 0) { console.warn("bezierVertex() called without a previous vertex"); return; }
+        lastVertex = _vertices[_vertices.length - 1];
+      }
+      const x1 = lastVertex.x;
+      const y1 = lastVertex.y;
+      const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
+      let endWidth = startWidth;
+      if (_nextVertexWidth !== null) { endWidth = _nextVertexWidth; _nextVertexWidth = null; }
+
+      const quadPoints = generateQuadraticPoints(x1, y1, cp.x, cp.y, endPt.x, endPt.y);
+      for (let i = 1; i &lt; quadPoints.length; i++) {
+        const point = quadPoints[i];
+        const t = i / (quadPoints.length - 1);
+        const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
+        if (_isContour) {
+          _currentContour.push({ x: point.x, y: point.y, width: interpolatedWidth });
+        } else {
+          _vertices.push({ x: point.x, y: point.y, width: interpolatedWidth, u: 0, v: 0, isVert: true, isQuadratic: true });
+        }
+      }
+      if (_drawMode === "p5") {
+        _passthroughBezierSegment([cp, endPt]);
+      }
+      if (_DEBUG) console.log("bezierVertex (quadratic) added points:", quadPoints.length - 1);
+    }
+
+    function overrideBezierVertexFunction() {
+      _originalBezierVertexFunc = fn.bezierVertex;
+
+      fn.bezierVertex = function (...args) {
+        if (_recording) {
+          if (args.length === 6) {
+            // p5.js 1.x: bezierVertex(cp1x, cp1y, cp2x, cp2y, ex, ey)
+            const cp1 = transformPoint({ x: args[0], y: args[1] }, _currentTransform.matrix);
+            const cp2 = transformPoint({ x: args[2], y: args[3] }, _currentTransform.matrix);
+            const endPt = transformPoint({ x: args[4], y: args[5] }, _currentTransform.matrix);
+            _processCubicBezierSegment(cp1, cp2, endPt);
+          } else if (args.length === 2) {
+            // p5.js 2.0: bezierVertex(x, y) — accumulate points until bezierOrder count reached
+            _bezierVertexBuffer.push(transformPoint({ x: args[0], y: args[1] }, _currentTransform.matrix));
+            if (_bezierOrder === 3 &amp;&amp; _bezierVertexBuffer.length >= 3) {
+              const [cp1, cp2, endPt] = _bezierVertexBuffer.splice(0, 3);
+              _processCubicBezierSegment(cp1, cp2, endPt);
+            } else if (_bezierOrder === 2 &amp;&amp; _bezierVertexBuffer.length >= 2) {
+              const [cp, endPt] = _bezierVertexBuffer.splice(0, 2);
+              _processQuadraticBezierSegment(cp, endPt);
+            }
+          }
+        } else if (_originalBezierVertexFunc) {
           _originalBezierVertexFunc.apply(this, args);
         }
+      };
+
+      // p5.js 2.0: override bezierOrder() to track the curve degree.
+      // Called with no argument it is a getter, so only update state when an
+      // order is actually supplied — otherwise a read would clear the buffer.
+      _originalBezierOrderFunc = fn.bezierOrder;
+      fn.bezierOrder = function (...args) {
+        if (_recording &amp;&amp; args.length > 0 &amp;&amp; args[0] !== undefined) {
+          _bezierOrder = args[0];
+          _bezierVertexBuffer = [];
+        }
+        if (_originalBezierOrderFunc) return _originalBezierOrderFunc.apply(this, args);
       };
     }
 
     /**
      * Overrides p5.js quadraticVertex() function.
+     * quadraticVertex() is removed in p5.js 2.0. This shim delegates to the bezierOrder(2)
+     * path for backward compatibility and emits a deprecation warning.
      * @private
      */
     let _originalQuadraticVertexFunc;
     function overrideQuadraticVertexFunction() {
-      _originalQuadraticVertexFunc = window.quadraticVertex;
+      _originalQuadraticVertexFunc = fn.quadraticVertex;
 
-      window.quadraticVertex = function (cx, cy, x3, y3) {
+      fn.quadraticVertex = function (cx, cy, x3, y3) {
+        warnDeprecated(
+          "quadraticVertex",
+          "quadraticVertex() was removed in p5.js 2.0; use bezierOrder(2) then " +
+          "bezierVertex(cx, cy) and bezierVertex(x, y).",
+        );
         if (_recording) {
-          // Apply current transformation to control points
-          const controlPoint = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
-          const endPoint = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
-
-          // Get the last vertex as the starting point - check both main vertices and current contour
-          let lastVertex;
-          if (_isContour) {
-            if (_currentContour.length === 0) {
-              console.warn("quadraticVertex() called without a previous vertex in contour");
-              return;
-            }
-            lastVertex = _currentContour[_currentContour.length - 1];
-          } else {
-            if (_vertices.length === 0) {
-              console.warn("quadraticVertex() called without a previous vertex");
-              return;
-            }
-            lastVertex = _vertices[_vertices.length - 1];
-          }
-          const x1 = lastVertex.x;
-          const y1 = lastVertex.y;
-          const startWidth = lastVertex.width || _strokeSettings.strokeWeight;
-
-          // Determine end width
-          let endWidth = startWidth;
-          if (_nextVertexWidth !== null) {
-            endWidth = _nextVertexWidth;
-            _nextVertexWidth = null; // Reset after use
-          }
-
-          // Generate quadratic bezier curve points using transformed control points
-          const quadraticPoints = generateQuadraticPoints(x1, y1, controlPoint.x, controlPoint.y, endPoint.x, endPoint.y);
-
-          // Add all points except the first one (which is the last vertex)
-          for (let i = 1; i &lt; quadraticPoints.length; i++) {
-            const point = quadraticPoints[i];
-            const t = i / (quadraticPoints.length - 1);
-            const interpolatedWidth = startWidth + (endWidth - startWidth) * t;
-
-            if (_isContour) {
-              _currentContour.push({
-                x: point.x,
-                y: point.y,
-                width: interpolatedWidth,
-              });
-            } else {
-              const vert = {
-                x: point.x,
-                y: point.y,
-                width: interpolatedWidth,
-                u: 0,
-                v: 0,
-                isVert: true,
-                isQuadratic: true,
-              };
-              _vertices.push(vert);
-            }
-
-            if (_drawMode === "p5") {
-              if (i === 1) {
-                // Call quadraticVertex with p5 for the first segment using transformed coordinates
-                _originalQuadraticVertexFunc.call(
-                  _p5Instance,
-                  mmToPixel$1(controlPoint.x),
-                  mmToPixel$1(controlPoint.y),
-                  mmToPixel$1(endPoint.x),
-                  mmToPixel$1(endPoint.y),
-                );
-              }
-            }
-          }
-          if (_DEBUG) console.log("quadraticVertex added points:", quadraticPoints.length - 1);
+          const cp = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
+          const endPt = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
+          _processQuadraticBezierSegment(cp, endPt);
+        } else if (_originalQuadraticVertexFunc) {
+          // p5.js 1.x: forward unchanged — the caller is already in pixel units.
+          _originalQuadraticVertexFunc.apply(this, arguments);
         } else {
-          let args = [mmToPixel$1(cx), mmToPixel$1(cy), mmToPixel$1(x3), mmToPixel$1(y3)];
-          _originalQuadraticVertexFunc.apply(this, args);
+          // p5.js 2.0 removed quadraticVertex(); emit the bezierOrder(2) equivalent.
+          _passthroughBezierSegment([{ x: cx, y: cy }, { x: x3, y: y3 }], this, false);
         }
       };
     }
@@ -4637,9 +5259,12 @@
      */
     let _originalCurveVertexFunc;
     function overrideCurveVertexFunction() {
-      _originalCurveVertexFunc = window.curveVertex;
+      // p5.js 2.0 has no curveVertex(); splineVertex() is the renamed equivalent.
+      // Capture whichever the host provides BEFORE installing either override,
+      // otherwise the passthrough calls below dereference undefined.
+      _originalCurveVertexFunc = fn.curveVertex ?? fn.splineVertex;
 
-      window.curveVertex = function (x, y) {
+      const splineVertexImpl = function (x, y) {
         if (_recording) {
           // Apply current transformation to the curve vertex
           const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
@@ -4708,13 +5333,22 @@
             }
           }
 
-          if (_drawMode === "p5") {
+          if (_drawMode === "p5" &amp;&amp; _originalCurveVertexFunc) {
             _originalCurveVertexFunc.call(_p5Instance, mmToPixel$1(transformedPoint.x), mmToPixel$1(transformedPoint.y));
           }
-          if (_DEBUG) console.log("curveVertex added, contour length:", _contourVertices.length);
-        } else {
+          if (_DEBUG) console.log("curveVertex/splineVertex added, contour length:", _contourVertices.length);
+        } else if (_originalCurveVertexFunc) {
           _originalCurveVertexFunc.apply(this, arguments);
         }
+      };
+
+      // splineVertex() is the p5.js 2.x name and the one to use.
+      fn.splineVertex = splineVertexImpl;
+
+      // curveVertex() is the p5.js 1.x name, kept as a deprecated alias.
+      fn.curveVertex = function (x, y) {
+        warnDeprecated("curveVertex", "curveVertex() was renamed splineVertex() in p5.js 2.0.");
+        return splineVertexImpl.call(this, x, y);
       };
     }
 
@@ -4724,12 +5358,12 @@
      */
     function generateQuadraticPoints(x1, y1, cx, cy, x3, y3) {
       const points = [];
-      const bezierDetail = _p5Instance._bezierDetail || 20;
+      const bezierDetail = _getCurveDetail();
 
       for (let i = 0; i &lt;= bezierDetail; i++) {
         const t = i / bezierDetail;
-        const x = quadraticBezierPoint(x1, cx, x3, t);
-        const y = quadraticBezierPoint(y1, cy, y3, t);
+        const x = quadraticBezierCoord(x1, cx, x3, t);
+        const y = quadraticBezierCoord(y1, cy, y3, t);
         points.push({ x, y });
       }
 
@@ -4737,10 +5371,19 @@
     }
 
     /**
-     * Calculate a point on a quadratic Bezier curve.
+     * Calculate a single coordinate on a quadratic Bezier curve.
+     *
+     * Named distinctly from quadraticBezierPoint(), which samples a whole point
+     * and lives in the same scope — two identically named function declarations
+     * would silently collide, with the later one winning.
      * @private
+     * @param {number} a - Start coordinate.
+     * @param {number} b - Control coordinate.
+     * @param {number} c - End coordinate.
+     * @param {number} t - Parameter in [0, 1].
+     * @returns {number} The interpolated coordinate.
      */
-    function quadraticBezierPoint(a, b, c, t) {
+    function quadraticBezierCoord(a, b, c, t) {
       const mt = 1 - t;
       const mt2 = mt * mt;
       const t2 = t * t;
@@ -4804,6 +5447,8 @@
             return parallelLineStitchFromPath(pathPoints, strokeSettings);
           case STROKE_MODE.SASHIKO:
             return sashikoStitchFromPath(pathPoints, strokeSettings);
+          case STROKE_MODE.VERTEX:
+            return vertexStitchFromPath(pathPoints);
           default:
             // For simple paths, use the convertPathToStitches function
             return convertPathToStitches(pathPoints, strokeSettings);
@@ -4821,8 +5466,8 @@
      */
     let _originalLineFunc;
     function overrideLineFunction() {
-      _originalLineFunc = window.line;
-      window.line = function (x1, y1, x2, y2) {
+      _originalLineFunc = fn.line;
+      fn.line = function (x1, y1, x2, y2) {
         if (_recording) {
           if (_doStroke) {
             // Apply current transformation to coordinates
@@ -4851,8 +5496,10 @@
      */
     let _originalCurveFunc;
     function overrideCurveFunction() {
-      _originalCurveFunc = window.curve;
-      window.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+      // p5.js 2.0 has no curve(); spline() is the renamed equivalent. Capture
+      // whichever the host provides BEFORE installing either override.
+      _originalCurveFunc = fn.curve ?? fn.spline;
+      const splineImpl = function (x1, y1, x2, y2, x3, y3, x4, y4) {
         if (_recording) {
           if (_doStroke) {
             // Apply current transformation to control points
@@ -4871,10 +5518,10 @@
 
             if (_drawMode === "stitch" || _drawMode === "realistic") {
               drawStitches(stitches, _strokeThreadIndex);
-            } else if (_drawMode === "p5") {
+            } else if (_drawMode === "p5" &amp;&amp; _originalCurveFunc) {
               _originalStrokeWeightFunc.call(_p5Instance, mmToPixel$1(_strokeSettings.strokeWeight));
-              _originalCurveFunc.call(
-                _p5Instance,
+              // p5.js 2.x spline() re-enters splineVertex(); suspend recording.
+              callOriginalWithoutRecording(_originalCurveFunc, _p5Instance, [
                 mmToPixel$1(x1),
                 mmToPixel$1(y1),
                 mmToPixel$1(x2),
@@ -4883,12 +5530,21 @@
                 mmToPixel$1(y3),
                 mmToPixel$1(x4),
                 mmToPixel$1(y4),
-              );
+              ]);
             }
           }
-        } else {
+        } else if (_originalCurveFunc) {
           _originalCurveFunc.apply(this, arguments);
         }
+      };
+
+      // spline() is the p5.js 2.x name and the one to use.
+      fn.spline = splineImpl;
+
+      // curve() is the p5.js 1.x name, kept as a deprecated alias.
+      fn.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+        warnDeprecated("curve", "curve() was renamed spline() in p5.js 2.0.");
+        return splineImpl.call(this, x1, y1, x2, y2, x3, y3, x4, y4);
       };
     }
 
@@ -4898,8 +5554,8 @@
      */
     let _originalBezierFunc;
     function overrideBezierFunction() {
-      _originalBezierFunc = window.bezier;
-      window.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+      _originalBezierFunc = fn.bezier;
+      fn.bezier = function (x1, y1, x2, y2, x3, y3, x4, y4) {
         if (_recording) {
           if (_doStroke) {
             // Apply current transformation to control points
@@ -4920,8 +5576,9 @@
               drawStitches(stitches, _strokeThreadIndex);
             } else if (_drawMode === "p5") {
               _originalStrokeWeightFunc.call(_p5Instance, mmToPixel$1(_strokeSettings.strokeWeight));
-              _originalBezierFunc.call(
-                _p5Instance,
+              // p5.js 2.x bezier() re-enters beginShape()/bezierVertex()/endShape();
+              // suspend recording so the replay is not recorded a second time.
+              callOriginalWithoutRecording(_originalBezierFunc, _p5Instance, [
                 mmToPixel$1(x1),
                 mmToPixel$1(y1),
                 mmToPixel$1(x2),
@@ -4930,7 +5587,7 @@
                 mmToPixel$1(y3),
                 mmToPixel$1(x4),
                 mmToPixel$1(y4),
-              );
+              ]);
             }
           }
         } else {
@@ -4945,7 +5602,7 @@
      */
     function generateCurvePoints(x1, y1, x2, y2, x3, y3, x4, y4) {
       const points = [];
-      const curveDetail = _p5Instance._curveDetail || 20;
+      const curveDetail = _getCurveDetail();
 
       for (let i = 0; i &lt;= curveDetail; i++) {
         const t = i / curveDetail;
@@ -4963,7 +5620,7 @@
      */
     function generateBezierPoints(x1, y1, x2, y2, x3, y3, x4, y4) {
       const points = [];
-      const bezierDetail = _p5Instance._bezierDetail || 20;
+      const bezierDetail = _getCurveDetail();
 
       for (let i = 0; i &lt;= bezierDetail; i++) {
         const t = i / bezierDetail;
@@ -5004,8 +5661,8 @@
      */
     let _originalStrokeFunc;
     function overrideStrokeFunction() {
-      _originalStrokeFunc = window.stroke;
-      window.stroke = function () {
+      _originalStrokeFunc = fn.stroke;
+      fn.stroke = function () {
         if (_recording) {
           // Get color values from arguments
           let r, g, b;
@@ -5071,8 +5728,8 @@
      */
     let _originalNoStrokeFunc;
     function overrideNoStrokeFunction() {
-      _originalNoStrokeFunc = window.noStroke;
-      window.noStroke = function () {
+      _originalNoStrokeFunc = fn.noStroke;
+      fn.noStroke = function () {
         if (_recording) {
           _doStroke = false;
         }
@@ -5086,8 +5743,8 @@
      */
     let _originalFillFunc;
     function overrideFillFunction() {
-      _originalFillFunc = window.fill;
-      window.fill = function () {
+      _originalFillFunc = fn.fill;
+      fn.fill = function () {
         if (_recording) {
           // Get color values from arguments
           let r, g, b;
@@ -5150,8 +5807,8 @@
      */
     let _originalNoFillFunc;
     function overrideNoFillFunction() {
-      _originalNoFillFunc = window.noFill;
-      window.noFill = function () {
+      _originalNoFillFunc = fn.noFill;
+      fn.noFill = function () {
         if (_recording) {
           _doFill = false;
           _fillSettings.color = null;
@@ -5166,9 +5823,9 @@
      */
     let _originalStrokeWeightFunc;
     function overrideStrokeWeightFunction() {
-      _originalStrokeWeightFunc = window.strokeWeight;
+      _originalStrokeWeightFunc = fn.strokeWeight;
 
-      window.strokeWeight = function (weight) {
+      fn.strokeWeight = function (weight) {
         if (_recording) {
           // Set the stroke weight in the stroke settings
           _strokeSettings.strokeWeight = weight;
@@ -5187,17 +5844,17 @@
      */
     let _originalStrokeJoinFunc;
     function overrideStrokeJoinFunction() {
-      _originalStrokeJoinFunc = window.strokeJoin;
+      _originalStrokeJoinFunc = fn.strokeJoin;
 
-      window.strokeJoin = function (join) {
+      fn.strokeJoin = function (join) {
         if (_recording) {
           // Map p5.js constants to our internal format
           let mappedJoin;
-          if (join === window.ROUND || join === "round") {
+          if (join === CONSTANTS.ROUND || join === "round") {
             mappedJoin = STROKE_JOIN.ROUND;
-          } else if (join === window.MITER || join === "miter") {
+          } else if (join === CONSTANTS.MITER || join === "miter") {
             mappedJoin = STROKE_JOIN.MITER;
-          } else if (join === window.BEVEL || join === "bevel") {
+          } else if (join === CONSTANTS.BEVEL || join === "bevel") {
             mappedJoin = STROKE_JOIN.BEVEL;
           } else {
             console.warn(`Invalid stroke join: ${join}. Using default: ${_currentStrokeJoin}`);
@@ -5220,9 +5877,9 @@
      */
     let _originalPushFunc;
     function overridePushFunction() {
-      _originalPushFunc = window.push;
+      _originalPushFunc = fn.push;
 
-      window.push = function () {
+      const newPush = function () {
         if (_recording) {
           // Save current embroidery transformation state
           _transformStack.push({
@@ -5249,6 +5906,13 @@
         // Always call original p5.js push for visual modes
         _originalPushFunc.apply(this, arguments);
       };
+
+      // Use Object.defineProperty to safely override (p5.js 2.0 may define push as non-writable)
+      Object.defineProperty(fn, 'push', {
+        value: newPush,
+        writable: true,
+        configurable: true,
+      });
     }
 
     /**
@@ -5257,9 +5921,9 @@
      */
     let _originalPopFunc;
     function overridePopFunction() {
-      _originalPopFunc = window.pop;
+      _originalPopFunc = fn.pop;
 
-      window.pop = function () {
+      const newPop = function () {
         if (_recording) {
           if (_transformStack.length === 0) {
             console.warn("🪡 p5.embroider says: pop() called without matching push()");
@@ -5290,6 +5954,13 @@
         // Always call original p5.js pop for visual modes
         _originalPopFunc.apply(this, arguments);
       };
+
+      // Use Object.defineProperty to safely override (p5.js 2.0 may define pop as non-writable)
+      Object.defineProperty(fn, 'pop', {
+        value: newPop,
+        writable: true,
+        configurable: true,
+      });
     }
 
     /**
@@ -5298,9 +5969,9 @@
      */
     let _originalTranslateFunc;
     function overrideTranslateFunction() {
-      _originalTranslateFunc = window.translate;
+      _originalTranslateFunc = fn.translate;
 
-      window.translate = function (x, y, z) {
+      fn.translate = function (x, y, z) {
         if (_recording) {
           // Apply translation to current transformation matrix
           const translationMatrix = createTranslationMatrix(x, y || 0);
@@ -5325,12 +5996,15 @@
      */
     let _originalRotateFunc;
     function overrideRotateFunction() {
-      _originalRotateFunc = window.rotate;
+      _originalRotateFunc = fn.rotate;
 
-      window.rotate = function (angle, axis) {
+      fn.rotate = function (angle, axis) {
         if (_recording) {
           // Convert angle to radians if needed (p5.js handles this internally)
-          const radians = _p5Instance._angleMode === _p5Instance.DEGREES ? angle * (Math.PI / 180) : angle;
+          // p5.js 2.0 keeps _angleMode on the instance, but the DEGREES constant
+          // lives on the prototype only, so compare against the resolved constant.
+          const angleMode = _p5Instance._angleMode ?? _p5Instance._renderer?.states?.angleMode;
+          const radians = angleMode === CONSTANTS.DEGREES ? angle * (Math.PI / 180) : angle;
 
           // Apply rotation to current transformation matrix
           const rotationMatrix = createRotationMatrix(radians);
@@ -5354,9 +6028,9 @@
      */
     let _originalScaleFunc;
     function overrideScaleFunction() {
-      _originalScaleFunc = window.scale;
+      _originalScaleFunc = fn.scale;
 
-      window.scale = function (x, y, z) {
+      fn.scale = function (x, y, z) {
         if (_recording) {
           // Handle different parameter formats like p5.js
           let sx = x,
@@ -5394,26 +6068,27 @@
      */
     let _originalEllipseFunc;
     function overrideEllipseFunction() {
-      _originalEllipseFunc = window.ellipse;
-      window.ellipse = function (x, y, w, h) {
+      _originalEllipseFunc = fn.ellipse;
+      fn.ellipse = function (x, y, w, h) {
         if (_recording) {
-          const ellipseMode = _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
+          // p5.js 2.0: _renderer.states.ellipseMode, 1.x: _ellipseMode or _renderer._ellipseMode
+          const ellipseMode = _p5Instance._renderer?.states?.ellipseMode ?? _p5Instance._ellipseMode ?? _p5Instance._renderer?._ellipseMode;
           let centerX;
           let centerY;
           let diameterX;
           let diameterY;
 
-          if (ellipseMode === _p5Instance.CORNER) {
+          if (ellipseMode === CONSTANTS.CORNER) {
             centerX = x + w / 2;
             centerY = y + h / 2;
             diameterX = w;
             diameterY = h;
-          } else if (ellipseMode === _p5Instance.CENTER) {
+          } else if (ellipseMode === CONSTANTS.CENTER) {
             centerX = x;
             centerY = y;
             diameterX = w;
             diameterY = h;
-          } else if (ellipseMode === _p5Instance.CORNERS) {
+          } else if (ellipseMode === CONSTANTS.CORNERS) {
             centerX = x;
             centerY = y;
             diameterX = w - x;
@@ -5563,10 +6238,10 @@
      */
     let _originalCircleFunc;
     function overrideCircleFunction() {
-      _originalCircleFunc = window.circle;
-      window.circle = function (x, y, r) {
+      _originalCircleFunc = fn.circle;
+      fn.circle = function (x, y, r) {
         if (_recording) {
-          window.ellipse.call(this, x, y, r, r);
+          fn.ellipse.call(this, x, y, r, r);
         } else {
           _originalCircleFunc.apply(this, arguments);
         }
@@ -5579,8 +6254,8 @@
      */
     let _originalPointFunc;
     function overridePointFunction() {
-      _originalPointFunc = window.point;
-      window.point = function (x, y) {
+      _originalPointFunc = fn.point;
+      fn.point = function (x, y) {
         if (_recording) {
           // Apply current transformation to coordinates
           const p = applyCurrentTransform(x, y);
@@ -5614,16 +6289,17 @@
      */
     let _originalRectFunc;
     function overrideRectFunction() {
-      _originalRectFunc = window.rect;
-      window.rect = function (x, y, w, h, ...cornerRs) {
+      _originalRectFunc = fn.rect;
+      fn.rect = function (x, y, w, h, ...cornerRs) {
         if (_recording) {
-          const rectMode = _p5Instance._rectMode ?? _p5Instance._renderer?._rectMode;
+          // p5.js 2.0: _renderer.states.rectMode, 1.x: _rectMode or _renderer._rectMode
+          const rectMode = _p5Instance._renderer?.states?.rectMode ?? _p5Instance._rectMode ?? _p5Instance._renderer?._rectMode;
           let x1, y1;
 
-          if (rectMode === _p5Instance.CENTER) {
+          if (rectMode === CONSTANTS.CENTER) {
             x1 = x - w / 2;
             y1 = y - h / 2;
-          } else if (rectMode === _p5Instance.CORNERS) {
+          } else if (rectMode === CONSTANTS.CORNERS) {
             // In CORNERS mode, w is x2 and h is y2. Re-calculate w and h to be width and height.
             w = w - x;
             h = h - y;
@@ -5792,10 +6468,10 @@
      */
     let _originalSquareFunc;
     function overrideSquareFunction() {
-      _originalSquareFunc = window.square;
-      window.square = function (x, y, w) {
+      _originalSquareFunc = fn.square;
+      fn.square = function (x, y, w) {
         if (_recording) {
-          window.rect.call(this, x, y, w, w);
+          fn.rect.call(this, x, y, w, w);
         } else {
           _originalSquareFunc.apply(this, arguments);
         }
@@ -5808,8 +6484,8 @@
      */
     let _originalTriangleFunc;
     function overrideTriangleFunction() {
-      _originalTriangleFunc = window.triangle;
-      window.triangle = function (x1, y1, x2, y2, x3, y3) {
+      _originalTriangleFunc = fn.triangle;
+      fn.triangle = function (x1, y1, x2, y2, x3, y3) {
         if (_recording) {
           // Build path points for triangle
           const pathPoints = [
@@ -5881,8 +6557,8 @@
      */
     let _originalQuadFunc;
     function overrideQuadFunction() {
-      _originalQuadFunc = window.quad;
-      window.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+      _originalQuadFunc = fn.quad;
+      fn.quad = function (x1, y1, x2, y2, x3, y3, x4, y4) {
         if (_recording) {
           const pathPoints = [
             { x: x1, y: y1 },
@@ -5956,8 +6632,8 @@
      */
     let _originalArcFunc;
     function overrideArcFunction() {
-      _originalArcFunc = window.arc;
-      window.arc = function (x, y, w, h, start, stop, mode) {
+      _originalArcFunc = fn.arc;
+      fn.arc = function (x, y, w, h, start, stop, mode) {
         if (_recording) {
           if (_DEBUG) {
             console.log("Arc called with:", { x, y, w, h, start, stop, mode, _doFill, _doStroke });
@@ -5965,7 +6641,7 @@
 
           // Default mode to OPEN if not specified
           if (mode === undefined) {
-            mode = window.OPEN || "open";
+            mode = CONSTANTS.OPEN;
           }
 
           // Approximate arc as polyline
@@ -5997,11 +6673,11 @@
           if (_doFill) {
             let fillPathPoints = [...transformedPathPoints];
 
-            if (mode === window.PIE || mode === "pie") {
+            if (mode === CONSTANTS.PIE || mode === "pie") {
               // PIE mode: close to center and back to start
               fillPathPoints.push({ x: transformedCenter.x, y: transformedCenter.y });
               fillPathPoints.push(transformedPathPoints[0]);
-            } else if (mode === window.CHORD || mode === "chord") {
+            } else if (mode === CONSTANTS.CHORD || mode === "chord") {
               // CHORD mode: close with straight line from end to start
               if (transformedPathPoints.length > 1) {
                 fillPathPoints.push(transformedPathPoints[0]); // Close the path
@@ -6049,13 +6725,13 @@
             let strokePathPoints = transformedPathPoints;
 
             // For PIE mode, include lines to center for stroke
-            if (mode === window.PIE || mode === "pie") {
+            if (mode === CONSTANTS.PIE || mode === "pie") {
               strokePathPoints = [
                 { x: transformedCenter.x, y: transformedCenter.y }, // Start at center
                 ...transformedPathPoints, // Arc points
                 { x: transformedCenter.x, y: transformedCenter.y }, // Back to center
               ];
-            } else if (mode === window.CHORD || mode === "chord") {
+            } else if (mode === CONSTANTS.CHORD || mode === "chord") {
               // For CHORD mode, add the chord line
               strokePathPoints = [
                 ...transformedPathPoints,
@@ -6093,9 +6769,9 @@
      */
     let _originalBeginContourFunc;
     function overrideBeginContourFunction() {
-      _originalBeginContourFunc = window.beginContour;
+      _originalBeginContourFunc = fn.beginContour;
 
-      window.beginContour = function () {
+      fn.beginContour = function () {
         if (_recording) {
           if (_DEBUG) console.log("beginContour called");
           _isContour = true;
@@ -6116,9 +6792,11 @@
      */
     let _originalEndContourFunc;
     function overrideEndContourFunction() {
-      _originalEndContourFunc = window.endContour;
+      _originalEndContourFunc = fn.endContour;
 
-      window.endContour = function () {
+      // p5.js 2.0 changed the default to endContour(OPEN); 1.x behaved as CLOSE.
+      // Default to CLOSE so existing sketches keep producing holes.
+      fn.endContour = function (mode = CONSTANTS.CLOSE) {
         if (_recording) {
           if (_DEBUG) console.log("endContour called, current contour length:", _currentContour.length);
 
@@ -6142,11 +6820,517 @@
           _isContour = false;
 
           if (_drawMode === "p5") {
-            _originalEndContourFunc.call(_p5Instance);
+            _originalEndContourFunc.call(_p5Instance, mode);
           }
         } else {
-          _originalEndContourFunc.apply(this, arguments);
+          _originalEndContourFunc.call(this, mode);
         }
+      };
+    }
+
+    /**
+     * Override text() function for embroidery recording
+     * Uses OpenType path commands for high-quality vector extraction (Approach B)
+     * @private
+     */
+    let _originalTextFunc;
+    function overrideTextFunction() {
+      _originalTextFunc = fn.text;
+
+      fn.text = function (str, x, y, maxWidth, maxHeight) {
+        if (_recording) {
+          // Warn if maxWidth or maxHeight are provided
+          if (typeof maxWidth !== "undefined" || typeof maxHeight !== "undefined") {
+            console.warn("p5.embroider: text() does not yet support maxWidth or maxHeight parameters.");
+          }
+
+          // Get current font.
+          // p5.js 2.0 stores textFont as a wrapper, { font, family, size }, where
+          // `font` is the p5.Font (undefined for a system font named by string).
+          // p5.js 1.x stored the p5.Font directly on _renderer._textFont.
+          const fontState = _p5Instance._renderer?.states?.textFont ?? _p5Instance._renderer?._textFont;
+          const font = fontState?.font ?? fontState;
+
+          // Get current text size (must be before font check to avoid TDZ)
+          const fontSize = _p5Instance._renderer?.states?.textSize ?? _p5Instance._renderer?._textSize;
+
+          // Check if valid p5.Font (not system font)
+          // p5.js 2.0: font has textToPaths(); 1.x: font has font property (OpenType.js)
+          const hasTextToPaths = font &amp;&amp; typeof font.textToPaths === "function";
+          const hasGetPath = font &amp;&amp; font.font &amp;&amp; typeof font._getPath === "function";
+          if (!hasTextToPaths &amp;&amp; !hasGetPath) {
+            // A system font has no glyph outlines, so there is nothing to stitch.
+            if (_drawMode === "p5") {
+              drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
+            } else {
+              console.warn(
+                "🪡 p5.embroider says: text() needs a font loaded with loadFont(); " +
+                "system fonts have no outlines to convert into stitches.",
+              );
+            }
+            return;
+          }
+
+          if (_DEBUG) {
+            console.log("text() called:", str, "at", x, y, "size:", fontSize);
+          }
+
+          try {
+            let commands;
+            if (hasTextToPaths) {
+              // p5.js 2.0: textToPaths returns arrays like ['M', x, y], ['C', x1, y1, x2, y2, x, y]
+              const pathArrays = font.textToPaths(str, x, y);
+              commands = pathArrays.map((cmd) => {
+                const type = cmd[0];
+                if (type === "M" || type === "L") return { type, x: cmd[1], y: cmd[2] };
+                if (type === "Q") return { type, x1: cmd[1], y1: cmd[2], x: cmd[3], y: cmd[4] };
+                if (type === "C") return { type, x1: cmd[1], y1: cmd[2], x2: cmd[3], y2: cmd[4], x: cmd[5], y: cmd[6] };
+                if (type === "Z") return { type };
+                return { type };
+              });
+            } else {
+              // p5.js 1.x: _getPath returns object with commands array of {type, x, y, ...}
+              const path = font._getPath(str, x, y, {});
+              commands = path.commands;
+            }
+
+            if (_DEBUG) {
+              console.log("OpenType path has", commands.length, "commands");
+            }
+
+            // Split commands into separate contours (letters/holes)
+            const allContours = splitPathCommands(commands);
+
+            if (_DEBUG) {
+              console.log("Split into", allContours.length, "contours");
+            }
+
+            // Group contours into letters (outer contours with their holes)
+            const letterGroups = groupContoursIntoLetters(allContours);
+
+            if (_DEBUG) {
+              console.log("Grouped into", letterGroups.length, "letter groups");
+            }
+
+            // Process each letter group (outer contour + holes)
+            for (const letterGroup of letterGroups) {
+              // Convert outer contour to points
+              const outerPoints = convertCommandsToPoints(letterGroup.outer, {
+                bezierSteps: 10,
+                quadSteps: 8,
+              });
+
+              if (outerPoints.length &lt; 3) continue;
+
+              // Convert hole contours to points
+              const holePointsArray = letterGroup.holes
+                .map((holeContour) =>
+                  convertCommandsToPoints(holeContour, {
+                    bezierSteps: 10,
+                    quadSteps: 8,
+                  }),
+                )
+                .filter((pts) => pts.length >= 3);
+
+              // Apply current transformation to outer contour
+              const transformedOuter = applyCurrentTransformToPoints(outerPoints);
+
+              // Apply current transformation to holes
+              const transformedHoles = holePointsArray.map((holePts) => applyCurrentTransformToPoints(holePts));
+
+              // Handle fill
+              if (_doFill) {
+                if (_DEBUG) {
+                  console.log(
+                    "Creating fill stitches for letter with",
+                    transformedOuter.length,
+                    "outer points and",
+                    transformedHoles.length,
+                    "holes",
+                  );
+                }
+
+                try {
+                  let fillStitches = [];
+
+                  // Use current fill mode with contour support
+                  if (transformedHoles.length > 0) {
+                    // Fill with holes (only tatami supports this currently)
+                    if (_currentFillMode === FILL_MODE.TATAMI) {
+                      fillStitches = createTatamiFillWithContours(transformedOuter, transformedHoles, _fillSettings);
+                    } else {
+                      console.warn(`${_currentFillMode} fill does not support holes yet, using tatami`);
+                      fillStitches = createTatamiFillWithContours(transformedOuter, transformedHoles, _fillSettings);
+                    }
+                  } else {
+                    // Simple fill without holes
+                    if (_currentFillMode === FILL_MODE.SATIN) {
+                      fillStitches = createSatinFillFromPath(transformedOuter, _fillSettings);
+                    } else if (_currentFillMode === FILL_MODE.SPIRAL) {
+                      fillStitches = createSpiralFillFromPath(transformedOuter, _fillSettings);
+                    } else {
+                      fillStitches = createTatamiFillFromPath(transformedOuter, _fillSettings);
+                    }
+                  }
+
+                  if (fillStitches &amp;&amp; fillStitches.length > 0) {
+                    _stitchData.threads[_fillThreadIndex].runs.push(fillStitches);
+
+                    if (_drawMode === "stitch" || _drawMode === "realistic") {
+                      drawStitches(fillStitches, _fillThreadIndex);
+                    }
+
+                    if (_DEBUG) {
+                      console.log("Added", fillStitches.length, "fill stitches");
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error creating fill stitches for text:", error);
+                }
+              }
+
+              // Handle stroke (outline both outer and holes)
+              if (_doStroke) {
+                // Stroke outer contour
+                if (_DEBUG) {
+                  console.log("Creating stroke stitches for outer contour with", transformedOuter.length, "points");
+                }
+
+                try {
+                  let strokeStitches;
+
+                  if (_strokeSettings.strokeWeight > 0) {
+                    switch (_strokeSettings.strokeMode) {
+                      case STROKE_MODE.ZIGZAG:
+                        strokeStitches = zigzagStitchFromPath(transformedOuter, _strokeSettings);
+                        break;
+                      case STROKE_MODE.LINES:
+                        strokeStitches = multiLineStitchFromPath(transformedOuter, _strokeSettings);
+                        break;
+                      case STROKE_MODE.SASHIKO:
+                        strokeStitches = sashikoStitchFromPath(transformedOuter, _strokeSettings);
+                        break;
+                      default:
+                        strokeStitches = straightLineStitchFromPath(transformedOuter, _strokeSettings);
+                    }
+                  } else {
+                    strokeStitches = straightLineStitchFromPath(transformedOuter, _strokeSettings);
+                  }
+
+                  if (strokeStitches &amp;&amp; strokeStitches.length > 0) {
+                    _stitchData.threads[_strokeThreadIndex].runs.push(strokeStitches);
+
+                    if (_drawMode === "stitch" || _drawMode === "realistic") {
+                      drawStitches(strokeStitches, _strokeThreadIndex);
+                    }
+
+                    if (_DEBUG) {
+                      console.log("Added", strokeStitches.length, "outer stroke stitches");
+                    }
+                  }
+
+                  // Stroke holes
+                  for (const holePoints of transformedHoles) {
+                    let holeStrokeStitches;
+
+                    if (_strokeSettings.strokeWeight > 0) {
+                      switch (_strokeSettings.strokeMode) {
+                        case STROKE_MODE.ZIGZAG:
+                          holeStrokeStitches = zigzagStitchFromPath(holePoints, _strokeSettings);
+                          break;
+                        case STROKE_MODE.LINES:
+                          holeStrokeStitches = multiLineStitchFromPath(holePoints, _strokeSettings);
+                          break;
+                        case STROKE_MODE.SASHIKO:
+                          holeStrokeStitches = sashikoStitchFromPath(holePoints, _strokeSettings);
+                          break;
+                        default:
+                          holeStrokeStitches = straightLineStitchFromPath(holePoints, _strokeSettings);
+                      }
+                    } else {
+                      holeStrokeStitches = straightLineStitchFromPath(holePoints, _strokeSettings);
+                    }
+
+                    if (holeStrokeStitches &amp;&amp; holeStrokeStitches.length > 0) {
+                      _stitchData.threads[_strokeThreadIndex].runs.push(holeStrokeStitches);
+
+                      if (_drawMode === "stitch" || _drawMode === "realistic") {
+                        drawStitches(holeStrokeStitches, _strokeThreadIndex);
+                      }
+
+                      if (_DEBUG) {
+                        console.log("Added", holeStrokeStitches.length, "hole stroke stitches");
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error creating stroke stitches for text:", error);
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error converting text to embroidery:", error);
+            console.error("Stack:", error.stack);
+          }
+
+          // Call original for visual feedback based on draw mode
+          if (_drawMode === "p5") {
+            drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
+          }
+        } else {
+          // Not recording: the caller is in plain p5 pixel units, so forward as-is.
+          _originalTextFunc.apply(this, arguments);
+        }
+      };
+    }
+
+    /**
+     * Draws text through p5 for "p5" draw mode, converting the recording's
+     * millimetre coordinates to pixels.
+     *
+     * maxWidth/maxHeight are only forwarded when the caller supplied them.
+     * Passing undefined through mmToPixel() yields NaN, and p5's text() switches
+     * to its text-box layout as soon as a fourth argument is present, which moves
+     * y from the baseline to the top of the box.
+     * @private
+     */
+    function drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize) {
+      push();
+      textSize(mmToPixel$1(fontSize));
+      if (typeof maxWidth === "undefined") {
+        _originalTextFunc.call(_p5Instance, str, mmToPixel$1(x), mmToPixel$1(y));
+      } else if (typeof maxHeight === "undefined") {
+        _originalTextFunc.call(_p5Instance, str, mmToPixel$1(x), mmToPixel$1(y), mmToPixel$1(maxWidth));
+      } else {
+        _originalTextFunc.call(
+          _p5Instance,
+          str,
+          mmToPixel$1(x),
+          mmToPixel$1(y),
+          mmToPixel$1(maxWidth),
+          mmToPixel$1(maxHeight),
+        );
+      }
+      pop();
+    }
+
+    /**
+     * Split OpenType path commands into separate contours
+     * Each 'M' (moveTo) command starts a new contour
+     * @private
+     */
+    function splitPathCommands(commands) {
+      const contours = [];
+      let currentContour = [];
+
+      for (const cmd of commands) {
+        if (cmd.type === "M") {
+          // Start new contour
+          if (currentContour.length > 0) {
+            contours.push(currentContour);
+          }
+          currentContour = [cmd];
+        } else {
+          // Add to current contour
+          currentContour.push(cmd);
+        }
+      }
+
+      // Don't forget the last contour
+      if (currentContour.length > 0) {
+        contours.push(currentContour);
+      }
+
+      return contours;
+    }
+
+    /**
+     * Group contours into letters (outer contours with their holes)
+     * Uses point-in-polygon test to determine which contours are holes
+     * @private
+     */
+    function groupContoursIntoLetters(contours) {
+      if (contours.length === 0) return [];
+
+      // Convert each contour to points for area calculation
+      const contourData = contours.map((contour) => {
+        const points = convertCommandsToPoints(contour, {
+          bezierSteps: 10,
+          quadSteps: 8,
+        });
+        const area = calculateSignedArea(points);
+        const absArea = Math.abs(area);
+        const bounds = getPathBounds(points);
+        return { contour, points, area, absArea, bounds };
+      });
+
+      // Sort by absolute area (largest first) - larger contours are likely outer, smaller are likely holes
+      contourData.sort((a, b) => b.absArea - a.absArea);
+
+      // Strategy: Use spatial containment to determine holes
+      // A contour is a hole if it's contained within another larger contour
+      const letterGroups = [];
+      const processedIndices = new Set();
+
+      for (let i = 0; i &lt; contourData.length; i++) {
+        if (processedIndices.has(i)) continue;
+
+        const outerData = contourData[i];
+        const holes = [];
+
+        // Find all contours contained within this one
+        for (let j = i + 1; j &lt; contourData.length; j++) {
+          if (processedIndices.has(j)) continue;
+
+          const innerData = contourData[j];
+
+          // Check if inner contour's center is inside outer contour
+          const innerCenterX = innerData.bounds.x + innerData.bounds.w / 2;
+          const innerCenterY = innerData.bounds.y + innerData.bounds.h / 2;
+
+          if (isPointInPolygon({ x: innerCenterX, y: innerCenterY }, outerData.points)) {
+            // This is a hole of the outer contour
+            holes.push(innerData.contour);
+            processedIndices.add(j);
+          }
+        }
+
+        // Add this letter group
+        letterGroups.push({
+          outer: outerData.contour,
+          outerPoints: outerData.points,
+          outerBounds: outerData.bounds,
+          holes: holes,
+        });
+
+        processedIndices.add(i);
+      }
+
+      return letterGroups;
+    }
+
+    /**
+     * Calculate signed area of a polygon
+     * Positive area = clockwise, Negative area = counter-clockwise
+     * @private
+     */
+    function calculateSignedArea(points) {
+      if (points.length &lt; 3) return 0;
+
+      let area = 0;
+      for (let i = 0; i &lt; points.length; i++) {
+        const j = (i + 1) % points.length;
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+      }
+      return area / 2;
+    }
+
+    /**
+     * Test if a point is inside a polygon using ray casting algorithm
+     * @private
+     */
+    function isPointInPolygon(point, polygon) {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i &lt; polygon.length; j = i++) {
+        const xi = polygon[i].x,
+          yi = polygon[i].y;
+        const xj = polygon[j].x,
+          yj = polygon[j].y;
+
+        const intersect = yi > point.y !== yj > point.y &amp;&amp; point.x &lt; ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    /**
+     * Convert OpenType path commands to points
+     * Samples bezier curves at appropriate density
+     * @private
+     */
+    function convertCommandsToPoints(commands, options = {}) {
+      const points = [];
+      const bezierSteps = options.bezierSteps || 10;
+      const quadSteps = options.quadSteps || 8;
+
+      let currentX = 0,
+        currentY = 0;
+
+      for (const cmd of commands) {
+        if (cmd.type === "M") {
+          // Move to
+          currentX = cmd.x;
+          currentY = cmd.y;
+          points.push({ x: currentX, y: currentY });
+        } else if (cmd.type === "L") {
+          // Line to
+          currentX = cmd.x;
+          currentY = cmd.y;
+          points.push({ x: currentX, y: currentY });
+        } else if (cmd.type === "C") {
+          // Cubic bezier curve - sample it
+          for (let i = 1; i &lt;= bezierSteps; i++) {
+            const t = i / bezierSteps;
+            const point = cubicBezierPoint(currentX, currentY, cmd.x1, cmd.y1, cmd.x2, cmd.y2, cmd.x, cmd.y, t);
+            points.push(point);
+          }
+          currentX = cmd.x;
+          currentY = cmd.y;
+        } else if (cmd.type === "Q") {
+          // Quadratic bezier curve - sample it
+          for (let i = 1; i &lt;= quadSteps; i++) {
+            const t = i / quadSteps;
+            const point = quadraticBezierPoint(currentX, currentY, cmd.x1, cmd.y1, cmd.x, cmd.y, t);
+            points.push(point);
+          }
+          currentX = cmd.x;
+          currentY = cmd.y;
+        } else if (cmd.type === "Z") {
+          // Close path - add line back to first point if needed
+          if (points.length > 0) {
+            const first = points[0];
+            const dist = Math.sqrt(Math.pow(currentX - first.x, 2) + Math.pow(currentY - first.y, 2));
+            if (dist > 0.1) {
+              // Only add if not already at start
+              points.push({ x: first.x, y: first.y });
+            }
+          }
+        }
+      }
+
+      return points;
+    }
+
+    /**
+     * Sample a cubic bezier curve at parameter t
+     * @private
+     */
+    function cubicBezierPoint(x0, y0, x1, y1, x2, y2, x3, y3, t) {
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const mt3 = mt2 * mt;
+      const t2 = t * t;
+      const t3 = t2 * t;
+
+      return {
+        x: mt3 * x0 + 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 * x3,
+        y: mt3 * y0 + 3 * mt2 * t * y1 + 3 * mt * t2 * y2 + t3 * y3,
+      };
+    }
+
+    /**
+     * Sample a quadratic bezier curve at parameter t
+     * @private
+     */
+    function quadraticBezierPoint(x0, y0, x1, y1, x2, y2, t) {
+      const mt = 1 - t;
+      const mt2 = mt * mt;
+      const t2 = t * t;
+
+      return {
+        x: mt2 * x0 + 2 * mt * t * x1 + t2 * x2,
+        y: mt2 * y0 + 2 * mt * t * y1 + t2 * y2,
       };
     }
 
@@ -6191,51 +7375,14 @@
       overrideBeginContourFunction();
       overrideEndContourFunction();
 
+      // Text functions
+      overrideTextFunction();
+
       // Add vertexWidth function to window
-      window.vertexWidth = vertexWidth;
+      fn.vertexWidth = vertexWidth;
     }
 
-    /**
-     * Restores original p5.js functions.
-     * @private
-     */
-    function restoreP5Functions() {
-      // Restore transformation functions
-      window.push = _originalPushFunc;
-      window.pop = _originalPopFunc;
-      window.translate = _originalTranslateFunc;
-      window.rotate = _originalRotateFunc;
-      window.scale = _originalScaleFunc;
-
-      // Restore drawing functions
-      window.line = _originalLineFunc;
-      window.curve = _originalCurveFunc;
-      window.bezier = _originalBezierFunc;
-      window.ellipse = _originalEllipseFunc;
-      window.circle = _originalCircleFunc;
-      window.strokeWeight = _originalStrokeWeightFunc;
-      window.strokeJoin = _originalStrokeJoinFunc;
-      window.point = _originalPointFunc;
-      window.stroke = _originalStrokeFunc;
-      window.noStroke = _originalNoStrokeFunc;
-      window.fill = _originalFillFunc;
-      window.noFill = _originalNoFillFunc;
-      window.rect = _originalRectFunc;
-      window.square = _originalSquareFunc;
-      window.triangle = _originalTriangleFunc;
-      window.quad = _originalQuadFunc;
-      window.arc = _originalArcFunc;
-
-      // Restore shape vertex functions
-      window.vertex = _originalVertexFunc;
-      window.bezierVertex = _originalBezierVertexFunc;
-      window.quadraticVertex = _originalQuadraticVertexFunc;
-      window.curveVertex = _originalCurveVertexFunc;
-      window.beginShape = _originalBeginShapeFunc;
-      window.endShape = _originalEndShapeFunc;
-      window.beginContour = _originalBeginContourFunc;
-      window.endContour = _originalEndContourFunc;
-    }
+    // restoreP5Functions() removed — fn overrides are always-on and check _recording internally
 
     /**
      * Sets the stitch parameters for embroidery.
@@ -6249,7 +7396,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStitch(1, 3, 0.2); // min 1mm, desired 3mm, 20% noise
      *   // Draw embroidery patterns
      * }
@@ -6276,7 +7423,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStitchWidth(0.2); // width 0.2mm
      *   // Draw embroidery patterns
      * }
@@ -6287,6 +7434,40 @@
       _embroiderySettings.stitchWidth = Math.max(0, width);
       _strokeSettings.stitchWidth = _embroiderySettings.stitchWidth;
       _fillSettings.stitchWidth = _embroiderySettings.stitchWidth;
+    };
+
+    /**
+     * Sets how many segments are used when flattening curves, splines and beziers
+     * into stitch paths. Higher values follow the curve more closely at the cost of
+     * more stitches.
+     *
+     * p5.js 1.x exposed this through curveDetail() and bezierDetail(). In p5.js 2.0
+     * curveDetail() throws outside WebGL mode, so p5.embroider carries its own
+     * setting for 2D sketches.
+     * @method setCurveDetail
+     * @for p5
+     * @param {Number} detail - Segments per curve segment. Minimum 1, default 20.
+     *   Pass null to fall back to the renderer's own value.
+     * @example
+     *
+     * function setup() {
+     *   createCanvas(400, 400);
+     *   beginRecord();
+     *   setCurveDetail(40); // smoother curves, more stitches
+     * }
+     *
+     */
+    p5embroidery.setCurveDetail = function (detail) {
+      if (detail === null || detail === undefined) {
+        _curveDetail = null;
+        return;
+      }
+      const n = Math.floor(Number(detail));
+      if (!Number.isFinite(n)) {
+        console.warn("🪡 p5.embroider says: setCurveDetail() expects a number");
+        return;
+      }
+      _curveDetail = Math.max(1, n);
     };
 
     /**
@@ -6323,7 +7504,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setDrawMode('stitch'); // Show stitch points and lines
      *   // Draw embroidery patterns
      * }
@@ -6382,9 +7563,11 @@
           case STROKE_MODE.SQUARE:
             return squareStitch(x1, y1, x2, y2, stitchSettings);
           case STROKE_MODE.PARALLEL:
-            return multiLineStitch(x1, y1, x2, y2, stitchSettings);
+            return parallelLineStitch(x1, y1, x2, y2, stitchSettings);
           case STROKE_MODE.SASHIKO:
             return sashikoStitch(x1, y1, x2, y2, stitchSettings);
+          case STROKE_MODE.VERTEX:
+            return vertexStitch(x1, y1, x2, y2);
           default:
             return straightLineStitch(x1, y1, x2, y2, stitchSettings);
         }
@@ -6429,6 +7612,10 @@
           return parallelLineStitchFromPath(pathPoints, stitchSettings);
         case STROKE_MODE.SASHIKO:
           return sashikoStitchFromPath(pathPoints, stitchSettings);
+        case STROKE_MODE.VERTEX:
+          // Vertex mode doesn't use joins - direct 1:1 mapping
+          if (_DEBUG) console.log("Vertex mode: skipping joins, using direct mapping");
+          return vertexStitchFromPath(pathPoints);
         default:
           return straightLineStitchFromPath(pathPoints, stitchSettings);
       }
@@ -6447,7 +7634,7 @@
       }
 
       // Check if we should use interpolation or follow path normals
-      const useInterpolation = stitchSettings.strokeInterpolate !== undefined ? stitchSettings.strokeInterpolate : false;
+      const useInterpolation = stitchSettings.stitchInterpolate !== undefined ? stitchSettings.stitchInterpolate : false;
 
       if (!useInterpolation) {
         // Default behavior: follow path normals (sharp corners)
@@ -6888,6 +8075,8 @@
             return parallelLineStitchFromPath(pathPoints, stitchSettings);
           case STROKE_MODE.SASHIKO:
             return sashikoStitchFromPath(pathPoints, stitchSettings);
+          case STROKE_MODE.VERTEX:
+            return vertexStitchFromPath(pathPoints);
           default:
             // For simple straight stitches, we'll need to break this down segment by segment
             const result = [];
@@ -7305,6 +8494,49 @@
     }
 
     /**
+     * Creates stitches directly from vertex positions (1:1 mapping).
+     * Each vertex becomes exactly one stitch point without interpolation.
+     * @method vertexStitch
+     * @private
+     * @param {number} x1 - Starting x-coordinate in mm
+     * @param {number} y1 - Starting y-coordinate in mm
+     * @param {number} x2 - Ending x-coordinate in mm
+     * @param {number} y2 - Ending y-coordinate in mm
+     * @param {Object} stitchSettings - Settings for the stitches
+     * @returns {Array&lt;{x: number, y: number}>} Array of stitch points in mm
+     */
+    function vertexStitch(x1, y1, x2, y2, stitchSettings) {
+      // Direct 1:1 mapping - simply return both points as stitches
+      if (_DEBUG) console.log("Generated vertex stitches (direct mapping):", [{ x: x1, y: y1 }, { x: x2, y: y2 }]);
+      return [
+        { x: x1, y: y1 },
+        { x: x2, y: y2 }
+      ];
+    }
+
+    /**
+     * Creates stitches directly from path vertices (1:1 mapping).
+     * Each vertex in the path becomes exactly one stitch point without interpolation.
+     * @method vertexStitchFromPath
+     * @private
+     * @param {Array&lt;{x: number, y: number}>} pathPoints - Array of path points in mm
+     * @param {Object} stitchSettings - Settings for the stitches
+     * @returns {Array&lt;{x: number, y: number}>} Array of stitch points in mm
+     */
+    function vertexStitchFromPath(pathPoints, stitchSettings) {
+      if (!pathPoints || pathPoints.length &lt; 1) {
+        if (_DEBUG) console.log("vertexStitchFromPath: No path points provided");
+        return [];
+      }
+      
+      // Direct 1:1 mapping - each vertex becomes a stitch
+      const result = pathPoints.map(p => ({ x: p.x, y: p.y }));
+      
+      if (_DEBUG) console.log("Generated vertex stitches from path (direct mapping):", result.length, "points");
+      return result;
+    }
+
+    /**
      * Creates line zigzag stitches that takes an array of path points
      * @private
      * @param {Array&lt;{x: number, y: number}>} pathPoints - Array of path points in mm
@@ -7389,7 +8621,7 @@
       return result;
     }
 
-    function multiLineStitch(x1, y1, x2, y2, stitchSettings) {
+    function parallelLineStitch(x1, y1, x2, y2, stitchSettings) {
       // This is now a wrapper function that calls the path-based implementation
       const pathPoints = [
         { x: x1, y: y1 },
@@ -7398,43 +8630,66 @@
       return parallelLineStitchFromPath(pathPoints, stitchSettings);
     }
 
-      /**
+    /**
      * Creates multi-line stitches from an array of stitch points
      * @private
      * @param {Array&lt;{x: number, y: number}>} pathPoints - Array of path points in mm
      * @param {Object} stitchSettings - Settings for the stitches
      * @returns {Array&lt;{x: number, y: number}>} Array of stitch points in mm
      */
-      function parallelLineStitchFromPath(pathPoints, stitchSettings) {
-        if (!pathPoints || pathPoints.length &lt; 2) {
-          console.warn("Cannot create multi-line stitching from insufficient path points");
-          return [];
-        }
-    
-        const threadWeight = stitchSettings.stitchWidth || 0.2;
-        const width = stitchSettings.strokeWeight || 2;
-        const numLines = Math.max(2, Math.floor(width / threadWeight));
-        const result = [];
-    
-        // Calculate the spacing between lines
-        const spacing = width / (numLines - 1);
-    
-        // Generate multiple parallel paths
-        for (let i = 0; i &lt; numLines; i++) {
-          // Calculate offset from center
-          const offset = i * spacing - width / 2;
-          const offsetPath = [];
-    
-          // Calculate perpendicular vectors for each segment and apply offset
-          for (let j = 0; j &lt; pathPoints.length; j++) {
-            let perpX = 0, perpY = 0;
-            let hasValidDirection = false;
-    
-            if (j === 0) {
-              // For first point, find first valid direction
-              for (let k = 1; k &lt; pathPoints.length; k++) {
-                const dx = pathPoints[k].x - pathPoints[0].x;
-                const dy = pathPoints[k].y - pathPoints[0].y;
+    function parallelLineStitchFromPath(pathPoints, stitchSettings) {
+      if (!pathPoints || pathPoints.length &lt; 2) {
+        console.warn("Cannot create multi-line stitching from insufficient path points");
+        return [];
+      }
+
+      const threadWeight = stitchSettings.stitchWidth || 0.2;
+      const width = stitchSettings.strokeWeight || 2;
+      const numLines = Math.max(2, Math.floor(width / threadWeight));
+      const result = [];
+
+      // Calculate the spacing between lines
+      const spacing = width / (numLines - 1);
+
+      // Generate multiple parallel paths
+      for (let i = 0; i &lt; numLines; i++) {
+        // Calculate offset from center
+        const offset = i * spacing - width / 2;
+        const offsetPath = [];
+
+        // Calculate perpendicular vectors for each segment and apply offset
+        for (let j = 0; j &lt; pathPoints.length; j++) {
+          let perpX = 0,
+            perpY = 0;
+          let hasValidDirection = false;
+
+          if (j === 0) {
+            // For first point, find first valid direction
+            for (let k = 1; k &lt; pathPoints.length; k++) {
+              const dx = pathPoints[k].x - pathPoints[0].x;
+              const dy = pathPoints[k].y - pathPoints[0].y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance > 0.001) {
+                perpX = -dy / distance;
+                perpY = dx / distance;
+                hasValidDirection = true;
+                break;
+              }
+            }
+          } else if (j === pathPoints.length - 1) {
+            // For last point, use direction from previous point
+            const dx = pathPoints[j].x - pathPoints[j - 1].x;
+            const dy = pathPoints[j].y - pathPoints[j - 1].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > 0.001) {
+              perpX = -dy / distance;
+              perpY = dx / distance;
+              hasValidDirection = true;
+            } else {
+              // Find previous valid direction
+              for (let k = j - 2; k >= 0; k--) {
+                const dx = pathPoints[j].x - pathPoints[k].x;
+                const dy = pathPoints[j].y - pathPoints[k].y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance > 0.001) {
                   perpX = -dy / distance;
@@ -7443,143 +8698,124 @@
                   break;
                 }
               }
-            } else if (j === pathPoints.length - 1) {
-              // For last point, use direction from previous point
-              const dx = pathPoints[j].x - pathPoints[j - 1].x;
-              const dy = pathPoints[j].y - pathPoints[j - 1].y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              if (distance > 0.001) {
-                perpX = -dy / distance;
-                perpY = dx / distance;
-                hasValidDirection = true;
-              } else {
-                // Find previous valid direction
-                for (let k = j - 2; k >= 0; k--) {
-                  const dx = pathPoints[j].x - pathPoints[k].x;
-                  const dy = pathPoints[j].y - pathPoints[k].y;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  if (distance > 0.001) {
-                    perpX = -dy / distance;
-                    perpY = dx / distance;
-                    hasValidDirection = true;
-                    break;
-                  }
-                }
-              }
-            } else {
-              // For interior points, average the perpendiculars of adjacent segments
-              const prevDx = pathPoints[j].x - pathPoints[j - 1].x;
-              const prevDy = pathPoints[j].y - pathPoints[j - 1].y;
-              const prevDistance = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
-    
-              const nextDx = pathPoints[j + 1].x - pathPoints[j].x;
-              const nextDy = pathPoints[j + 1].y - pathPoints[j].y;
-              const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
-    
-              let prevPerpX = 0, prevPerpY = 0;
-              let nextPerpX = 0, nextPerpY = 0;
-              let hasPrev = false, hasNext = false;
-    
-              // Calculate previous perpendicular if valid
-              if (prevDistance > 0.001) {
-                prevPerpX = -prevDy / prevDistance;
-                prevPerpY = prevDx / prevDistance;
-                hasPrev = true;
-              }
-    
-              // Calculate next perpendicular if valid
-              if (nextDistance > 0.001) {
-                nextPerpX = -nextDy / nextDistance;
-                nextPerpY = nextDx / nextDistance;
-                hasNext = true;
-              }
-    
-              // Average perpendiculars if both are valid, otherwise use the valid one
-              if (hasPrev &amp;&amp; hasNext) {
-                perpX = (prevPerpX + nextPerpX) / 2;
-                perpY = (prevPerpY + nextPerpY) / 2;
-                hasValidDirection = true;
-              } else if (hasPrev) {
-                perpX = prevPerpX;
-                perpY = prevPerpY;
-                hasValidDirection = true;
-              } else if (hasNext) {
-                perpX = nextPerpX;
-                perpY = nextPerpY;
-                hasValidDirection = true;
-              } else {
-                // Both segments are zero - find nearest valid direction
-                for (let k = j - 2; k >= 0; k--) {
-                  const dx = pathPoints[j].x - pathPoints[k].x;
-                  const dy = pathPoints[j].y - pathPoints[k].y;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
-                  if (distance > 0.001) {
-                    perpX = -dy / distance;
-                    perpY = dx / distance;
-                    hasValidDirection = true;
-                    break;
-                  }
-                }
-                if (!hasValidDirection) {
-                  for (let k = j + 2; k &lt; pathPoints.length; k++) {
-                    const dx = pathPoints[k].x - pathPoints[j].x;
-                    const dy = pathPoints[k].y - pathPoints[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance > 0.001) {
-                      perpX = -dy / distance;
-                      perpY = dx / distance;
-                      hasValidDirection = true;
-                      break;
-                    }
-                  }
-                }
-              }
-            }
-    
-            // Normalize the perpendicular vector if we have a valid direction
-            if (hasValidDirection) {
-              const length = Math.sqrt(perpX * perpX + perpY * perpY);
-              if (length > 0.001) {
-                perpX = perpX / length;
-                perpY = perpY / length;
-              }
-            }
-    
-            // Always add the point to offsetPath (even if direction is invalid, use zero offset)
-            offsetPath.push({
-              x: pathPoints[j].x + perpX * offset,
-              y: pathPoints[j].y + perpY * offset,
-            });
-          }
-    
-          // Validate that offsetPath has same length as pathPoints
-          if (offsetPath.length !== pathPoints.length) {
-            console.warn(`parallelLineStitchFromPath: offsetPath length mismatch (${offsetPath.length} vs ${pathPoints.length})`);
-          }
-    
-          // For even lines, go from start to end
-          // For odd lines, go from end to start (back and forth pattern)
-          if (i % 2 === 0) {
-            for (let j = 0; j &lt; offsetPath.length - 1; j++) {
-              const start = offsetPath[j];
-              const end = offsetPath[j + 1];
-              const lineStitches = straightLineStitch(start.x, start.y, end.x, end.y, stitchSettings);
-              result.push(...lineStitches);
             }
           } else {
-            for (let j = offsetPath.length - 1; j > 0; j--) {
-              const start = offsetPath[j];
-              const end = offsetPath[j - 1];
-              const lineStitches = straightLineStitch(start.x, start.y, end.x, end.y, stitchSettings);
-              result.push(...lineStitches);
+            // For interior points, average the perpendiculars of adjacent segments
+            const prevDx = pathPoints[j].x - pathPoints[j - 1].x;
+            const prevDy = pathPoints[j].y - pathPoints[j - 1].y;
+            const prevDistance = Math.sqrt(prevDx * prevDx + prevDy * prevDy);
+
+            const nextDx = pathPoints[j + 1].x - pathPoints[j].x;
+            const nextDy = pathPoints[j + 1].y - pathPoints[j].y;
+            const nextDistance = Math.sqrt(nextDx * nextDx + nextDy * nextDy);
+
+            let prevPerpX = 0,
+              prevPerpY = 0;
+            let nextPerpX = 0,
+              nextPerpY = 0;
+            let hasPrev = false,
+              hasNext = false;
+
+            // Calculate previous perpendicular if valid
+            if (prevDistance > 0.001) {
+              prevPerpX = -prevDy / prevDistance;
+              prevPerpY = prevDx / prevDistance;
+              hasPrev = true;
+            }
+
+            // Calculate next perpendicular if valid
+            if (nextDistance > 0.001) {
+              nextPerpX = -nextDy / nextDistance;
+              nextPerpY = nextDx / nextDistance;
+              hasNext = true;
+            }
+
+            // Average perpendiculars if both are valid, otherwise use the valid one
+            if (hasPrev &amp;&amp; hasNext) {
+              perpX = (prevPerpX + nextPerpX) / 2;
+              perpY = (prevPerpY + nextPerpY) / 2;
+              hasValidDirection = true;
+            } else if (hasPrev) {
+              perpX = prevPerpX;
+              perpY = prevPerpY;
+              hasValidDirection = true;
+            } else if (hasNext) {
+              perpX = nextPerpX;
+              perpY = nextPerpY;
+              hasValidDirection = true;
+            } else {
+              // Both segments are zero - find nearest valid direction
+              for (let k = j - 2; k >= 0; k--) {
+                const dx = pathPoints[j].x - pathPoints[k].x;
+                const dy = pathPoints[j].y - pathPoints[k].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 0.001) {
+                  perpX = -dy / distance;
+                  perpY = dx / distance;
+                  hasValidDirection = true;
+                  break;
+                }
+              }
+              if (!hasValidDirection) {
+                for (let k = j + 2; k &lt; pathPoints.length; k++) {
+                  const dx = pathPoints[k].x - pathPoints[j].x;
+                  const dy = pathPoints[k].y - pathPoints[j].y;
+                  const distance = Math.sqrt(dx * dx + dy * dy);
+                  if (distance > 0.001) {
+                    perpX = -dy / distance;
+                    perpY = dx / distance;
+                    hasValidDirection = true;
+                    break;
+                  }
+                }
+              }
             }
           }
+
+          // Normalize the perpendicular vector if we have a valid direction
+          if (hasValidDirection) {
+            const length = Math.sqrt(perpX * perpX + perpY * perpY);
+            if (length > 0.001) {
+              perpX = perpX / length;
+              perpY = perpY / length;
+            }
+          }
+
+          // Always add the point to offsetPath (even if direction is invalid, use zero offset)
+          offsetPath.push({
+            x: pathPoints[j].x + perpX * offset,
+            y: pathPoints[j].y + perpY * offset,
+          });
         }
-    
-        return result;
+
+        // Validate that offsetPath has same length as pathPoints
+        if (offsetPath.length !== pathPoints.length) {
+          console.warn(
+            `parallelLineStitchFromPath: offsetPath length mismatch (${offsetPath.length} vs ${pathPoints.length})`,
+          );
+        }
+
+        // For even lines, go from start to end
+        // For odd lines, go from end to start (back and forth pattern)
+        if (i % 2 === 0) {
+          for (let j = 0; j &lt; offsetPath.length - 1; j++) {
+            const start = offsetPath[j];
+            const end = offsetPath[j + 1];
+            const lineStitches = straightLineStitch(start.x, start.y, end.x, end.y, stitchSettings);
+            result.push(...lineStitches);
+          }
+        } else {
+          for (let j = offsetPath.length - 1; j > 0; j--) {
+            const start = offsetPath[j];
+            const end = offsetPath[j - 1];
+            const lineStitches = straightLineStitch(start.x, start.y, end.x, end.y, stitchSettings);
+            result.push(...lineStitches);
+          }
+        }
       }
-    
-    
+
+      return result;
+    }
 
     function sashikoStitch(x1, y1, x2, y2, stitchSettings) {
       // This is now a wrapper function that calls the path-based implementation
@@ -7621,15 +8857,15 @@
 
         // Sashiko stitch length (longer than regular stitches)
         const sashikoStitchLength = stitchSettings.stitchLength * 2;
-        const multilineLength = sashikoStitchLength * 0.5;
+        const parallelLineLength = sashikoStitchLength * 0.5;
         const straightLength = sashikoStitchLength * 0.5;
 
         let currentDist = 0;
-        let isMultiline = true;
+        let isParallel = true;
 
         // Create segments along this path section
         while (currentDist &lt; distance) {
-          const segmentLength = isMultiline ? multilineLength : straightLength;
+          const segmentLength = isParallel ? parallelLineLength : straightLength;
           const endDist = Math.min(currentDist + segmentLength, distance);
 
           // Calculate segment start and end points
@@ -7644,8 +8880,8 @@
             { x: segEndX, y: segEndY },
           ];
 
-          if (isMultiline) {
-            // Use the pathPoints version of multiLine stitching
+          if (isParallel) {
+            // Use the pathPoints version of parallelLine stitching
             const lineStitches = parallelLineStitchFromPath(segmentPoints, stitchSettings);
             result.push(...lineStitches);
           } else {
@@ -7656,7 +8892,7 @@
 
           // Move to next segment
           currentDist = endDist;
-          isMultiline = !isMultiline; // Toggle between multiline and straight line
+          isParallel = !isParallel; // Toggle between parallel and straight line
         }
       }
 
@@ -7674,7 +8910,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns here
      *   circle(50, 50, 20);
      *   line(10, 10, 90, 90);
@@ -7690,6 +8926,9 @@
       switch (extension) {
         case "dst":
           p5embroidery.exportDST(filename);
+          break;
+        case "pes":
+          p5embroidery.exportPES(filename);
           break;
         case "svg":
           p5embroidery.exportSVG(filename);
@@ -7716,7 +8955,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      *   exportGcode('pattern.gcode');
@@ -7765,7 +9004,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns at specific coordinates
      *   translate(100, 25); // Position at 100mm, 25mm
      *   circle(0, 0, 20);
@@ -7817,7 +9056,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   endRecord();
@@ -7850,6 +9089,153 @@
     };
 
     /**
+     * Exports the recorded embroidery data as a PES file.
+     * @method exportPES
+     * @for p5
+     * @param {String} [filename='embroideryPattern.pes'] - Output filename
+     * @example
+     *
+     *
+     * function setup() {
+     *   createCanvas(400, 400);
+     *   beginRecord();
+     *   // Draw embroidery patterns
+     *   endRecord();
+     *   exportPES('pattern.pes');
+     * }
+     *
+     *
+     */
+
+    // PES Export for p5.embroidery
+    // Matches DST export structure and calling pattern
+
+    // ===== MAIN EXPORT FUNCTION - Matches DST structure exactly =====
+    p5embroidery.exportPES = function (filename = "embroideryPattern.pes") {
+      const points = [];
+      const pesWriter = new PESWriter();
+
+      if (_DEBUG) console.log("=== Starting PES Export ===");
+      if (_DEBUG) console.log("Canvas size:", _stitchData.width, _stitchData.height);
+      if (_DEBUG) console.log("Stitch data:", _stitchData);
+
+      let currentThreadIndex = -1;
+
+      for (let threadIndex = 0; threadIndex &lt; _stitchData.threads.length; threadIndex++) {
+        const thread = _stitchData.threads[threadIndex];
+
+        // Skip threads with no stitches
+        if (thread.runs.length === 0 || !thread.runs.some((run) => run.length > 0)) {
+          continue;
+        }
+
+        // DIFFERENCE FROM DST: We track color per stitch rather than using colorChange flag
+        // PES needs the actual color value for palette matching
+        const threadColor = thread.color || 0xff0000; // Default red
+
+        // Convert color from p5 color object to hex if needed
+        let hexColor;
+        if (typeof threadColor === "object") {
+          // p5.Color object - extract RGB
+          hexColor = (Math.round(threadColor.r) &lt;&lt; 16) | (Math.round(threadColor.g) &lt;&lt; 8) | Math.round(threadColor.b);
+        } else if (typeof threadColor === "string") {
+          // Hex string like "#FF0000"
+          hexColor = parseInt(threadColor.replace("#", ""), 16);
+        } else {
+          // Already a number
+          hexColor = threadColor;
+        }
+
+        if (_DEBUG &amp;&amp; currentThreadIndex !== threadIndex) {
+          console.log(`Thread ${threadIndex} color:`, hexColor.toString(16));
+        }
+
+        currentThreadIndex = threadIndex;
+
+        for (const run of thread.runs) {
+          // Handle trim commands (similar to DST)
+          if (run.length === 1 &amp;&amp; run[0].command === "trim") {
+            if (_DEBUG) {
+              console.log("Trim command at:", run[0].x, run[0].y);
+            }
+
+            // Validate trim command coordinates
+            if (run[0].x == null || run[0].y == null || !isFinite(run[0].x) || !isFinite(run[0].y)) {
+              if (_DEBUG) console.warn("Skipping invalid trim command with null/NaN coordinates:", run[0]);
+              continue;
+            }
+
+            // Convert from mm to 0.1mm for PES format (same as DST)
+            points.push({
+              x: run[0].x * 10,
+              y: run[0].y * 10,
+              color: hexColor,
+              jump: true,
+              trim: true,
+            });
+            continue;
+          }
+
+          // Normal stitches
+          if (_DEBUG) console.log("=== New Stitch Run ===");
+          if (_DEBUG) console.log("Run:", run);
+
+          for (const stitch of run) {
+            // Validate stitch coordinates before processing
+            if (stitch.x == null || stitch.y == null || !isFinite(stitch.x) || !isFinite(stitch.y)) {
+              if (_DEBUG) console.warn("Skipping invalid stitch with null/NaN coordinates:", stitch);
+              continue;
+            }
+
+            // Convert from mm to 0.1mm for PES format
+            points.push({
+              x: stitch.x * 10,
+              y: stitch.y * 10,
+              color: hexColor,
+              command: stitch.command,
+              jump: stitch.command === "jump",
+            });
+          }
+        }
+      }
+
+      // Skip export if no points
+      if (points.length === 0) {
+        console.warn("No embroidery points to export");
+        return;
+      }
+
+      if (_DEBUG) {
+        console.log("=== Final Points Array ===");
+        console.log("Total points:", points.length);
+        console.log("First point:", points[0]);
+        console.log("Last point:", points[points.length - 1]);
+
+        // Log bounding box
+        let minX = Infinity,
+          maxX = -Infinity;
+        let minY = Infinity,
+          maxY = -Infinity;
+        for (const point of points) {
+          minX = Math.min(minX, point.x);
+          maxX = Math.max(maxX, point.x);
+          minY = Math.min(minY, point.y);
+          maxY = Math.max(maxY, point.y);
+        }
+        console.log("Bounding box (0.1mm):", {
+          minX,
+          maxX,
+          minY,
+          maxY,
+          width: maxX - minX,
+          height: maxY - minY,
+        });
+      }
+
+      pesWriter.savePES(points, "EmbroideryPattern", filename);
+    };
+
+    /**
      * Exports the recorded embroidery data as a DST file.
      * @method exportDST
      * @for p5
@@ -7859,7 +9245,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      *   exportDST('pattern.dst');
@@ -7867,6 +9253,7 @@
      *
      *
      */
+
     p5embroidery.exportDST = function (filename = "embroideryPattern.dst") {
       const points = [];
       const dstWriter = new DSTWriter();
@@ -8002,7 +9389,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   line(10, 10, 90, 90);
@@ -8046,7 +9433,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   line(10, 10, 50, 50);
      *   trimThread(); // Cut thread at current position
      *   line(60, 60, 100, 100);
@@ -9021,101 +10408,89 @@
     };
 
     // Expose public functions
-    global.p5embroidery = p5embroidery;
-    global.beginRecord = p5embroidery.beginRecord;
-    global.endRecord = p5embroidery.endRecord;
-    global.exportEmbroidery = p5embroidery.exportEmbroidery;
-    global.exportDST = p5embroidery.exportDST;
-    global.exportGcode = p5embroidery.exportGcode;
-    global.exportSVG = p5embroidery.exportSVG;
-    global.exportPNG = p5embroidery.exportPNG;
-    global.trimThread = p5embroidery.trimThread; // Renamed from cutThread
-    global.embroideryOutline = p5embroidery.embroideryOutline;
-    global.exportOutline = p5embroidery.exportOutline;
-    global.exportSVGFromPath = p5embroidery.exportSVGFromPath;
-    global.setStitch = p5embroidery.setStitch;
-    global.setStitchWidth = p5embroidery.setStitchWidth;
-    global.setDrawMode = p5embroidery.setDrawMode;
-    global.drawStitches = p5embroidery.drawStitches;
-    global.mmToPixel = mmToPixel$1;
-    global.pixelToMm = pixelToMm;
-    global.px2mm = px2mm;
-    global.mm2px = mm2px;
-    global.setStrokeMode = p5embroidery.setStrokeMode;
-    global.setStrokeJoin = p5embroidery.setStrokeJoin;
-    global.STROKE_MODE = STROKE_MODE;
-    global.STROKE_JOIN = STROKE_JOIN;
-    global.FILL_MODE = FILL_MODE;
-    global.setFillMode = p5embroidery.setFillMode;
-    global.setFillSettings = p5embroidery.setFillSettings;
-    global.setStrokeSettings = p5embroidery.setStrokeSettings;
-    global.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
-    global.setStrokeInterpolate = p5embroidery.setStrokeInterpolate;
+    fn.p5embroidery = p5embroidery;
+    fn.beginRecord = p5embroidery.beginRecord;
+    fn.endRecord = p5embroidery.endRecord;
+    fn.exportEmbroidery = p5embroidery.exportEmbroidery;
+    fn.exportDST = p5embroidery.exportDST;
+    fn.exportPES = p5embroidery.exportPES;
+    fn.exportGcode = p5embroidery.exportGcode;
+    fn.exportSVG = p5embroidery.exportSVG;
+    fn.exportPNG = p5embroidery.exportPNG;
+    fn.trimThread = p5embroidery.trimThread; // Renamed from cutThread
+    fn.embroideryOutline = p5embroidery.embroideryOutline;
+    fn.exportOutline = p5embroidery.exportOutline;
+    fn.exportSVGFromPath = p5embroidery.exportSVGFromPath;
+    fn.setStitch = p5embroidery.setStitch;
+    fn.setStitchWidth = p5embroidery.setStitchWidth;
+    fn.setCurveDetail = p5embroidery.setCurveDetail;
+    fn.setDrawMode = p5embroidery.setDrawMode;
+    fn.drawStitches = p5embroidery.drawStitches;
+    fn.mmToPixel = mmToPixel$1;
+    fn.pixelToMm = pixelToMm;
+    fn.px2mm = px2mm;
+    fn.mm2px = mm2px;
+    fn.setStrokeMode = p5embroidery.setStrokeMode;
+    fn.setStrokeJoin = p5embroidery.setStrokeJoin;
+    fn.STROKE_MODE = STROKE_MODE;
+    fn.STROKE_JOIN = STROKE_JOIN;
+    fn.FILL_MODE = FILL_MODE;
+    fn.setFillMode = p5embroidery.setFillMode;
+    fn.setFillSettings = p5embroidery.setFillSettings;
+    fn.setStrokeSettings = p5embroidery.setStrokeSettings;
+    fn.setStrokeEntryExit = p5embroidery.setStrokeEntryExit;
+    fn.setStitchInterpolate = p5embroidery.setStitchInterpolate;
 
     // Expose new path-based functions
-    global.convertPathToStitches = convertPathToStitches;
-    global.parallelLineStitchingFromPath = parallelLineStitchFromPath;
-    global.sashikoStitchingFromPath = sashikoStitchFromPath;
+    fn.convertPathToStitches = convertPathToStitches;
+    fn.parallelLineStitchingFromPath = parallelLineStitchFromPath;
+    fn.sashikoStitchingFromPath = sashikoStitchFromPath;
 
     // Expose embroidery guide utilities
-    global.drawGrid = drawGrid;
-    global.drawHoopGuides = drawHoopGuides;
-    global.drawHoop = drawHoop;
-    global.drawManualHoop = drawManualHoop;
-    global.drawMachineHoop = drawMachineHoop;
-    global.drawCornerMarks = drawCornerMarks;
-    global.drawPaperGuides = drawPaperGuides;
-    global.drawEmbroideryWorkspace = drawEmbroideryWorkspace;
-    global.PAPER_SIZES = PAPER_SIZES;
-    global.HOOP_PRESETS = HOOP_PRESETS;
-    global.getHoopPreset = getHoopPreset;
-    global.getPaperSize = getPaperSize;
-    global.getHoopsByBrand = getHoopsByBrand;
-    global.getHoopsByType = getHoopsByType;
-    global.getHoopsBySize = getHoopsBySize;
-    global.findBestHoop = findBestHoop;
-    global.getHoopBrands = getHoopBrands;
-    global.getHoopTypes = getHoopTypes;
+    fn.drawGrid = drawGrid;
+    fn.drawHoopGuides = drawHoopGuides;
+    fn.drawHoop = drawHoop;
+    fn.drawManualHoop = drawManualHoop;
+    fn.drawMachineHoop = drawMachineHoop;
+    fn.drawCornerMarks = drawCornerMarks;
+    fn.drawPaperGuides = drawPaperGuides;
+    fn.drawEmbroideryWorkspace = drawEmbroideryWorkspace;
+    fn.PAPER_SIZES = PAPER_SIZES;
+    fn.HOOP_PRESETS = HOOP_PRESETS;
+    fn.getHoopPreset = getHoopPreset;
+    fn.getPaperSize = getPaperSize;
+    fn.getHoopsByBrand = getHoopsByBrand;
+    fn.getHoopsByType = getHoopsByType;
+    fn.getHoopsBySize = getHoopsBySize;
+    fn.findBestHoop = findBestHoop;
+    fn.getHoopBrands = getHoopBrands;
+    fn.getHoopTypes = getHoopTypes;
 
     // Expose preview viewport utilities
-    global.setupPreviewViewport = setupPreviewViewport;
-    global.endPreviewViewport = endPreviewViewport;
-    global.handlePreviewZoom = handlePreviewZoom;
-    global.handlePreviewPan = handlePreviewPan;
-    global.startPreviewPan = startPreviewPan;
-    global.stopPreviewPan = stopPreviewPan;
-    global.resetPreviewViewport = resetPreviewViewport;
-    global.fitPreviewToContent = fitPreviewToContent;
-    global.getPreviewState = getPreviewState;
-    global.screenToWorld = screenToWorld;
-    global.worldToScreen = worldToScreen;
-    global.drawPreviewControls = drawPreviewControls;
-    global.handlePreviewControlsPressed = handlePreviewControlsPressed;
-    global.handlePreviewControlsDragged = handlePreviewControlsDragged;
-    global.handlePreviewControlsReleased = handlePreviewControlsReleased;
+    fn.setupPreviewViewport = setupPreviewViewport;
+    fn.endPreviewViewport = endPreviewViewport;
+    fn.handlePreviewZoom = handlePreviewZoom;
+    fn.handlePreviewPan = handlePreviewPan;
+    fn.startPreviewPan = startPreviewPan;
+    fn.stopPreviewPan = stopPreviewPan;
+    fn.resetPreviewViewport = resetPreviewViewport;
+    fn.fitPreviewToContent = fitPreviewToContent;
+    fn.getPreviewState = getPreviewState;
+    fn.screenToWorld = screenToWorld;
+    fn.worldToScreen = worldToScreen;
+    fn.drawPreviewControls = drawPreviewControls;
+    fn.handlePreviewControlsPressed = handlePreviewControlsPressed;
+    fn.handlePreviewControlsDragged = handlePreviewControlsDragged;
+    fn.handlePreviewControlsReleased = handlePreviewControlsReleased;
 
-    global.zigzagStitchFromPath = zigzagStitchFromPath;
-    global.rampStitchFromPath = rampStitchFromPath;
-    global.squareStitchFromPath = squareStitchFromPath;
+    fn.zigzagStitchFromPath = zigzagStitchFromPath;
+    fn.rampStitchFromPath = rampStitchFromPath;
+    fn.squareStitchFromPath = squareStitchFromPath;
 
     // Expose debug function
-    global.setDebugMode = setDebugMode;
+    fn.setDebugMode = setDebugMode;
 
-    // Expose contour functions
-    global.beginContour =
-      p5embroidery.beginContour ||
-      function () {
-        if (window.beginContour &amp;&amp; typeof window.beginContour === "function") {
-          return window.beginContour.apply(this, arguments);
-        }
-      };
-    global.endContour =
-      p5embroidery.endContour ||
-      function () {
-        if (window.endContour &amp;&amp; typeof window.endContour === "function") {
-          return window.endContour.apply(this, arguments);
-        }
-      };
+    // beginContour and endContour are handled by overrideP5Functions() called at end of addon setup
 
     // Create embroidery state object for outline functions
     const getEmbroideryState = () => ({
@@ -9141,7 +10516,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   embroideryOutline(5); // Add 5mm outline around the embroidery
@@ -9149,7 +10524,7 @@
      *   endRecord();
      * }
      */
-    global.embroideryOutline = function (
+    fn.embroideryOutline = function (
       offsetDistance,
       threadIndex = _strokeThreadIndex,
       outlineType = "convex",
@@ -9172,7 +10547,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Create some stitch data
      *   let pathData = [{x: 50, y: 50}, {x: 100, y: 50}, {x: 100, y: 100}];
      *   let outlinePoints = embroideryOutlineFromPath(pathData, 5); // Add 5mm outline
@@ -9181,7 +10556,7 @@
      *   endRecord();
      * }
      */
-    global.embroideryOutlineFromPath = function (
+    fn.embroideryOutlineFromPath = function (
       stitchDataArray,
       offsetDistance,
       threadIndex = _strokeThreadIndex,
@@ -9212,7 +10587,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   endRecord();
@@ -9224,7 +10599,7 @@
      *   exportOutline(0, 10, "cut-outline.gcode", "bounding");
      * }
      */
-    global.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
+    fn.exportOutline = async function (threadIndex, offsetDistance, filename, outlineType = "convex") {
       return await exportOutline(threadIndex, offsetDistance, filename, outlineType, getEmbroideryState());
     };
 
@@ -9240,7 +10615,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *
      *   // Thread 0 - Red circle
      *   stroke(255, 0, 0);
@@ -9259,14 +10634,36 @@
      *   exportSVG("thread0-path.svg", { threads: [0] });
      * }
      */
-    global.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
+    fn.exportSVGFromPath = async function (threadIndex, filename, options = {}) {
       if (!_stitchData || !_stitchData.threads) {
         console.warn("🪡 p5.embroider says: No embroidery data to export");
         return false;
       }
       return await exportSVGFromPath(threadIndex, filename, _stitchData, options);
     };
-  })(typeof globalThis !== "undefined" ? globalThis : window);
+
+    // Set up all fn overrides once at addon registration time (always-on, check _recording internally)
+    overrideP5Functions();
+  }
+
+  // ============================================================
+  // p5.js Registration
+  // ============================================================
+  if (typeof p5 !== "undefined") {
+    if (typeof p5.registerAddon === "function") {
+      // p5.js 2.x — the supported path.
+      p5.registerAddon(p5EmbroiderAddon);
+    } else {
+      // p5.js 1.x — DEPRECATED. This path is not covered by the test suite and
+      // will be removed in 0.4. Use p5.embroider 0.2.1 for p5.js 1.x sketches,
+      // or follow MIGRATION.md to move the sketch to p5.js 2.x.
+      console.warn(
+        "🪡 p5.embroider says: p5.js 1.x support is deprecated and will be removed in 0.4. " +
+        "Upgrade to p5.js 2.x (see MIGRATION.md), or pin p5.embroider@0.2.1 for 1.x sketches.",
+      );
+      p5EmbroiderAddon(p5, p5.prototype);
+    }
+  }
 
   /**
    * Creates straight line stitches from an array of path points
@@ -9351,4 +10748,4 @@
   }
 
 }));
-</code></pre></article></section></div></div></div><div class="search-container" id="PkfLWpAbet" style="display:none"><div class="wrapper" id="iCxFxjkHbP"><button class="icon-button search-close-button" id="VjLlGakifb" aria-label="close search"><svg><use xlink:href="#close-icon"></use></svg></button><div class="search-box-c"><svg><use xlink:href="#search-icon"></use></svg> <input type="text" id="vpcKVYIppa" class="search-input" placeholder="Search..." autofocus></div><div class="search-result-c" id="fWwVHRuDuN"><span class="search-result-c-text">Type anything to view search result</span></div></div></div><div class="mobile-menu-icon-container"><button class="icon-button" id="mobile-menu" data-isopen="false" aria-label="menu"><svg><use xlink:href="#menu-icon"></use></svg></button></div><div id="mobile-sidebar" class="mobile-sidebar-container"><div class="mobile-sidebar-wrapper"><div class="mobile-nav-links"></div><div class="mobile-sidebar-items-c"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DSTWriter.html">DSTWriter</a></div><div class="sidebar-section-children"><a href="Thread.html">Thread</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#beginRecord">beginRecord</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutline">embroideryOutline</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutlineFromPath">embroideryOutlineFromPath</a></div><div class="sidebar-section-children"><a href="global.html#endRecord">endRecord</a></div><div class="sidebar-section-children"><a href="global.html#exportDST">exportDST</a></div><div class="sidebar-section-children"><a href="global.html#exportEmbroidery">exportEmbroidery</a></div><div class="sidebar-section-children"><a href="global.html#exportGcode">exportGcode</a></div><div class="sidebar-section-children"><a href="global.html#exportJSON">exportJSON</a></div><div class="sidebar-section-children"><a href="global.html#exportOutline">exportOutline</a></div><div class="sidebar-section-children"><a href="global.html#exportPNG">exportPNG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVG">exportSVG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVGFromPath">exportSVGFromPath</a></div><div class="sidebar-section-children"><a href="global.html#mm2px">mm2px</a></div><div class="sidebar-section-children"><a href="global.html#mmToPixel">mmToPixel</a></div><div class="sidebar-section-children"><a href="global.html#pixelToMm">pixelToMm</a></div><div class="sidebar-section-children"><a href="global.html#px2mm">px2mm</a></div><div class="sidebar-section-children"><a href="global.html#setDrawMode">setDrawMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillMode">setFillMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setStitch">setStitch</a></div><div class="sidebar-section-children"><a href="global.html#setStitchWidth">setStitchWidth</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeEntryExit">setStrokeEntryExit</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeInterpolate">setStrokeInterpolate</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeJoin">setStrokeJoin</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeMode">setStrokeMode</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeSettings">setStrokeSettings</a></div><div class="sidebar-section-children"><a href="global.html#trimThread">trimThread</a></div></div></div><div class="mobile-navbar-actions"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div></div></div><script type="text/javascript" src="scripts/core.min.js"></script><script src="scripts/search.min.js" defer="defer"></script><script src="scripts/third-party/fuse.js" defer="defer"></script><script type="text/javascript">var tocbotInstance=tocbot.init({tocSelector:"#eed4d2a0bfd64539bb9df78095dec881",contentSelector:".main-content",headingSelector:"h1, h2, h3",hasInnerContainers:!0,scrollContainer:".main-content",headingsOffset:130,onClick:bringLinkToView})</script></body></html>
+</code></pre></article></section></div></div></div><div class="search-container" id="PkfLWpAbet" style="display:none"><div class="wrapper" id="iCxFxjkHbP"><button class="icon-button search-close-button" id="VjLlGakifb" aria-label="close search"><svg><use xlink:href="#close-icon"></use></svg></button><div class="search-box-c"><svg><use xlink:href="#search-icon"></use></svg> <input type="text" id="vpcKVYIppa" class="search-input" placeholder="Search..." autofocus></div><div class="search-result-c" id="fWwVHRuDuN"><span class="search-result-c-text">Type anything to view search result</span></div></div></div><div class="mobile-menu-icon-container"><button class="icon-button" id="mobile-menu" data-isopen="false" aria-label="menu"><svg><use xlink:href="#menu-icon"></use></svg></button></div><div id="mobile-sidebar" class="mobile-sidebar-container"><div class="mobile-sidebar-wrapper"><div class="mobile-nav-links"></div><div class="mobile-sidebar-items-c"><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-classes"><div>Classes</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="DSTWriter.html">DSTWriter</a></div><div class="sidebar-section-children"><a href="Thread.html">Thread</a></div></div><div class="sidebar-section-title with-arrow" data-isopen="false" id="sidebar-global"><div>Global</div><svg><use xlink:href="#down-icon"></use></svg></div><div class="sidebar-section-children-container"><div class="sidebar-section-children"><a href="global.html#beginRecord">beginRecord</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutline">embroideryOutline</a></div><div class="sidebar-section-children"><a href="global.html#embroideryOutlineFromPath">embroideryOutlineFromPath</a></div><div class="sidebar-section-children"><a href="global.html#endRecord">endRecord</a></div><div class="sidebar-section-children"><a href="global.html#exportDST">exportDST</a></div><div class="sidebar-section-children"><a href="global.html#exportEmbroidery">exportEmbroidery</a></div><div class="sidebar-section-children"><a href="global.html#exportGcode">exportGcode</a></div><div class="sidebar-section-children"><a href="global.html#exportJSON">exportJSON</a></div><div class="sidebar-section-children"><a href="global.html#exportOutline">exportOutline</a></div><div class="sidebar-section-children"><a href="global.html#exportPES">exportPES</a></div><div class="sidebar-section-children"><a href="global.html#exportPNG">exportPNG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVG">exportSVG</a></div><div class="sidebar-section-children"><a href="global.html#exportSVGFromPath">exportSVGFromPath</a></div><div class="sidebar-section-children"><a href="global.html#mm2px">mm2px</a></div><div class="sidebar-section-children"><a href="global.html#mmToPixel">mmToPixel</a></div><div class="sidebar-section-children"><a href="global.html#pixelToMm">pixelToMm</a></div><div class="sidebar-section-children"><a href="global.html#px2mm">px2mm</a></div><div class="sidebar-section-children"><a href="global.html#setCurveDetail">setCurveDetail</a></div><div class="sidebar-section-children"><a href="global.html#setDrawMode">setDrawMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillMode">setFillMode</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setFillSettings">setFillSettings</a></div><div class="sidebar-section-children"><a href="global.html#setStitch">setStitch</a></div><div class="sidebar-section-children"><a href="global.html#setStitchInterpolate">setStitchInterpolate</a></div><div class="sidebar-section-children"><a href="global.html#setStitchWidth">setStitchWidth</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeEntryExit">setStrokeEntryExit</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeJoin">setStrokeJoin</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeMode">setStrokeMode</a></div><div class="sidebar-section-children"><a href="global.html#setStrokeSettings">setStrokeSettings</a></div><div class="sidebar-section-children"><a href="global.html#trimThread">trimThread</a></div></div></div><div class="mobile-navbar-actions"><div class="navbar-right-item"><button class="icon-button search-button" aria-label="open-search"><svg><use xlink:href="#search-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button theme-toggle" aria-label="toggle-theme"><svg><use class="theme-svg-use" xlink:href="#light-theme-icon"></use></svg></button></div><div class="navbar-right-item"><button class="icon-button font-size" aria-label="change-font-size"><svg><use xlink:href="#font-size-icon"></use></svg></button></div></div></div></div><script type="text/javascript" src="scripts/core.min.js"></script><script src="scripts/search.min.js" defer="defer"></script><script src="scripts/third-party/fuse.js" defer="defer"></script><script type="text/javascript">var tocbotInstance=tocbot.init({tocSelector:"#eed4d2a0bfd64539bb9df78095dec881",contentSelector:".main-content",headingSelector:"h1, h2, h3",hasInnerContainers:!0,scrollContainer:".main-content",headingsOffset:130,onClick:bringLinkToView})</script></body></html>

@@ -39,7 +39,7 @@ function draw() {
   setDrawMode(drawMode);
   strokeCap(SQUARE);
 
-  beginRecord(this);
+  beginRecord();
   // Draw a 100mm square
   setStitch(1, 2, 0);
   setStrokeSettings({
@@ -52,6 +52,7 @@ function draw() {
   strokeWeight(5);
   setStrokeMode("parallel");
   noFill();
+  rectMode(CORNER);
   rect(0, 0, 80, 80, 2);
   trimThread();
 

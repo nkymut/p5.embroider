@@ -543,7 +543,7 @@ function createUI() {
     .class("secondary")
     .mousePressed(() => {
       if (svgParts.length > 0) {
-        exportSVG();
+        exportSVGFile();
       } else {
         console.warn("No SVG loaded to export");
       }
@@ -565,7 +565,7 @@ function createUI() {
     .class("secondary")
     .mousePressed(() => {
       if (svgParts.length > 0) {
-        exportOutline();
+        exportOutlineFile();
       } else {
         console.warn("No SVG loaded to export");
       }
@@ -637,7 +637,7 @@ function draw() {
   translate(centerOffsetX, centerOffsetY);
 
   // Start embroidery recording (recorded geometry not affected by above transforms)
-  beginRecord(this);
+  beginRecord();
   setDrawMode(drawMode);
 
   // Draw each SVG part with its individual settings
@@ -2874,7 +2874,7 @@ function setup() {
   createCanvas(400, 400);
   
   // Start embroidery recording
-  beginRecord(this);
+  beginRecord();
   
   // Configure p5.embroider settings
   setDrawMode("${drawMode}");
@@ -2997,7 +2997,7 @@ function setup() {
   URL.revokeObjectURL(url);
 }
 
-function exportSVG() {
+function exportSVGFile() {
   if (svgParts.length === 0) {
     console.warn("No SVG parts to export");
     return;
@@ -3512,7 +3512,7 @@ function keyReleased() {
   }
 }
 
-function exportOutline() {
+function exportOutlineFile() {
   if (svgParts.length === 0) {
     console.warn("No SVG parts to export");
     return;

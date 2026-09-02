@@ -29,7 +29,8 @@ function createLabeledSlider(label, min, max, value, step, yOffset) {
   slider.style("display", "inline-block");
   slider.style("vertical-align", "middle");
 
-  let valueDisplay = createSpan(value);
+  // createSpan() requires a string in p5.js 2.0.
+  let valueDisplay = createSpan(String(value));
   valueDisplay.parent(container);
   valueDisplay.style("margin-left", "10px");
   valueDisplay.style("display", "inline-block");
@@ -213,7 +214,7 @@ function draw() {
   background("#FFF5DC");
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
 
   push();
   //noStroke();
@@ -274,12 +275,13 @@ function drawShape() {
       break;
     case "curve":
       beginShape();
-      curveVertex(10, 10);
-      curveVertex(20, 20);
-      curveVertex(30, 30);
-      curveVertex(40, 40);
-      curveVertex(50, 50);
-      curveVertex(60, 10);
+      // p5.js 2.0: curveVertex() was renamed splineVertex().
+      splineVertex(10, 10);
+      splineVertex(20, 20);
+      splineVertex(30, 30);
+      splineVertex(40, 40);
+      splineVertex(50, 50);
+      splineVertex(60, 10);
       endShape();
       break;
   }

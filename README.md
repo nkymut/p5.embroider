@@ -13,8 +13,18 @@
 **Note:** This library is currently in early Alpha stage. Expect frequent and significant breaking changes. Please use with caution.
 
 
-Version 0.1.8, December 17, 2025 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
+Version 0.3.0, September 02, 2026 • by Yuta Nakayama ([nkymut](https://github.com/nkymut))
 
+
+## Requirements
+
+p5.embroider 0.3 and later require **p5.js 2.x**. Load p5.js first, then
+p5.embroider.
+
+Coming from an older sketch? See the **[Migration guide](./MIGRATION.md)**. 
+
+p5.embroider 0.2.1 is the last release for
+p5.js 1.x.
 
 ## Installation
 To use p5.embroider in your project, include the library in your HTML file:
@@ -22,13 +32,25 @@ To use p5.embroider in your project, include the library in your HTML file:
 ### CDNs
 
 ```html
+<script src="https://cdn.jsdelivr.net/npm/p5@2.3.2/lib/p5.js"></script>
 <script src="https://unpkg.com/p5.embroider/lib/p5.embroider.js"></script>
 ```
 
 ### GitHub Pages
 
 ```html
+<script src="https://cdn.jsdelivr.net/npm/p5@2.3.2/lib/p5.js"></script>
 <script src="https://nkymut.github.io/p5.embroider/lib/p5.embroider.js"></script>
+```
+
+### p5.js 1.x (frozen)
+
+p5.embroider 0.2.1 is kept under [`v1/`](./v1/) for sketches still on p5.js 1.x.
+It is not maintained.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/p5@1.11.1/lib/p5.js"></script>
+<script src="https://nkymut.github.io/p5.embroider/v1/p5.embroider.js"></script>
 ```
 
 
@@ -64,7 +86,7 @@ function draw() {
   noFill();
   setDrawMode(_drawMode);
   //translate(0, 0);
-  beginRecord(this);
+  beginRecord();
   strokeWeight(stitchWidth);
   setStitch(0.1, 0.5, 0);
   setStrokeMode("zigzag");
@@ -81,6 +103,8 @@ function draw() {
 ## Documentation
 
 [Documentation](https://nkymut.github.io/p5.embroider/docs/index.html)
+
+[Migration guide: p5.js 1.x to 2.x](./MIGRATION.md)
 
 
 ## License
