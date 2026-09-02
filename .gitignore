@@ -6,6 +6,7 @@ docs/devdoc/*
 .vscode/*
 CLAUDE.md
 _Claude/*
+.claude/*
 _WIP/*
 apps/*
 
