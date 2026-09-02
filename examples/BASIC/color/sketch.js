@@ -55,7 +55,7 @@ function draw() {
   noFill();
   setDrawMode(_drawMode);
   //translate(0, 0);
-  beginRecord(this);
+  beginRecord();
   strokeWeight(stitchWidth);
   setStitch(0.1, 0.5, 0);
   setStrokeMode("zigzag");

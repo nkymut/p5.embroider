@@ -251,7 +251,7 @@ function draw() {
   background("#FFF5DC");
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
 
   strokeWeight(1);
   setFillMode(fillMode);

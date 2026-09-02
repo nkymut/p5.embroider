@@ -39,7 +39,7 @@ function draw() {
   setDrawMode(drawMode);
   strokeCap(SQUARE);
 
-  beginRecord(this);
+  beginRecord();
   // Draw a 100mm square
   setStitch(1, 2, 0);
   setStrokeSettings({

@@ -38,7 +38,7 @@ function draw() {
   strokeCap(SQUARE);
   setDrawMode(drawMode);
   // noFill();
-  beginRecord(this);
+  beginRecord();
   fill(0, 200, 0);
   setFillSettings({
     stitchLength: 0.4,

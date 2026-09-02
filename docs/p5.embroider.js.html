@@ -3980,7 +3980,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStrokeMode('zigzag');
      *   line(10, 10, 50, 50); // Will use zigzag stitch pattern
      * }
@@ -4003,7 +4003,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStrokeJoin('miter');
      *   beginShape();
      *   vertex(20, 20);
@@ -4136,7 +4136,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns here
      *   endRecord();
      * }
@@ -4162,7 +4162,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      * }
@@ -6249,7 +6249,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStitch(1, 3, 0.2); // min 1mm, desired 3mm, 20% noise
      *   // Draw embroidery patterns
      * }
@@ -6276,7 +6276,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setStitchWidth(0.2); // width 0.2mm
      *   // Draw embroidery patterns
      * }
@@ -6323,7 +6323,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   setDrawMode('stitch'); // Show stitch points and lines
      *   // Draw embroidery patterns
      * }
@@ -7674,7 +7674,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns here
      *   circle(50, 50, 20);
      *   line(10, 10, 90, 90);
@@ -7716,7 +7716,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      *   exportGcode('pattern.gcode');
@@ -7765,7 +7765,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns at specific coordinates
      *   translate(100, 25); // Position at 100mm, 25mm
      *   circle(0, 0, 20);
@@ -7817,7 +7817,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   endRecord();
@@ -7859,7 +7859,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   endRecord();
      *   exportDST('pattern.dst');
@@ -8002,7 +8002,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   line(10, 10, 90, 90);
@@ -8046,7 +8046,7 @@
      *
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   line(10, 10, 50, 50);
      *   trimThread(); // Cut thread at current position
      *   line(60, 60, 100, 100);
@@ -9141,7 +9141,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   embroideryOutline(5); // Add 5mm outline around the embroidery
@@ -9172,7 +9172,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Create some stitch data
      *   let pathData = [{x: 50, y: 50}, {x: 100, y: 50}, {x: 100, y: 100}];
      *   let outlinePoints = embroideryOutlineFromPath(pathData, 5); // Add 5mm outline
@@ -9212,7 +9212,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *   // Draw embroidery patterns
      *   circle(50, 50, 20);
      *   endRecord();
@@ -9240,7 +9240,7 @@
      * @example
      * function setup() {
      *   createCanvas(400, 400);
-     *   beginRecord(this);
+     *   beginRecord();
      *
      *   // Thread 0 - Red circle
      *   stroke(255, 0, 0);

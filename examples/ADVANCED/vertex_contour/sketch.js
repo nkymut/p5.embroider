@@ -223,7 +223,7 @@ function draw() {
   background("#FFF5DC");
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
 
   updateSettings();
 

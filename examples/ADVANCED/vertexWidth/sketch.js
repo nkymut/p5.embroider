@@ -57,7 +57,7 @@ function draw() {
   translate(mmToPixel(10), mmToPixel(10));
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
   //strokeWeight(1);
   setStitch(0.1, 0.2, 0);
   // Example 1: Using vertex(x, y, width) - Tapered stroke

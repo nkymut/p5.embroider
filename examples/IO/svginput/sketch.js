@@ -637,7 +637,7 @@ function draw() {
   translate(centerOffsetX, centerOffsetY);
 
   // Start embroidery recording (recorded geometry not affected by above transforms)
-  beginRecord(this);
+  beginRecord();
   setDrawMode(drawMode);
 
   // Draw each SVG part with its individual settings
@@ -2874,7 +2874,7 @@ function setup() {
   createCanvas(400, 400);
   
   // Start embroidery recording
-  beginRecord(this);
+  beginRecord();
   
   // Configure p5.embroider settings
   setDrawMode("${drawMode}");

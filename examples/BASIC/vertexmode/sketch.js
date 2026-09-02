@@ -47,7 +47,7 @@ function draw() {
 
   setDrawMode(drawMode);
   noFill();
-  beginRecord(this);
+  beginRecord();
 
   // Example 1: Custom star pattern with vertex mode
   // Each vertex becomes exactly one stitch - no interpolation

@@ -194,7 +194,7 @@ function draw() {
   }
 
   setDrawMode("p5");
-  beginRecord(this);
+  beginRecord();
 
   // Draw shapes at specific coordinates to test positioning
   stroke(255, 0, 0);

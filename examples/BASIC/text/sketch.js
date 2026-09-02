@@ -44,7 +44,7 @@ function draw() {
 
   setDrawMode(drawMode);
 
-  beginRecord(this);
+  beginRecord();
 
   // Configure embroidery settings
   setStitch(0.1, 0.5, 0);

@@ -256,7 +256,7 @@ function draw() {
   background("#FFF5DC");
 
   setDrawMode(drawMode);
-  beginRecord(this);
+  beginRecord();
 
   updateStrokeSettings();
   updateCurveSettings();
@@ -307,6 +307,11 @@ function draw() {
     bezierVertex(50, 90);
     bezierVertex(60, 85);
     endShape();
+    // bezierOrder is sticky and survives across frames. p5.js 2.3.2's bezier()
+    // re-applies the current order instead of forcing 3 for its four control
+    // points, so leaving it at 2 makes the next bezier() call throw. Restore
+    // the default.
+    bezierOrder(3);
 
     // Spline: p5.js 2.0 renamed curveVertex() to splineVertex().
     stroke(0, 255, 255); // cyan

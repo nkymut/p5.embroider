@@ -42,7 +42,7 @@ function draw() {
   setDrawMode(drawMode);
 
   noFill();
-  beginRecord(this);
+  beginRecord();
   //stroke(0, 200, 0);
   //createCanvas(400, 400);
 

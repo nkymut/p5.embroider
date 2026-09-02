@@ -41,7 +41,7 @@ function draw() {
 
   setDrawMode(drawMode);
   noFill();
-  beginRecord(this);
+  beginRecord();
 
   // Draw a 100mm square
   //setStitch(0.1, 0.2, 0);
