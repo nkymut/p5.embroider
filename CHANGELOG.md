@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/nkymut/p5.embroider/compare/v0.2.1...v0.3.0) (2026-09-02)
+
+
+### ### Changed
+
+* add p5.js v1.x→v2.x migration guide and deprecate 1.x aliases  [#14](https://github.com/nkymut/p5.embroider/issues/14) ([504e7a4](https://github.com/nkymut/p5.embroider/commit/504e7a492bee7565513c643e3e4bcb67ab549ead))
+* sync lib/v2/p5.embroider.js from p5_2.0 ([180f907](https://github.com/nkymut/p5.embroider/commit/180f90719aea07dbf81f4a2c2df0ee0e1914eb70))
+
+
+### ### Fixed
+
+* ✂️ mark font error ([d9aa19e](https://github.com/nkymut/p5.embroider/commit/d9aa19e5ba2b12ff0984863c775bb1446e2242c9))
+* textFont() error ([705ede9](https://github.com/nkymut/p5.embroider/commit/705ede9e60421ffc9e347f49bfcfa7a7d3322910))
+
 ### [0.2.1](https://github.com/nkymut/p5.embroider/compare/v0.2.0...v0.2.1) (2026-02-02)
 
 ## [0.2.0](https://github.com/nkymut/p5.embroider/compare/v0.1.7...v0.2.0) (2025-12-18)
