@@ -117,6 +117,24 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   // degree. Captured before any override is installed, so it reflects the real host.
   const _isP5v2 = typeof fn.bezierOrder === "function" && typeof fn.spline === "function";
 
+  // Deprecation notices are emitted once per name, not once per frame, because
+  // these functions are typically called from draw().
+  const _deprecationWarned = new Set();
+
+  /**
+   * Warns once that a p5.js 1.x API is deprecated in p5.embroider.
+   * @private
+   * @param {string} name - The deprecated function name.
+   * @param {string} advice - What to use instead.
+   */
+  function warnDeprecated(name, advice) {
+    if (_deprecationWarned.has(name)) return;
+    _deprecationWarned.add(name);
+    console.warn(
+      `🪡 p5.embroider says: ${advice} The ${name}() alias still works but will be removed in 0.4. See MIGRATION.md.`,
+    );
+  }
+
   /**
    * Calls an original p5 function with recording suspended.
    *
@@ -540,9 +558,15 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
 
   /**
    * Begins recording embroidery data.
+   *
+   * While recording, p5.js drawing functions are interpreted in millimetres and
+   * converted into stitches instead of being drawn directly.
+   *
+   * Takes no arguments. p5.embroider registers itself as a p5 addon, so it
+   * already knows the sketch instance. The pre-0.3 form `beginRecord(this)`
+   * still works; the argument is ignored.
    * @method beginRecord
    * @for p5
-   * @param {p5} p5Instance - The p5.js sketch instance
    * @example
    * function setup() {
    *   createCanvas(400, 400);
@@ -1025,19 +1049,15 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @private
    */
   let _originalQuadraticVertexFunc;
-  let _warnedQuadraticVertex = false;
   function overrideQuadraticVertexFunction() {
     _originalQuadraticVertexFunc = fn.quadraticVertex;
 
     fn.quadraticVertex = function (cx, cy, x3, y3) {
-      // Warn once, not once per frame — this is typically called from draw().
-      if (!_warnedQuadraticVertex) {
-        _warnedQuadraticVertex = true;
-        console.warn(
-          "p5.embroider: quadraticVertex() is deprecated in p5.js 2.0. " +
-          "Use bezierOrder(2) + bezierVertex(cx, cy) + bezierVertex(x3, y3) instead.",
-        );
-      }
+      warnDeprecated(
+        "quadraticVertex",
+        "quadraticVertex() was removed in p5.js 2.0; use bezierOrder(2) then " +
+        "bezierVertex(cx, cy) and bezierVertex(x, y).",
+      );
       if (_recording) {
         const cp = transformPoint({ x: cx, y: cy }, _currentTransform.matrix);
         const endPt = transformPoint({ x: x3, y: y3 }, _currentTransform.matrix);
@@ -1063,7 +1083,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
     // otherwise the passthrough calls below dereference undefined.
     _originalCurveVertexFunc = fn.curveVertex ?? fn.splineVertex;
 
-    fn.curveVertex = function (x, y) {
+    const splineVertexImpl = function (x, y) {
       if (_recording) {
         // Apply current transformation to the curve vertex
         const transformedPoint = transformPoint({ x, y }, _currentTransform.matrix);
@@ -1143,9 +1163,13 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
       }
     };
 
-    // p5.js 2.0: splineVertex() is the renamed curveVertex() — delegate to the same implementation
-    fn.splineVertex = function (x, y) {
-      fn.curveVertex.call(this, x, y);
+    // splineVertex() is the p5.js 2.x name and the one to use.
+    fn.splineVertex = splineVertexImpl;
+
+    // curveVertex() is the p5.js 1.x name, kept as a deprecated alias.
+    fn.curveVertex = function (x, y) {
+      warnDeprecated("curveVertex", "curveVertex() was renamed splineVertex() in p5.js 2.0.");
+      return splineVertexImpl.call(this, x, y);
     };
   }
 
@@ -1296,7 +1320,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
     // p5.js 2.0 has no curve(); spline() is the renamed equivalent. Capture
     // whichever the host provides BEFORE installing either override.
     _originalCurveFunc = fn.curve ?? fn.spline;
-    fn.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+    const splineImpl = function (x1, y1, x2, y2, x3, y3, x4, y4) {
       if (_recording) {
         if (_doStroke) {
           // Apply current transformation to control points
@@ -1335,9 +1359,13 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
       }
     };
 
-    // p5.js 2.0: spline() is the renamed curve() — override regardless of whether fn.spline exists
-    fn.spline = function (x1, y1, x2, y2, x3, y3, x4, y4) {
-      fn.curve.call(this, x1, y1, x2, y2, x3, y3, x4, y4);
+    // spline() is the p5.js 2.x name and the one to use.
+    fn.spline = splineImpl;
+
+    // curve() is the p5.js 1.x name, kept as a deprecated alias.
+    fn.curve = function (x1, y1, x2, y2, x3, y3, x4, y4) {
+      warnDeprecated("curve", "curve() was renamed spline() in p5.js 2.0.");
+      return splineImpl.call(this, x1, y1, x2, y2, x3, y3, x4, y4);
     };
   }
 
@@ -6709,10 +6737,16 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
 // ============================================================
 if (typeof p5 !== "undefined") {
   if (typeof p5.registerAddon === "function") {
-    // p5.js 2.0
+    // p5.js 2.x — the supported path.
     p5.registerAddon(p5EmbroiderAddon);
   } else {
-    // p5.js 1.x compatibility (deprecated — support will be removed in a future version)
+    // p5.js 1.x — DEPRECATED. This path is not covered by the test suite and
+    // will be removed in 0.4. Use p5.embroider 0.2.1 for p5.js 1.x sketches,
+    // or follow MIGRATION.md to move the sketch to p5.js 2.x.
+    console.warn(
+      "🪡 p5.embroider says: p5.js 1.x support is deprecated and will be removed in 0.4. " +
+      "Upgrade to p5.js 2.x (see MIGRATION.md), or pin p5.embroider@0.2.1 for 1.x sketches.",
+    );
     p5EmbroiderAddon(p5, p5.prototype, null);
   }
 }
