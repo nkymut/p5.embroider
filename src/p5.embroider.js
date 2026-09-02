@@ -2734,6 +2734,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @private
    */
   let _originalTextFunc;
+  let _warnedSystemFont = false;
   function overrideTextFunction() {
     _originalTextFunc = fn.text;
 
@@ -2762,7 +2763,9 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
           // A system font has no glyph outlines, so there is nothing to stitch.
           if (_drawMode === "p5") {
             drawTextInPixels(str, x, y, maxWidth, maxHeight, fontSize);
-          } else {
+          } else if (!_warnedSystemFont) {
+            // Warn once, not once per frame — text() is usually called in draw().
+            _warnedSystemFont = true;
             console.warn(
               "🪡 p5.embroider says: text() needs a font loaded with loadFont(); " +
               "system fonts have no outlines to convert into stitches.",
@@ -5584,11 +5587,15 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
         _p5Instance.push();
         _originalNoStrokeFunc.call(_p5Instance);
         _originalFillFunc.call(_p5Instance, 255, 255, 255, 150);
-        _p5Instance.ellipseMode(CENTER);
+        _p5Instance.ellipseMode(CONSTANTS.CENTER);
         _originalEllipseFunc.call(_p5Instance, endX + 6, endY - 5, 20, 20);
         _p5Instance.pop();
-        // Place scissors at end of line
-        _p5Instance.text("✂️", endX, endY);
+        // Place scissors at end of line. This marker is a preview overlay, not
+        // embroidery content, so it must call p5's own text() — going through the
+        // override would try to convert it into stitches (and warn about the
+        // missing loadFont() font) and would re-convert these already-pixel
+        // coordinates as if they were millimetres.
+        _originalTextFunc.call(_p5Instance, "✂️", endX, endY);
         _p5Instance.pop();
       }
     }
