@@ -805,33 +805,39 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
           }
         }
 
-        //convert vertices to embroidery stitches
-        const stitches = p5embroidery.convertVerticesToStitches(_vertices, _strokeSettings);
+        // Outline stitches only when stroke is on (noStroke() means fill only)
+        if (_doStroke) {
+          //convert vertices to embroidery stitches
+          const stitches = p5embroidery.convertVerticesToStitches(_vertices, _strokeSettings);
 
-        // Debug log
-        if (_DEBUG) {
-          console.log("endShape: Converted vertices to stitches:", {
-            vertices: _vertices.length,
-            stitches: stitches.length,
-            shapeKind: _shapeKind,
-            mode: _drawMode,
-          });
+          // Debug log
+          if (_DEBUG) {
+            console.log("endShape: Converted vertices to stitches:", {
+              vertices: _vertices.length,
+              stitches: stitches.length,
+              shapeKind: _shapeKind,
+              mode: _drawMode,
+            });
+          }
+
+          //add stitches to the embroidery data
+          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+
+          if (_drawMode === "stitch" || _drawMode === "realistic") {
+            if (_DEBUG)
+              console.log("Drawing stitches:", {
+                count: stitches.length,
+                threadIndex: _strokeThreadIndex,
+                mode: _drawMode,
+                firstStitch: stitches.length > 0 ? stitches[0] : null,
+                lastStitch: stitches.length > 0 ? stitches[stitches.length - 1] : null,
+              });
+            drawStitches(stitches, _strokeThreadIndex);
+          }
         }
 
-        //add stitches to the embroidery data
-        _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
-
-        if (_drawMode === "stitch" || _drawMode === "realistic") {
-          if (_DEBUG)
-            console.log("Drawing stitches:", {
-              count: stitches.length,
-              threadIndex: _strokeThreadIndex,
-              mode: _drawMode,
-              firstStitch: stitches.length > 0 ? stitches[0] : null,
-              lastStitch: stitches.length > 0 ? stitches[stitches.length - 1] : null,
-            });
-          drawStitches(stitches, _strokeThreadIndex);
-        } else if (_drawMode === "p5") {
+        // p5 mode draws the plain shape (p5 applies fill/stroke itself)
+        if (_drawMode === "p5") {
           _originalEndShapeFunc.call(_p5Instance, mode, count);
         }
 
