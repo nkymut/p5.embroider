@@ -324,7 +324,9 @@ export const HOOP_PRESETS = {
 };
 
 /**
- * Draw a grid background with specified spacing
+ * Draw a grid background with specified spacing, covering the canvas
+ * rectangle from the current origin. For a pan/zoom preview use
+ * drawPreviewGrid(), which fills the visible area and adapts to the zoom.
  * @param {number} spacing - Grid spacing in mm
  * @param {Object} options - Grid styling options
  * @param {Array} options.color - Grid color [r, g, b] or [r, g, b, a]
@@ -358,7 +360,7 @@ export function drawGrid(spacing = 10, options = {}) {
 
   // Draw vertical lines
   for (let j = 0; j <= canvasWidth / spacingPixels; j++) {
-    const x = j * spacingPixels + spacingPixels * 0.5;
+    const x = j * spacingPixels;
     line(x, 0, x, canvasHeight);
   }
 

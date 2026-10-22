@@ -49,6 +49,7 @@ import {
   handlePreviewControlsPressed,
   handlePreviewControlsDragged,
   handlePreviewControlsReleased,
+  drawPreviewGrid,
 } from "./utils/preview-viewport.js";
 
 let _DEBUG = false;
@@ -6654,6 +6655,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   fn.handlePreviewControlsPressed = handlePreviewControlsPressed;
   fn.handlePreviewControlsDragged = handlePreviewControlsDragged;
   fn.handlePreviewControlsReleased = handlePreviewControlsReleased;
+  fn.drawPreviewGrid = drawPreviewGrid;
 
   fn.zigzagStitchFromPath = zigzagStitchFromPath;
   fn.rampStitchFromPath = rampStitchFromPath;
