@@ -1,4 +1,5 @@
 let drawMode = "stitch";
+let showGrid = true;
 
 function setup() {
   createCanvas(800, 600);
@@ -16,6 +17,7 @@ function setup() {
       <li><strong>Click + Drag:</strong> Pan around</li>
       <li><strong>R Key:</strong> Reset view</li>
       <li><strong>F Key:</strong> Fit to content</li>
+      <li><strong>G Key:</strong> Toggle the mm grid</li>
     </ul>
   `);
 
@@ -86,8 +88,8 @@ function draw() {
     maxScale: 8,
   });
 
-  // Draw background grid in world coordinates
-  drawGrid(10, { color: [200, 200, 200], alpha: 100 });
+  // Zoom-adaptive mm grid with rulers, outlining the 100 × 100 mm design area
+  if (showGrid) drawPreviewGrid({ bounds: { width: 100, height: 100 } });
 
   // Draw hoop guide
   drawHoopGuides(50, 50, { width: 100, height: 100 });
@@ -242,6 +244,9 @@ function keyPressed() {
     redraw();
   } else if (key === "f" || key === "F") {
     fitPreviewToContent({ x: 0, y: 0, width: 100, height: 100 });
+    redraw();
+  } else if (key === "g" || key === "G") {
+    showGrid = !showGrid;
     redraw();
   }
 }
