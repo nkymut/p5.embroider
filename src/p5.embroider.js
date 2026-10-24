@@ -457,24 +457,24 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   }
 
   /**
-   * Helper function to apply current transformation to coordinates if recording
-   * Only applies transformation in stitch/realistic modes, not in p5 mode
+   * Applies the current transformation to coordinates while recording, in every draw mode
+   * (like vertex()). The p5-mode preview is painted from the raw arguments and p5's own
+   * matrix, so recorded stitches and preview agree.
    * @private
    */
   function applyCurrentTransform(x, y) {
-    if (_recording && _drawMode !== "p5") {
+    if (_recording) {
       return transformPoint({ x, y }, _currentTransform.matrix);
     }
     return { x, y };
   }
 
   /**
-   * Helper function to apply current transformation to an array of coordinates
-   * Only applies transformation in stitch/realistic modes, not in p5 mode
+   * Array version of applyCurrentTransform().
    * @private
    */
   function applyCurrentTransformToPoints(points) {
-    if (_recording && _drawMode !== "p5") {
+    if (_recording) {
       return transformPoints(points, _currentTransform.matrix);
     }
     return points;
@@ -582,7 +582,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @param {number} [settings.stitchWidth] - Width of each stitch in mm
    * @param {number} [settings.minStitchLength] - Minimum stitch length in mm
    * @param {number} [settings.resampleNoise] - Amount of random variation (0-1)
-   * @param {number} [settings.angle] - Fill angle in degrees
+   * @param {number} [settings.angle] - Fill angle in degrees (tatami and satin; spiral ignores it)
    * @param {number} [settings.rowSpacing] - Space between rows in mm
    * @param {number} [settings.tieDistance] - Distance between tie-down stitches in mm
    * @param {boolean} [settings.alternateAngle] - Whether to alternate angles between shapes
@@ -2062,75 +2062,78 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
             }
           }
 
-          // Get the current position (in mm)
-          let currentX, currentY;
-          if (
-            _stitchData.threads[_strokeThreadIndex].runs.length === 0 ||
-            _stitchData.threads[_strokeThreadIndex].runs[_stitchData.threads[_strokeThreadIndex].runs.length - 1]
-              .length === 0
-          ) {
-            // If there are no runs or the last run is empty, use the first point on the ellipse
-            // (at 0 degrees) as the starting point, not the center
-            currentX = transformedPathPoints[0].x;
-            currentY = transformedPathPoints[0].y;
-          } else {
-            // Otherwise, use the last stitch position (already in mm)
-            let lastRun =
-              _stitchData.threads[_strokeThreadIndex].runs[_stitchData.threads[_strokeThreadIndex].runs.length - 1];
-            let lastStitch = lastRun[lastRun.length - 1];
-            currentX = lastStitch.x;
-            currentY = lastStitch.y;
-          }
-
-          // Add a jump stitch to the first point of the ellipse if needed
-          if (
-            Math.sqrt(
-              Math.pow(transformedPathPoints[0].x - currentX, 2) + Math.pow(transformedPathPoints[0].y - currentY, 2),
-            ) > _embroiderySettings.jumpThreshold
-          ) {
-            _stitchData.threads[_strokeThreadIndex].runs.push([
-              {
-                x: currentX,
-                y: currentY,
-                command: "jump",
-              },
-              {
-                x: transformedPathPoints[0].x,
-                y: transformedPathPoints[0].y,
-              },
-            ]);
-          }
-
-          // Convert path points to stitches based on current stroke mode
-          let stitches;
-          if (_strokeSettings.strokeWeight > 0) {
-            switch (_strokeSettings.strokeMode) {
-              case STROKE_MODE.ZIGZAG:
-                stitches = zigzagStitchFromPath(transformedPathPoints, _strokeSettings);
-                break;
-              case STROKE_MODE.PARALLEL:
-                stitches = parallelLineStitchFromPath(transformedPathPoints, _strokeSettings);
-                break;
-              case STROKE_MODE.SASHIKO:
-                stitches = sashikoStitchFromPath(transformedPathPoints, _strokeSettings);
-                break;
-              default:
-                stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
+          // Outline stitches only when stroke is on (noStroke() leaves just the fill)
+          if (_doStroke) {
+            // Get the current position (in mm)
+            let currentX, currentY;
+            if (
+              _stitchData.threads[_strokeThreadIndex].runs.length === 0 ||
+              _stitchData.threads[_strokeThreadIndex].runs[_stitchData.threads[_strokeThreadIndex].runs.length - 1]
+                .length === 0
+            ) {
+              // If there are no runs or the last run is empty, use the first point on the ellipse
+              // (at 0 degrees) as the starting point, not the center
+              currentX = transformedPathPoints[0].x;
+              currentY = transformedPathPoints[0].y;
+            } else {
+              // Otherwise, use the last stitch position (already in mm)
+              let lastRun =
+                _stitchData.threads[_strokeThreadIndex].runs[_stitchData.threads[_strokeThreadIndex].runs.length - 1];
+              let lastStitch = lastRun[lastRun.length - 1];
+              currentX = lastStitch.x;
+              currentY = lastStitch.y;
             }
-          } else {
-            // If no stroke weight specified, use straight line stitching
-            stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
+
+            // Add a jump stitch to the first point of the ellipse if needed
+            if (
+              Math.sqrt(
+                Math.pow(transformedPathPoints[0].x - currentX, 2) + Math.pow(transformedPathPoints[0].y - currentY, 2),
+              ) > _embroiderySettings.jumpThreshold
+            ) {
+              _stitchData.threads[_strokeThreadIndex].runs.push([
+                {
+                  x: currentX,
+                  y: currentY,
+                  command: "jump",
+                },
+                {
+                  x: transformedPathPoints[0].x,
+                  y: transformedPathPoints[0].y,
+                },
+              ]);
+            }
+
+            // Convert path points to stitches based on current stroke mode
+            let stitches;
+            if (_strokeSettings.strokeWeight > 0) {
+              switch (_strokeSettings.strokeMode) {
+                case STROKE_MODE.ZIGZAG:
+                  stitches = zigzagStitchFromPath(transformedPathPoints, _strokeSettings);
+                  break;
+                case STROKE_MODE.PARALLEL:
+                  stitches = parallelLineStitchFromPath(transformedPathPoints, _strokeSettings);
+                  break;
+                case STROKE_MODE.SASHIKO:
+                  stitches = sashikoStitchFromPath(transformedPathPoints, _strokeSettings);
+                  break;
+                default:
+                  stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
+              }
+            } else {
+              // If no stroke weight specified, use straight line stitching
+              stitches = straightLineStitchFromPath(transformedPathPoints, _strokeSettings);
+            }
+
+            // Add the ellipse stitches
+            _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
+
+            if (_drawMode !== "p5") drawStitches(stitches, _strokeThreadIndex);
           }
 
-          // Add the ellipse stitches
-          _stitchData.threads[_strokeThreadIndex].runs.push(stitches);
-
-          // Draw the stitches
+          // p5 mode paints the preview with p5's own ellipse
           if (_drawMode === "p5") {
             _originalStrokeWeightFunc.call(this, mmToPixel(_strokeSettings.strokeWeight));
             _originalEllipseFunc.call(this, mmToPixel(x), mmToPixel(y), mmToPixel(w), mmToPixel(h));
-          } else {
-            drawStitches(stitches, _strokeThreadIndex);
           }
         }
       } else {
@@ -3390,18 +3393,6 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   p5embroidery.setStrokeSettings = function (settings) {
     // Merge default settings with provided settings
     Object.assign(_strokeSettings, settings);
-  };
-
-  /**
-   * Sets the fill settings for embroidery.
-   * @method setFillSettings
-   * @for p5
-   * @param {Object} settings - The settings for the fill
-   */
-
-  p5embroidery.setFillSettings = function (settings) {
-    // Merge default settings with provided settings
-    Object.assign(_fillSettings, settings);
   };
 
   /**
@@ -6150,7 +6141,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
 
     // Satin fill uses perpendicular stitches (like columns)
     // Stitches run perpendicular to the specified angle
-    const angle = (settings.angle || 0) * (Math.PI / 180); // Convert to radians
+    const angle = settings.angle || 0; // radians (setFillSettings converts from degrees)
     const threadWidth = settings.stitchWidth || 0.2;
     const spacing = threadWidth * 0.8; // Slight overlap for complete coverage
     const maxStitchLength = settings.stitchLength || 10;

@@ -4,7 +4,7 @@
  */
 
 // Debug flag - set to false to disable debug logging
-const _DEBUG_DST = true;
+const _DEBUG_DST = false;
 
 export class DSTWriter {
   constructor() {
@@ -218,11 +218,12 @@ export class DSTWriter {
       maxY = Math.max(maxY, point.y);
     }
 
+    // Signed bounds (as in the PES writer): generateDST() centres on left + width / 2
     const result = {
-      left: Math.abs(Math.floor(minX)),
-      top: Math.abs(Math.floor(minY)),
-      right: Math.abs(Math.ceil(maxX)),
-      bottom: Math.abs(Math.ceil(maxY)),
+      left: Math.floor(minX),
+      top: Math.floor(minY),
+      right: Math.ceil(maxX),
+      bottom: Math.ceil(maxY),
       width: Math.ceil(maxX - minX),
       height: Math.ceil(maxY - minY),
       // Add raw bounds for debugging

@@ -76,7 +76,7 @@ function draw() {
   ];
 
   // Get current slider values with fallbacks
-  const currentAngle = angleSlider ? (angleSlider.value() * PI) / 180 : 0;
+  const currentAngle = angleSlider ? angleSlider.value() : 0; // degrees
   const currentSpacing = spacingSlider ? spacingSlider.value() : 2.2;
 
   // Define fill settings using slider values
