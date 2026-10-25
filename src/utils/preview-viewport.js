@@ -29,8 +29,8 @@ let _previewState = {
  * @param {number} options.panY - Initial pan Y offset (default: 0)
  * @param {number} options.minScale - Minimum zoom scale (default: 0.1)
  * @param {number} options.maxScale - Maximum zoom scale (default: 10)
- * @param {number} options.centerX - Center X for scaling (default: width/2)
- * @param {number} options.centerY - Center Y for scaling (default: height/2)
+ * @param {number} options.centerX - Center X for scaling (default: width/2, follows resizeCanvas)
+ * @param {number} options.centerY - Center Y for scaling (default: height/2, follows resizeCanvas)
  */
 export function setupPreviewViewport(options = {}) {
   // Update state but don't apply transformation yet
@@ -41,8 +41,14 @@ export function setupPreviewViewport(options = {}) {
     _previewState.panY = options.panY !== undefined ? options.panY : _previewState.panY;
     _previewState.minScale = options.minScale || 0.1;
     _previewState.maxScale = options.maxScale || 10;
-    _previewState.centerX = options.centerX || (typeof width !== "undefined" ? width / 2 : 400);
-    _previewState.centerY = options.centerY || (typeof height !== "undefined" ? height / 2 : 300);
+    _previewState.centerX = options.centerX !== undefined ? options.centerX : typeof width !== "undefined" ? width / 2 : 400;
+    _previewState.centerY = options.centerY !== undefined ? options.centerY : typeof height !== "undefined" ? height / 2 : 300;
+  } else {
+    // Keep the zoom centre on the canvas centre (or the given centre) after resizeCanvas()
+    setPreviewCenter(
+      options.centerX !== undefined ? options.centerX : typeof width !== "undefined" ? width / 2 : _previewState.centerX,
+      options.centerY !== undefined ? options.centerY : typeof height !== "undefined" ? height / 2 : _previewState.centerY,
+    );
   }
 
   // Apply the preview transformation
@@ -50,6 +56,21 @@ export function setupPreviewViewport(options = {}) {
   translate(_previewState.centerX + _previewState.panX, _previewState.centerY + _previewState.panY);
   scale(_previewState.scale);
   translate(-_previewState.centerX, -_previewState.centerY);
+}
+
+/**
+ * Move the zoom centre without moving the view: the pan is adjusted so every world point stays
+ * at the same screen position. setupPreviewViewport() calls this each frame.
+ * @param {number} centerX - New center X (screen px)
+ * @param {number} centerY - New center Y (screen px)
+ * @param {Object} [state] - Viewport state to update (default: the preview state)
+ */
+export function setPreviewCenter(centerX, centerY, state = _previewState) {
+  // screen = (world - c) * scale + c + pan, so pan absorbs (c_old - c_new) * (1 - scale)
+  state.panX += (state.centerX - centerX) * (1 - state.scale);
+  state.panY += (state.centerY - centerY) * (1 - state.scale);
+  state.centerX = centerX;
+  state.centerY = centerY;
 }
 
 /**

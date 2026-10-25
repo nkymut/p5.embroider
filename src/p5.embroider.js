@@ -43,6 +43,7 @@ import {
   resetPreviewViewport,
   fitPreviewToContent,
   getPreviewState,
+  setPreviewCenter,
   screenToWorld,
   worldToScreen,
   drawPreviewControls,
@@ -6646,6 +6647,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   fn.resetPreviewViewport = resetPreviewViewport;
   fn.fitPreviewToContent = fitPreviewToContent;
   fn.getPreviewState = getPreviewState;
+  fn.setPreviewCenter = setPreviewCenter;
   fn.screenToWorld = screenToWorld;
   fn.worldToScreen = worldToScreen;
   fn.drawPreviewControls = drawPreviewControls;
