@@ -8,6 +8,9 @@
  *
  * Rows: one cornerSpacing value each (the left margin has 1, 2, 3 … running-stitch bars, so the rows
  * can be told apart on the fabric). Columns: corners turning 60°, 90°, 120° and 150°.
+ * MITER corners meet in one point and do not fan, so cornerSpacing changes nothing there, except
+ * where a miter is too long and becomes a bevel (here the 150° column: its cross stitch would exceed
+ * 12 mm). Sew MITER as the reference for a corner without a fan.
  * Sew the DST on the fabric you use, then pick the smallest value that does not pile up.
  */
 
@@ -33,7 +36,7 @@ function setup() {
       redraw();
     });
   }
-  for (const j of ["round", "bevel"]) {
+  for (const j of ["round", "miter", "bevel"]) {
     createButton(`Join: ${j}`).mousePressed(() => {
       join = j;
       redraw();
