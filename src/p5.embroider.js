@@ -52,6 +52,7 @@ import {
   handlePreviewControlsReleased,
   drawPreviewGrid,
 } from "./utils/preview-viewport.js";
+import { zigzagWithCorners, ZIGZAG_CORNER_DEFAULTS } from "./utils/zigzag-corners.js";
 
 let _DEBUG = false;
 
@@ -337,9 +338,12 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * @property {string}  strokeJoin      One of STROKE_JOIN. Default STROKE_JOIN.ROUND.
    * @property {string}  strokeEntry     Entry side: "right" | "left" | "middle". Default "right".
    * @property {string}  strokeExit      Exit side: "right" | "left" | "middle". Default "right".
-   * @property {boolean} stitchInterpolate For zigzag: false = follow path normals (sharp
-   *                                       corners), true = interpolate between offset paths
-   *                                       (smooth corners). Default false.
+   * @property {number}  miterLimit      Zigzag MITER corners longer than miterLimit × half width
+   *                                       become BEVEL. Default 4.
+   * @property {number}  cornerSpacing   Zigzag corners: inner needle points closer than this are
+   *                                       merged so the inner corner is not pierced repeatedly. mm.
+   *                                       0 = never merge. Default 0.3.
+   * @property {boolean} stitchInterpolate Deprecated, ignored (see setStitchInterpolate()).
    */
   let _strokeSettings = {
     stitchLength: 3, // mm
@@ -351,7 +355,9 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
     strokeJoin: STROKE_JOIN.ROUND, // Add join setting
     strokeEntry: "right", // "right","left","middle"
     strokeExit: "right", // "right","left","middle"
-    stitchInterpolate: false, // For zigzag: false = follow path normals (sharp corners), true = interpolate between offset paths (smooth corners)
+    miterLimit: ZIGZAG_CORNER_DEFAULTS.miterLimit,
+    cornerSpacing: ZIGZAG_CORNER_DEFAULTS.cornerSpacing, // mm
+    stitchInterpolate: false, // deprecated, ignored
   };
 
   /**
@@ -505,7 +511,9 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   };
 
   /**
-   * Sets the stroke join mode for embroidery stitches.
+   * Sets the stroke join mode for embroidery stitches. Zigzag strokes use it at every corner:
+   * ROUND fans around the outside, MITER meets in a point (BEVEL beyond miterLimit), BEVEL cuts
+   * the corner. Tune with setStrokeSettings({ miterLimit, cornerSpacing }).
    * @method setStrokeJoin
    * @for p5
    * @param {string} join - The stroke join mode to use ('round', 'miter', or 'bevel')
@@ -565,13 +573,21 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   };
 
   /**
-   * Sets whether zigzag stitches should interpolate smoothly around corners.
+   * Deprecated: zigzag corners now follow strokeJoin() (ROUND, MITER or BEVEL), so there is
+   * nothing to interpolate. Kept so existing sketches run; it only warns once.
    * @method setStitchInterpolate
    * @for p5
-   * @param {boolean} enabled - false = follow path normals with sharp corners (default), true = interpolate for smooth corners
+   * @deprecated Use strokeJoin() / setStrokeJoin() to choose the corner style.
+   * @param {boolean} enabled - Ignored.
    */
+  let _warnedStitchInterpolate = false;
   p5embroidery.setStitchInterpolate = function (enabled) {
-    _strokeSettings.stitchInterpolate = !!enabled;
+    if (!_warnedStitchInterpolate) {
+      console.warn(
+        "🪡 p5.embroider says: setStitchInterpolate() is deprecated and ignored; zigzag corners follow strokeJoin()",
+      );
+      _warnedStitchInterpolate = true;
+    }
   };
 
   /**
@@ -3525,9 +3541,11 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   }
 
   /**
-   * Creates a continuous zigzag pattern with proper corner joins.
+   * Creates a zigzag stroke along a path with joins at its corners (see utils/zigzag-corners.js).
+   * The corner style follows strokeJoin(): ROUND fans around the outer corner, MITER meets in a
+   * point (BEVEL beyond miterLimit), BEVEL cuts the corner.
    * @private
-   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
+   * @param {Array<{x: number, y: number, width?: number}>} pathPoints - Array of path points in mm (width is optional)
    * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
@@ -3535,420 +3553,15 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
     if (!pathPoints || pathPoints.length < 2) {
       return [];
     }
-
-    // Check if we should use interpolation or follow path normals
-    const useInterpolation = stitchSettings.stitchInterpolate !== undefined ? stitchSettings.stitchInterpolate : false;
-
-    if (!useInterpolation) {
-      // Default behavior: follow path normals (sharp corners)
-      return createZigzagFollowingPath(pathPoints, stitchSettings);
-    }
-
-    // Legacy behavior: interpolate between offset paths (smooth corners)
-    const width = stitchSettings.strokeWeight;
-    const density = stitchSettings.stitchLength;
-    const result = [];
-
-    // Create parallel paths offset to each side
-    const leftPath = createOffsetPath(pathPoints, width / 2, true);
-    const rightPath = createOffsetPath(pathPoints, width / 2, false);
-
-    if (leftPath.length === 0 || rightPath.length === 0) {
-      // Fall back to simple zigzag if offset calculation fails
-      return zigzagStitchFromPath(pathPoints, stitchSettings);
-    }
-
-    if (_DEBUG) {
-      console.log("Original path:", pathPoints);
-      console.log("Left path:", leftPath);
-      console.log("Right path:", rightPath);
-    }
-
-    // Calculate total path length for zigzag spacing
-    let totalLength = 0;
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const dx = pathPoints[i + 1].x - pathPoints[i].x;
-      const dy = pathPoints[i + 1].y - pathPoints[i].y;
-      totalLength += Math.sqrt(dx * dx + dy * dy);
-    }
-
-    const numZigzags = Math.max(2, Math.floor(totalLength / density));
-
-    // Start from left side and ensure we always get valid points
-    let currentSide = leftPath;
-    let isOnLeftSide = true;
-
-    // Interpolate between left and right paths to create zigzag
-    for (let i = 0; i <= numZigzags; i++) {
-      const t = i / numZigzags;
-
-      // Alternate between sides for each stitch
-      currentSide = isOnLeftSide ? leftPath : rightPath;
-      const point = getPointAtRatio(currentSide, t);
-
-      if (point) {
-        result.push(point);
-        if (_DEBUG && i < 5) {
-          console.log(`Zigzag point ${i}: side=${isOnLeftSide ? "left" : "right"}, t=${t}, point=`, point);
-        }
-      } else {
-        // If we can't get a point from one side, try the other
-        const alternateSide = isOnLeftSide ? rightPath : leftPath;
-        const alternatePoint = getPointAtRatio(alternateSide, t);
-        if (alternatePoint) {
-          result.push(alternatePoint);
-        }
-      }
-
-      // Toggle sides for next iteration
-      isOnLeftSide = !isOnLeftSide;
-    }
-
-    if (_DEBUG) {
-      console.log("Zigzag result:", result.slice(0, 10));
-    }
-
-    return result;
-  }
-
-  /**
-   * Creates a zigzag pattern that follows path normals (perpendiculars).
-   * This produces sharp corners where the perpendicular changes direction.
-   * @private
-   * @param {Array<{x: number, y: number, width: number}>} pathPoints - Array of path points in mm (width is optional)
-   * @param {Object} stitchSettings - Settings for the stitches
-   * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
-   */
-  function createZigzagFollowingPath(pathPoints, stitchSettings) {
-    if (!pathPoints || pathPoints.length < 2) {
-      return [];
-    }
-
-    const defaultWidth = stitchSettings.strokeWeight;
-    const density = stitchSettings.stitchLength;
-    const result = [];
-
-    // Calculate total path length
-    let totalLength = 0;
-    const segmentLengths = [];
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const dx = pathPoints[i + 1].x - pathPoints[i].x;
-      const dy = pathPoints[i + 1].y - pathPoints[i].y;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      segmentLengths.push(len);
-      totalLength += len;
-    }
-
-    // Calculate number of zigzag points based on density
-    const numZigzags = Math.max(2, Math.floor(totalLength / density));
-
-    // Track which side we're on
-    let isLeftSide = true;
-
-    // Generate zigzag points by walking along the path
-    for (let i = 0; i <= numZigzags; i++) {
-      const targetDistance = (i / numZigzags) * totalLength;
-
-      // Find which segment this point falls on
-      let accumulatedLength = 0;
-      let segmentIndex = 0;
-      let localT = 0;
-
-      for (let s = 0; s < segmentLengths.length; s++) {
-        if (accumulatedLength + segmentLengths[s] >= targetDistance) {
-          segmentIndex = s;
-          localT = segmentLengths[s] > 0 ? (targetDistance - accumulatedLength) / segmentLengths[s] : 0;
-          break;
-        }
-        accumulatedLength += segmentLengths[s];
-      }
-
-      // Get the point on the path at this position
-      const p1 = pathPoints[segmentIndex];
-      const p2 = pathPoints[segmentIndex + 1];
-      const pathX = p1.x + (p2.x - p1.x) * localT;
-      const pathY = p1.y + (p2.y - p1.y) * localT;
-
-      // Interpolate width if points have individual width values (vertexWidth)
-      const width1 = p1.width !== undefined ? p1.width : defaultWidth;
-      const width2 = p2.width !== undefined ? p2.width : defaultWidth;
-      const currentWidth = width1 + (width2 - width1) * localT;
-
-      // Calculate perpendicular direction for this segment
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const segLen = Math.sqrt(dx * dx + dy * dy);
-
-      if (segLen > 0) {
-        // Perpendicular vector (rotated 90 degrees)
-        const perpX = -dy / segLen;
-        const perpY = dx / segLen;
-
-        // Offset by half width in the perpendicular direction
-        const offset = isLeftSide ? currentWidth / 2 : -currentWidth / 2;
-        const stitchX = pathX + perpX * offset;
-        const stitchY = pathY + perpY * offset;
-
-        result.push({ x: stitchX, y: stitchY });
-      } else {
-        // Degenerate segment, just add the path point
-        result.push({ x: pathX, y: pathY });
-      }
-
-      // Alternate sides
-      isLeftSide = !isLeftSide;
-    }
-
-    if (_DEBUG) {
-      console.log("Zigzag following path result:", result.slice(0, 10));
-    }
-
-    return result;
-  }
-
-  /**
-   * Simplifies a path by removing redundant points that are too close together.
-   * @private
-   */
-  function simplifyPath(pathPoints, tolerance = 0.1) {
-    if (pathPoints.length <= 2) return pathPoints;
-
-    const simplified = [pathPoints[0]]; // Always keep first point
-
-    for (let i = 1; i < pathPoints.length - 1; i++) {
-      const prev = simplified[simplified.length - 1];
-      const curr = pathPoints[i];
-      const next = pathPoints[i + 1];
-
-      // Calculate distance from current point to previous
-      const distToPrev = Math.sqrt((curr.x - prev.x) * (curr.x - prev.x) + (curr.y - prev.y) * (curr.y - prev.y));
-
-      // Keep point if it's far enough from previous point
-      if (distToPrev >= tolerance) {
-        simplified.push(curr);
-      }
-    }
-
-    // Always keep last point
-    simplified.push(pathPoints[pathPoints.length - 1]);
-
-    if (_DEBUG && simplified.length !== pathPoints.length) {
-      console.log(`Path simplified: ${pathPoints.length} -> ${simplified.length} points`);
-    }
-
-    return simplified;
-  }
-
-  /**
-   * Creates an offset path parallel to the original path.
-   * @private
-   * @param {Array<{x: number, y: number}>} pathPoints - Original path points
-   * @param {number} offset - Offset distance (positive = left, negative = right)
-   * @param {boolean} isLeft - Whether this is the left side offset
-   * @returns {Array<{x: number, y: number}>} Offset path points
-   */
-  function createOffsetPath(pathPoints, offset, isLeft) {
-    const offsetPath = [];
-
-    // Simplify the path first to remove closely spaced points
-    const simplifiedPath = simplifyPath(pathPoints, 0.2);
-
-    // Check if this is a closed path (first and last points are the same or very close)
-    const isClosedPath =
-      simplifiedPath.length > 2 &&
-      Math.abs(simplifiedPath[0].x - simplifiedPath[simplifiedPath.length - 1].x) < 0.1 &&
-      Math.abs(simplifiedPath[0].y - simplifiedPath[simplifiedPath.length - 1].y) < 0.1;
-
-    for (let i = 0; i < simplifiedPath.length; i++) {
-      const curr = simplifiedPath[i];
-      // Use point's width if available, otherwise use default offset
-      const pointOffset = curr.width !== undefined ? curr.width / 2 : offset;
-
-      let prev, next;
-
-      if (isClosedPath) {
-        // For closed paths, wrap around for prev/next calculation
-        prev = i > 0 ? simplifiedPath[i - 1] : simplifiedPath[simplifiedPath.length - 2]; // Skip duplicate end point
-        next = i < simplifiedPath.length - 1 ? simplifiedPath[i + 1] : simplifiedPath[1]; // Skip duplicate start point
-      } else {
-        // For open paths, use normal indexing
-        prev = i > 0 ? simplifiedPath[i - 1] : null;
-        next = i < simplifiedPath.length - 1 ? simplifiedPath[i + 1] : null;
-      }
-
-      let offsetPoint;
-
-      if (prev === null) {
-        // First point of open path - use direction to next point
-        const dx = next.x - curr.x;
-        const dy = next.y - curr.y;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) {
-          const perpX = (-dy / len) * (isLeft ? pointOffset : -pointOffset);
-          const perpY = (dx / len) * (isLeft ? pointOffset : -pointOffset);
-          offsetPoint = { x: curr.x + perpX, y: curr.y + perpY };
-        } else {
-          offsetPoint = { x: curr.x, y: curr.y };
-        }
-      } else if (next === null) {
-        // Last point of open path - use direction from previous point
-        const dx = curr.x - prev.x;
-        const dy = curr.y - prev.y;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) {
-          const perpX = (-dy / len) * (isLeft ? pointOffset : -pointOffset);
-          const perpY = (dx / len) * (isLeft ? pointOffset : -pointOffset);
-          offsetPoint = { x: curr.x + perpX, y: curr.y + perpY };
-        } else {
-          offsetPoint = { x: curr.x, y: curr.y };
-        }
-      } else {
-        // Middle point or closed path vertex - calculate proper join
-        offsetPoint = calculateOffsetCorner(prev, curr, next, pointOffset, isLeft);
-      }
-
-      offsetPath.push(offsetPoint);
-    }
-
-    return offsetPath;
-  }
-
-  /**
-   * Calculates the offset corner point with proper join handling.
-   * @private
-   */
-  function calculateOffsetCorner(p1, p2, p3, offset, isLeft) {
-    // Calculate direction vectors
-    const v1 = { x: p2.x - p1.x, y: p2.y - p1.y };
-    const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-
-    // Normalize
-    const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-    const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-
-    // Handle very short segments (common in curved corners)
-    if (len1 < 0.1 || len2 < 0.1) {
-      // Use simple perpendicular offset for tiny segments
-      const avgVecX = (v1.x + v2.x) / 2;
-      const avgVecY = (v1.y + v2.y) / 2;
-      const avgLen = Math.sqrt(avgVecX * avgVecX + avgVecY * avgVecY);
-
-      if (avgLen > 0) {
-        const actualOffset = isLeft ? offset : -offset;
-        const perpX = (-avgVecY / avgLen) * actualOffset;
-        const perpY = (avgVecX / avgLen) * actualOffset;
-        return { x: p2.x + perpX, y: p2.y + perpY };
-      }
-      return { x: p2.x, y: p2.y };
-    }
-
-    const n1 = { x: v1.x / len1, y: v1.y / len1 };
-    const n2 = { x: v2.x / len2, y: v2.y / len2 };
-
-    // Check angle between vectors to handle sharp turns
-    const dot = n1.x * n2.x + n1.y * n2.y;
-    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-
-    // Calculate perpendiculars
-    const actualOffset = isLeft ? offset : -offset;
-    const perp1 = { x: -n1.y * actualOffset, y: n1.x * actualOffset };
-    const perp2 = { x: -n2.y * actualOffset, y: n2.x * actualOffset };
-
-    // For very small angles (nearly straight line), use simple averaging
-    if (angle < 0.1) {
-      const avgPerpX = (perp1.x + perp2.x) / 2;
-      const avgPerpY = (perp1.y + perp2.y) / 2;
-      return { x: p2.x + avgPerpX, y: p2.y + avgPerpY };
-    }
-
-    // For sharp angles (< 30 degrees), limit the miter to prevent extreme spikes
-    if (angle < Math.PI / 6) {
-      const avgPerpX = (perp1.x + perp2.x) / 2;
-      const avgPerpY = (perp1.y + perp2.y) / 2;
-      return { x: p2.x + avgPerpX, y: p2.y + avgPerpY };
-    }
-
-    // Calculate intersection of offset lines
-    const line1Start = { x: p1.x + perp1.x, y: p1.y + perp1.y };
-    const line1End = { x: p2.x + perp1.x, y: p2.y + perp1.y };
-    const line2Start = { x: p2.x + perp2.x, y: p2.y + perp2.y };
-    const line2End = { x: p3.x + perp2.x, y: p3.y + perp2.y };
-
-    const intersection = lineLineIntersection(line1Start, line1End, line2Start, line2End);
-
-    if (intersection) {
-      // Limit miter length to prevent extreme spikes
-      const miterDistance = Math.sqrt(
-        (intersection.x - p2.x) * (intersection.x - p2.x) + (intersection.y - p2.y) * (intersection.y - p2.y),
-      );
-      const maxMiterDistance = Math.abs(offset) * 3; // Reduced miter limit for stability
-
-      if (miterDistance <= maxMiterDistance) {
-        return intersection;
-      }
-    }
-
-    // Fall back to averaged perpendicular for failed intersections or extreme miters
-    const avgPerpX = (perp1.x + perp2.x) / 2;
-    const avgPerpY = (perp1.y + perp2.y) / 2;
-    const avgLen = Math.sqrt(avgPerpX * avgPerpX + avgPerpY * avgPerpY);
-
-    if (avgLen > 0) {
-      // Normalize and scale to proper offset
-      const scale = Math.abs(offset) / avgLen;
-      return {
-        x: p2.x + avgPerpX * scale,
-        y: p2.y + avgPerpY * scale,
-      };
-    } else {
-      return { x: p2.x, y: p2.y };
-    }
-  }
-
-  /**
-   * Gets a point at a specific ratio along a path.
-   * @private
-   */
-  function getPointAtRatio(pathPoints, ratio) {
-    if (!pathPoints || pathPoints.length === 0) return null;
-    if (pathPoints.length === 1) return pathPoints[0];
-
-    // Calculate total path length
-    let totalLength = 0;
-    const segments = [];
-
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const dx = pathPoints[i + 1].x - pathPoints[i].x;
-      const dy = pathPoints[i + 1].y - pathPoints[i].y;
-      const length = Math.sqrt(dx * dx + dy * dy);
-      segments.push(length);
-      totalLength += length;
-    }
-
-    if (totalLength === 0) return pathPoints[0];
-
-    // Find target distance along path
-    const targetDistance = ratio * totalLength;
-    let currentDistance = 0;
-
-    // Find which segment contains the target point
-    for (let i = 0; i < segments.length; i++) {
-      if (currentDistance + segments[i] >= targetDistance) {
-        // Interpolate within this segment
-        const segmentRatio = (targetDistance - currentDistance) / segments[i];
-        const p1 = pathPoints[i];
-        const p2 = pathPoints[i + 1];
-
-        return {
-          x: p1.x + (p2.x - p1.x) * segmentRatio,
-          y: p1.y + (p2.y - p1.y) * segmentRatio,
-        };
-      }
-      currentDistance += segments[i];
-    }
-
-    // If we get here, return the last point
-    return pathPoints[pathPoints.length - 1];
+    return zigzagWithCorners(pathPoints, {
+      strokeWeight: stitchSettings.strokeWeight,
+      density: stitchSettings.stitchLength,
+      strokeJoin: stitchSettings.strokeJoin || _currentStrokeJoin,
+      miterLimit: stitchSettings.miterLimit ?? ZIGZAG_CORNER_DEFAULTS.miterLimit,
+      cornerSpacing: stitchSettings.cornerSpacing ?? ZIGZAG_CORNER_DEFAULTS.cornerSpacing,
+      strokeEntry: stitchSettings.strokeEntry,
+      strokeExit: stitchSettings.strokeExit,
+    });
   }
 
   /**
@@ -4002,189 +3615,6 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
       }
       return result;
     }
-  }
-
-  /**
-   * Creates join stitches at corners between path segments.
-   * @private
-   * @param {Object} p1 - First point {x, y}
-   * @param {Object} p2 - Corner point {x, y}
-   * @param {Object} p3 - Third point {x, y}
-   * @param {Object} stitchSettings - Settings for the stitches
-   * @returns {Array<{x: number, y: number}>} Array of join stitch points in mm
-   */
-  function createJoinStitches(p1, p2, p3, stitchSettings) {
-    const joinType = stitchSettings.strokeJoin || _currentStrokeJoin;
-    const strokeWeight = stitchSettings.strokeWeight;
-    const joinStitches = [];
-
-    if (strokeWeight <= 0) {
-      return joinStitches;
-    }
-
-    // Calculate vectors for the two segments
-    const v1 = {
-      x: p2.x - p1.x,
-      y: p2.y - p1.y,
-    };
-    const v2 = {
-      x: p3.x - p2.x,
-      y: p3.y - p2.y,
-    };
-
-    // Normalize vectors
-    const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
-    const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
-
-    if (len1 === 0 || len2 === 0) {
-      return joinStitches; // Skip if zero-length segments
-    }
-
-    const n1 = { x: v1.x / len1, y: v1.y / len1 };
-    const n2 = { x: v2.x / len2, y: v2.y / len2 };
-
-    // Calculate perpendicular vectors
-    const perp1 = { x: -n1.y, y: n1.x };
-    const perp2 = { x: -n2.y, y: n2.x };
-
-    // Calculate angle between segments
-    const dot = n1.x * n2.x + n1.y * n2.y;
-    const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
-
-    // Skip join if angle is very small (nearly straight line)
-    if (angle < 0.1) {
-      return joinStitches;
-    }
-
-    const halfStroke = strokeWeight / 2;
-
-    switch (joinType) {
-      case STROKE_JOIN.ROUND:
-        return createRoundJoin(p2, perp1, perp2, halfStroke, angle, stitchSettings);
-
-      case STROKE_JOIN.MITER:
-        return createMiterJoin(p2, perp1, perp2, halfStroke, angle, stitchSettings);
-
-      case STROKE_JOIN.BEVEL:
-        return createBevelJoin(p2, perp1, perp2, halfStroke, stitchSettings);
-
-      default:
-        return createRoundJoin(p2, perp1, perp2, halfStroke, angle, stitchSettings);
-    }
-  }
-
-  /**
-   * Creates round join stitches.
-   * @private
-   */
-  function createRoundJoin(center, perp1, perp2, radius, angle, stitchSettings) {
-    const joinStitches = [];
-    const numSteps = Math.max(3, Math.ceil((angle * radius) / stitchSettings.stitchLength));
-
-    // Determine the direction of the arc (clockwise or counterclockwise)
-    const cross = perp1.x * perp2.y - perp1.y * perp2.x;
-    const direction = cross > 0 ? 1 : -1;
-
-    // Start and end points of the join
-    const startPoint = {
-      x: center.x + perp1.x * radius,
-      y: center.y + perp1.y * radius,
-    };
-    const endPoint = {
-      x: center.x + perp2.x * radius,
-      y: center.y + perp2.y * radius,
-    };
-
-    // Calculate start angle for the arc
-    const startAngle = Math.atan2(perp1.y, perp1.x);
-
-    // Create arc stitches
-    for (let i = 0; i <= numSteps; i++) {
-      const t = i / numSteps;
-      const currentAngle = startAngle + angle * direction * t;
-
-      joinStitches.push({
-        x: center.x + Math.cos(currentAngle) * radius,
-        y: center.y + Math.sin(currentAngle) * radius,
-      });
-    }
-
-    return joinStitches;
-  }
-
-  /**
-   * Creates miter join stitches.
-   * @private
-   */
-  function createMiterJoin(center, perp1, perp2, radius, angle, stitchSettings) {
-    const joinStitches = [];
-
-    // Calculate the miter point
-    const miterLength = radius / Math.sin(angle / 2);
-
-    // Limit miter length to prevent extreme spikes
-    const maxMiterLength = radius * 4; // Miter limit
-    const actualMiterLength = Math.min(miterLength, maxMiterLength);
-
-    // Calculate bisector direction
-    const bisectorX = (perp1.x + perp2.x) / 2;
-    const bisectorY = (perp1.y + perp2.y) / 2;
-    const bisectorLen = Math.sqrt(bisectorX * bisectorX + bisectorY * bisectorY);
-
-    if (bisectorLen === 0) {
-      // Fall back to bevel if bisector calculation fails
-      return createBevelJoin(center, perp1, perp2, radius, stitchSettings);
-    }
-
-    const normalizedBisectorX = bisectorX / bisectorLen;
-    const normalizedBisectorY = bisectorY / bisectorLen;
-
-    // Create miter point
-    const miterPoint = {
-      x: center.x + normalizedBisectorX * actualMiterLength,
-      y: center.y + normalizedBisectorY * actualMiterLength,
-    };
-
-    // Add stitches from end of first segment to miter point to start of second segment
-    const startPoint = {
-      x: center.x + perp1.x * radius,
-      y: center.y + perp1.y * radius,
-    };
-    const endPoint = {
-      x: center.x + perp2.x * radius,
-      y: center.y + perp2.y * radius,
-    };
-
-    // Create stitches for the miter
-    const stitches1 = straightLineStitch(startPoint.x, startPoint.y, miterPoint.x, miterPoint.y, stitchSettings);
-    const stitches2 = straightLineStitch(miterPoint.x, miterPoint.y, endPoint.x, endPoint.y, stitchSettings);
-
-    joinStitches.push(...stitches1, ...stitches2);
-
-    return joinStitches;
-  }
-
-  /**
-   * Creates bevel join stitches.
-   * @private
-   */
-  function createBevelJoin(center, perp1, perp2, radius, stitchSettings) {
-    const joinStitches = [];
-
-    // Simple bevel: straight line between the two perpendicular points
-    const startPoint = {
-      x: center.x + perp1.x * radius,
-      y: center.y + perp1.y * radius,
-    };
-    const endPoint = {
-      x: center.x + perp2.x * radius,
-      y: center.y + perp2.y * radius,
-    };
-
-    const bevelStitches = straightLineStitch(startPoint.x, startPoint.y, endPoint.x, endPoint.y, stitchSettings);
-    joinStitches.push(...bevelStitches);
-
-    return joinStitches;
   }
 
   /**
@@ -6337,72 +5767,6 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
     }
 
     return stitches;
-  }
-
-  /**
-   * Creates a more advanced zigzag pattern with control over density.
-   * @method createZigzagFromPath
-   * @private
-   * @param {Array<{x: number, y: number}>} pathPoints - Array of path points in mm
-   * @param {number} width - Width of the zigzag in mm
-   * @param {number} [density=_embrSettings.stitchLength] - Distance between zigzag points in mm
-   * @returns {Array<{x: number, y: number}>} Array of zigzag stitch points in mm
-   */
-  function createZigzagFromPath(pathPoints, width, density = _embroiderySettings.stitchLength) {
-    if (!pathPoints || pathPoints.length < 2) {
-      console.warn("Cannot create zigzag from insufficient path points");
-      return [];
-    }
-
-    const zigzagResult = [];
-    const halfWidth = width / 2;
-    let side = 1; // Start with one side
-
-    // Process each segment between consecutive points
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const p1 = pathPoints[i];
-      const p2 = pathPoints[i + 1];
-
-      // Calculate segment direction vector
-      const dx = p2.x - p1.x;
-      const dy = p2.y - p1.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Prevent division by zero for zero-length segments
-      if (distance === 0) {
-        console.warn("Zero distance detected, skipping segment");
-        continue;
-      }
-
-      // Skip if points are too close
-      if (distance < 0.1) continue;
-
-      // Calculate perpendicular vector
-      const perpX = -dy / distance;
-      const perpY = dx / distance;
-
-      // Calculate number of zigzag points for this segment
-      const numPoints = Math.max(2, Math.ceil(distance / density));
-
-      // Add zigzag points along the segment
-      for (let j = 0; j <= numPoints; j++) {
-        const t = j / numPoints;
-
-        // Alternate sides for zigzag effect
-        if (j > 0) side = -side;
-
-        const pointX = p1.x + dx * t + perpX * halfWidth * side;
-        const pointY = p1.y + dy * t + perpY * halfWidth * side;
-
-        zigzagResult.push({
-          x: pointX,
-          y: pointY,
-        });
-      }
-    }
-
-    if (_DEBUG) console.log("Generated zigzag from path:", zigzagResult);
-    return zigzagResult;
   }
 
   /**
