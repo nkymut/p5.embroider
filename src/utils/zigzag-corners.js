@@ -44,7 +44,7 @@ export const ZIGZAG_CORNER_DEFAULTS = {
 
 /**
  * Cleans the path and computes segments and corners.
- * @param {Array<{x:number, y:number, width?:number}>} points
+ * @param {Array<{x:number, y:number, width:(number|undefined)}>} points
  * @param {Object} opts
  * @returns {{pts:Array, segs:Array, corners:Array, closed:boolean}}
  */
@@ -136,7 +136,7 @@ function innerJoinPoint(c) {
 
 /**
  * Zigzag needle points for a path, with joins at the corners.
- * @param {Array<{x:number, y:number, width?:number}>} points - Path in mm; `width` per point is optional.
+ * @param {Array<{x:number, y:number, width:(number|undefined)}>} points - Path in mm; `width` per point is optional.
  * @param {Object} opts - See ZIGZAG_CORNER_DEFAULTS.
  * @returns {Array<{x:number, y:number}>} Needle points in mm, in sewing order.
  */

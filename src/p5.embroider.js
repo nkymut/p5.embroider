@@ -3545,7 +3545,7 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
    * The corner style follows strokeJoin(): ROUND fans around the outer corner, MITER meets in a
    * point (BEVEL beyond miterLimit), BEVEL cuts the corner.
    * @private
-   * @param {Array<{x: number, y: number, width?: number}>} pathPoints - Array of path points in mm (width is optional)
+   * @param {Array<{x:number, y:number, width:(number|undefined)}>} pathPoints - Array of path points in mm (width is optional)
    * @param {Object} stitchSettings - Settings for the stitches
    * @returns {Array<{x: number, y: number}>} Array of stitch points in mm
    */
