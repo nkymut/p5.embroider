@@ -583,7 +583,9 @@ function p5EmbroiderAddon(p5, fn, lifecycles) {
   let _warnedStitchInterpolate = false;
   p5embroidery.setStitchInterpolate = function (enabled) {
     if (!_warnedStitchInterpolate) {
-      console.warn("🪡 p5.embroider says: setStitchInterpolate() is deprecated and ignored; zigzag corners follow strokeJoin()");
+      console.warn(
+        "🪡 p5.embroider says: setStitchInterpolate() is deprecated and ignored; zigzag corners follow strokeJoin()",
+      );
       _warnedStitchInterpolate = true;
     }
   };
