@@ -1,4 +1,26 @@
-const _DEBUG_PES = true;
+const _DEBUG_PES = false;
+
+// PEC moves are 12-bit signed: longer moves are split into steps of at most this many 0.1 mm units
+const PEC_MAX_MOVE = 2047;
+
+// Thumbnail drawings are scaled to the icon size less this many pixels, which keeps them inside the frame
+const PEC_ICON_MARGIN = 6;
+
+// Empty 48 × 38 PEC thumbnail: the rounded frame only (6 bytes per row, bit 0 = leftmost pixel)
+const PEC_BLANK_GRAPHIC = [
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x04,
+  0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
+  0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
+  0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
+  0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00,
+  0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40,
+  0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02,
+  0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
+  0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
+  0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
+  0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x00, 0x00, 0x00,
+  0x20, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+];
 
 export class PESWriter {
   constructor() {
@@ -202,69 +224,112 @@ export class PESWriter {
     return result;
   }
 
+  // ===== PEC Commands =====
+
+  /**
+   * Turns the centred points into PEC commands at whole 0.1 mm positions:
+   * `{ type: "stitch" | "jump", x, y, first }` and `{ type: "color", color }`.
+   *
+   * Point flags (as set by exportPES): `jump` marks the start of a travel, so the move from this
+   * point to the next is a jump; `trim` cuts the thread here, so the move to the next point is a
+   * jump even when it has no length. The move to the first stitch and the move after a colour
+   * change are jumps too. Every jump lands with a stitch at its destination.
+   */
+  buildCommands(points) {
+    const commands = [];
+    let x = 0,
+      y = 0;
+    let color = null;
+    let jumpNext = true; // the move to the next point is a jump
+    let trimNext = false; // ... and has to be written even with no length
+    let first = true; // no stitch yet: the jump is the move from the origin
+
+    const land = (px, py) => {
+      if (jumpNext && (px !== x || py !== y || trimNext)) commands.push({ type: "jump", x: px, y: py, first });
+      commands.push({ type: "stitch", x: px, y: py });
+      jumpNext = trimNext = first = false;
+    };
+
+    for (const point of points) {
+      const px = Math.round(point.x);
+      const py = Math.round(point.y);
+      const pointColor = point.color || 0xff0000;
+
+      if (color !== null && pointColor !== color) {
+        commands.push({ type: "color", color: pointColor });
+        jumpNext = true;
+      }
+      color = pointColor;
+
+      if (point.jump || point.trim) {
+        // A travel source sits on the last stitch; one elsewhere is sewn there first
+        if (px !== x || py !== y) land(px, py);
+        jumpNext = true;
+        trimNext = trimNext || !!point.trim;
+      } else {
+        land(px, py);
+      }
+      x = px;
+      y = py;
+    }
+    return commands;
+  }
+
   // ===== PEC Encoding =====
 
-  encodeLongForm(value) {
-    value &= 0b0000111111111111;
-    value |= 0b1000000000000000;
-    return value;
+  /** One axis: short form (7-bit) when it fits and no flag is needed, else 12-bit long form. */
+  writeValue(value, long = false, flag = 0) {
+    if (!long && value > -64 && value < 63) {
+      this.writeInt8(value & this.MASK_07_BIT);
+    } else {
+      this.writeInt16BE((value & 0x0fff) | ((this.FLAG_LONG | flag) << 8));
+    }
   }
 
-  flagTrim(longForm) {
-    return longForm | (this.TRIM_CODE << 8);
-  }
-
-  pecEncode(stitches, colors) {
+  /**
+   * Writes the PEC stitch stream. Jumps are long form with the JUMP flag for the first move from the
+   * origin and the TRIM flag after that (Brother machines cut on it), split into steps of at most
+   * PEC_MAX_MOVE per axis. Colour changes alternate FE B0 02 / FE B0 01.
+   */
+  pecEncode(commands) {
     let colorTwo = true;
     let xx = 0,
       yy = 0;
 
-    for (let i = 0; i < stitches.length; i++) {
-      // Check for color change
-      if (i > 0 && colors[i] !== colors[i - 1]) {
+    for (const cmd of commands) {
+      if (cmd.type === "color") {
         this.writeInt8(0xfe);
         this.writeInt8(0xb0);
         this.writeInt8(colorTwo ? 2 : 1);
         colorTwo = !colorTwo;
+        if (_DEBUG_PES) console.log("PEC color change to", cmd.color.toString(16));
+        continue;
+      }
 
-        if (_DEBUG_PES) {
-          console.log("PEC color change at stitch", i);
+      let dx = cmd.x - xx;
+      let dy = cmd.y - yy;
+      const isJump = cmd.type === "jump" || Math.abs(dx) > PEC_MAX_MOVE || Math.abs(dy) > PEC_MAX_MOVE;
+
+      if (isJump) {
+        const flag = cmd.first ? this.JUMP_CODE : this.TRIM_CODE;
+        // At least one record, so a trim with no travel still cuts
+        const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / PEC_MAX_MOVE));
+        let sx = 0,
+          sy = 0;
+        for (let s = 1; s <= steps; s++) {
+          const nx = Math.round((dx * s) / steps);
+          const ny = Math.round((dy * s) / steps);
+          this.writeValue(nx - sx, true, flag);
+          this.writeValue(ny - sy, true, flag);
+          sx = nx;
+          sy = ny;
         }
-      }
-
-      const x = stitches[i].x;
-      const y = stitches[i].y;
-
-      let dx = Math.round(x - xx);
-      let dy = Math.round(y - yy);
-      xx += dx;
-      yy += dy;
-
-      // First stitch special handling
-      if (i === 0) {
-        dx = this.encodeLongForm(dx);
-        dx = this.flagTrim(dx);
-        dy = this.encodeLongForm(dy);
-        dy = this.flagTrim(dy);
-        this.writeInt16BE(dx);
-        this.writeInt16BE(dy);
-        this.writeInt8(0x00);
-        this.writeInt8(0x00);
-        dx = 0;
-        dy = 0;
-      }
-
-      // Short form: -64 to 63
-      if (dx < 63 && dx > -64 && dy < 63 && dy > -64) {
-        this.writeInt8(dx & this.MASK_07_BIT);
-        this.writeInt8(dy & this.MASK_07_BIT);
       } else {
-        // Long form
-        dx = this.encodeLongForm(dx);
-        dy = this.encodeLongForm(dy);
-        this.writeInt16BE(dx);
-        this.writeInt16BE(dy);
+        this.writeValue(dx);
+        this.writeValue(dy);
       }
+      xx = cmd.x;
+      yy = cmd.y;
     }
 
     this.writeInt8(0xff); // End marker
@@ -272,7 +337,22 @@ export class PESWriter {
 
   // ===== PEC Header and Blocks =====
 
-  writePecHeader(title, colors) {
+  /** Colour blocks `{ color, commands }`, split at the colour changes; the first takes `firstColor`. */
+  colorBlocks(commands, firstColor) {
+    let block = { color: firstColor, commands: [] };
+    const blocks = [block];
+    for (const cmd of commands) {
+      if (cmd.type === "color") {
+        block = { color: cmd.color, commands: [] };
+        blocks.push(block);
+      } else {
+        block.commands.push(cmd);
+      }
+    }
+    return blocks;
+  }
+
+  writePecHeader(title, palette) {
     const colorIndexList = [];
 
     // Title line (16 chars padded, with \r)
@@ -289,14 +369,6 @@ export class PESWriter {
     // Icon dimensions
     this.writeInt8(this.PEC_ICON_WIDTH / 8);
     this.writeInt8(this.PEC_ICON_HEIGHT);
-
-    // Build palette - unique consecutive colors
-    const palette = [];
-    for (let i = 0; i < colors.length; i++) {
-      if (i === 0 || colors[i] !== colors[i - 1]) {
-        palette.push(colors[i]);
-      }
-    }
 
     if (_DEBUG_PES) {
       console.log(
@@ -328,7 +400,7 @@ export class PESWriter {
     return { colorIndexList, palette };
   }
 
-  writePecBlock(bounds, stitches, colors) {
+  writePecBlock(bounds, commands) {
     const width = Math.round(bounds.width);
     const height = Math.round(bounds.height);
 
@@ -347,58 +419,100 @@ export class PESWriter {
     this.writeInt16LE(0x1e0);
     this.writeInt16LE(0x1b0);
 
-    // Use the actual bounds, not [0] and [1] indices
-    this.writeInt16BE(0x9000 | (-Math.round(bounds.minX) & 0xffff));
-    this.writeInt16BE(0x9000 | (-Math.round(bounds.minY) & 0xffff));
-
-    this.pecEncode(stitches, colors);
+    // Where the design box starts: the distance from its top-left corner to the stitch origin, as
+    // 0x9000 | -left and 0x9000 | -top. Brother machines place the box [-(-left), width] from these;
+    // zero shows only the stitches right of and below the origin. The stitch stream follows, starting
+    // with the jump from the origin to the first stitch.
+    this.writeInt16BE(0x9000 | (-bounds.left & 0x0fff));
+    this.writeInt16BE(0x9000 | (-bounds.top & 0x0fff));
+    this.pecEncode(commands);
 
     const stitchBlockLength = this.tell() - stitchBlockStart;
     this.writeSpaceHolder24LE(stitchBlockLength);
   }
 
-  writePecGraphics() {
-    this.writeBytes([
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0x04,
-      0x00, 0x00, 0x00, 0x00, 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
-      0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
-      0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
-      0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00,
-      0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40,
-      0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02,
-      0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00,
-      0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00,
-      0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00,
-      0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x02, 0x00, 0x00, 0x00, 0x00, 0x40, 0x04, 0x00, 0x00, 0x00, 0x00,
-      0x20, 0x08, 0x00, 0x00, 0x00, 0x00, 0x10, 0xf0, 0xff, 0xff, 0xff, 0xff, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    ]);
+  /**
+   * A 48 × 38 1-bit thumbnail (6 bytes per row, bit 0 = leftmost pixel) of `commands`: the frame
+   * plus a line along consecutive stitches, broken at jumps. The design is scaled to fit inside
+   * the image less `margin` pixels and centred.
+   */
+  pecGraphic(commands, bounds, margin) {
+    const graphic = PEC_BLANK_GRAPHIC.slice();
+    const stride = this.PEC_ICON_WIDTH / 8;
+    const { minX, maxX, minY, maxY } = bounds.bounds;
+    const scale = Math.min(
+      (this.PEC_ICON_WIDTH - margin) / Math.max(1, maxX - minX),
+      (this.PEC_ICON_HEIGHT - margin) / Math.max(1, maxY - minY),
+    );
+    const tx = this.PEC_ICON_WIDTH / 2 - ((minX + maxX) / 2) * scale;
+    const ty = this.PEC_ICON_HEIGHT / 2 - ((minY + maxY) / 2) * scale;
+    const mark = (x, y) => {
+      if (x < 0 || y < 0 || x >= this.PEC_ICON_WIDTH || y >= this.PEC_ICON_HEIGHT) return;
+      graphic[y * stride + (x >> 3)] |= 1 << (x & 7);
+    };
+
+    let prev = null;
+    for (const cmd of commands) {
+      if (cmd.type !== "stitch") {
+        prev = null;
+        continue;
+      }
+      const p = { x: Math.floor(cmd.x * scale + tx), y: Math.floor(cmd.y * scale + ty) };
+      if (!prev) {
+        mark(p.x, p.y);
+      } else {
+        // Bresenham from prev to p
+        let x0 = prev.x,
+          y0 = prev.y;
+        const ddx = Math.abs(p.x - x0),
+          ddy = -Math.abs(p.y - y0);
+        const sx = x0 < p.x ? 1 : -1,
+          sy = y0 < p.y ? 1 : -1;
+        let err = ddx + ddy;
+        for (;;) {
+          mark(x0, y0);
+          if (x0 === p.x && y0 === p.y) break;
+          const e2 = 2 * err;
+          if (e2 >= ddy) {
+            err += ddy;
+            x0 += sx;
+          }
+          if (e2 <= ddx) {
+            err += ddx;
+            y0 += sy;
+          }
+        }
+      }
+      prev = p;
+    }
+    return graphic;
   }
 
-  writePec(title, stitches, colors, border) {
-    const colorInfo = this.writePecHeader(title, colors);
-    this.writePecBlock(border, stitches, colors);
+  writePec(title, commands, border, firstColor) {
+    const blocks = this.colorBlocks(commands, firstColor);
+    const colorInfo = this.writePecHeader(
+      title,
+      blocks.map((b) => b.color),
+    );
+    this.writePecBlock(border, commands);
 
-    // Write graphics for each color
-    this.writePecGraphics();
-    this.writePecGraphics();
-
-    for (let i = 1; i < colors.length; i++) {
-      if (colors[i] !== colors[i - 1]) {
-        this.writePecGraphics();
-      }
+    // One thumbnail of the whole design, then one per colour block
+    this.writeBytes(this.pecGraphic(commands, border, PEC_ICON_MARGIN));
+    for (const block of blocks) {
+      this.writeBytes(this.pecGraphic(block.commands, border, PEC_ICON_MARGIN));
     }
 
     return colorInfo;
   }
 
   // Version 1 truncated (PEC-only) - simplest format
-  writeTruncatedVersion1(title, stitches, colors, border) {
+  writeTruncatedVersion1(title, commands, border, firstColor) {
     this.writeString("#PES0001");
     this.writeInt8(0x16);
     for (let i = 0; i < 13; i++) {
       this.writeInt8(0x00);
     }
-    this.writePec(title, stitches, colors, border);
+    this.writePec(title, commands, border, firstColor);
   }
 
   // ===== Main Generation Function (matching DST pattern) =====
@@ -462,12 +576,9 @@ export class PESWriter {
       console.log("Transformed border size:", border);
     }
 
-    // Extract stitches and colors arrays from transformed points
-    const stitches = transformedPoints.map((p) => ({ x: p.x, y: p.y }));
-    const colors = transformedPoints.map((p) => p.color || 0xff0000);
-
-    // Write the file
-    this.writeTruncatedVersion1(title, stitches, colors, border);
+    // Keep the jump / trim flags: they decide which moves are jumps
+    const commands = this.buildCommands(transformedPoints);
+    this.writeTruncatedVersion1(title, commands, border, transformedPoints[0].color || 0xff0000);
 
     return new Uint8Array(this.buffer);
   }
