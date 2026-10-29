@@ -419,7 +419,11 @@ export class PESWriter {
     this.writeInt16LE(0x1e0);
     this.writeInt16LE(0x1b0);
 
-    // The stitch stream follows directly; its first record is the jump from the origin
+    // Two more 16-bit fields that most readers (and Brother machines) skip as header, while others
+    // decode them as the first record; 0x9000 0x9000 is a zero-length jump, so both agree. The
+    // stitch stream then starts with the jump from the origin to the first stitch.
+    this.writeInt16BE(0x9000);
+    this.writeInt16BE(0x9000);
     this.pecEncode(commands);
 
     const stitchBlockLength = this.tell() - stitchBlockStart;

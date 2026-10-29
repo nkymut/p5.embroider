@@ -3,7 +3,9 @@ import { PESWriter } from "../src/io/p5-pes-writer.js";
 
 // Decode a truncated version 1 PES (#PES0001 + PEC). Returns the header fields, the stitch stream
 // as absolute 0.1 mm positions from the origin, and the thumbnails as 48 × 38 bit arrays.
-function decode(bytes) {
+// `skip`: bytes after the 0x1B0 field taken as header, not stitches. Readers differ: 4 (libembroidery,
+// Brother machines) or 0 (pyembroidery); a file has to place the design the same way for both.
+function decode(bytes, skip = 4) {
   const pec = bytes[8] | (bytes[9] << 8) | (bytes[10] << 16) | (bytes[11] << 24);
   const colorCount = bytes[pec + 48] + 1;
   const palette = Array.from(bytes.slice(pec + 49, pec + 49 + colorCount));
@@ -16,7 +18,7 @@ function decode(bytes) {
   const records = [];
   let x = 0,
     y = 0;
-  let i = block + 16;
+  let i = block + 16 + skip;
   const value = () => {
     const b = bytes[i++];
     if (b & 0x80) {
@@ -147,6 +149,17 @@ describe("PES writer: jumps and trims", () => {
 });
 
 describe("PES writer: header and thumbnails", () => {
+  test("readers that skip 4 header bytes and readers that skip none place the design the same", () => {
+    const a = square(500, 500, RED);
+    const bytes = new PESWriter().generatePES([...a, { ...last(a), jump: true }, ...square(1000, 900, BLUE)], "t");
+    const stitches = (skip) =>
+      decode(bytes, skip)
+        .records.filter((r) => r.type === "stitch")
+        .map((r) => [r.x, r.y]);
+    expect(stitches(0)).toEqual(stitches(4));
+    expect(stitches(4)[0]).toEqual([-350, -300]); // a's start corner, design centred on the origin
+  });
+
   test("design is centred on the origin and the block size matches the bounds", () => {
     const pts = square(1000, 500, RED, 300); // 60 × 60 mm
     const { width, height, records } = write(pts);
