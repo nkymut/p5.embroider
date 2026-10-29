@@ -1,11 +1,10 @@
 import { describe, expect, test } from "@jest/globals";
 import { PESWriter } from "../src/io/p5-pes-writer.js";
 
-// Decode a truncated version 1 PES (#PES0001 + PEC). Returns the header fields, the stitch stream
-// as absolute 0.1 mm positions from the origin, and the thumbnails as 48 × 38 bit arrays.
-// `skip`: bytes after the 0x1B0 field taken as header, not stitches. Readers differ: 4 (libembroidery,
-// Brother machines) or 0 (pyembroidery); a file has to place the design the same way for both.
-function decode(bytes, skip = 4) {
+// Decode a truncated version 1 PES (#PES0001 + PEC) as a Brother machine reads it. Returns the
+// header fields (`boxLeft`/`boxTop`: where the design box starts relative to the stitch origin), the
+// stitch stream as absolute 0.1 mm positions from the origin, and the thumbnails as 48 × 38 bit arrays.
+function decode(bytes) {
   const pec = bytes[8] | (bytes[9] << 8) | (bytes[10] << 16) | (bytes[11] << 24);
   const colorCount = bytes[pec + 48] + 1;
   const palette = Array.from(bytes.slice(pec + 49, pec + 49 + colorCount));
@@ -18,7 +17,14 @@ function decode(bytes, skip = 4) {
   const records = [];
   let x = 0,
     y = 0;
-  let i = block + 16 + skip;
+  const field = (k) => {
+    const v = ((bytes[k] << 8) | bytes[k + 1]) & 0x0fff;
+    return v > 0x7ff ? v - 0x1000 : v;
+  };
+  const boxLeft = -field(block + 16);
+  const boxTop = -field(block + 18);
+
+  let i = block + 20;
   const value = () => {
     const b = bytes[i++];
     if (b & 0x80) {
@@ -50,7 +56,7 @@ function decode(bytes, skip = 4) {
     }
     graphics.push(bits);
   }
-  return { palette, width, height, records, graphics, end: bytes[i] };
+  return { palette, width, height, boxLeft, boxTop, records, graphics, end: bytes[i] };
 }
 
 // Square outline (0.1 mm units), side 2r, a point every r / 5, ending on its start corner.
@@ -149,15 +155,20 @@ describe("PES writer: jumps and trims", () => {
 });
 
 describe("PES writer: header and thumbnails", () => {
-  test("readers that skip 4 header bytes and readers that skip none place the design the same", () => {
+  test("the design box in the header contains every stitch (the machine crops to it)", () => {
     const a = square(500, 500, RED);
-    const bytes = new PESWriter().generatePES([...a, { ...last(a), jump: true }, ...square(1000, 900, BLUE)], "t");
-    const stitches = (skip) =>
-      decode(bytes, skip)
-        .records.filter((r) => r.type === "stitch")
-        .map((r) => [r.x, r.y]);
-    expect(stitches(0)).toEqual(stitches(4));
-    expect(stitches(4)[0]).toEqual([-350, -300]); // a's start corner, design centred on the origin
+    const { boxLeft, boxTop, width, height, records } = write([
+      ...a,
+      { ...last(a), jump: true },
+      ...square(1000, 900, BLUE),
+    ]);
+    expect([boxLeft, boxTop]).toEqual([-350, -300]);
+    for (const r of records.filter((r) => r.type === "stitch")) {
+      expect(r.x).toBeGreaterThanOrEqual(boxLeft);
+      expect(r.x).toBeLessThanOrEqual(boxLeft + width);
+      expect(r.y).toBeGreaterThanOrEqual(boxTop);
+      expect(r.y).toBeLessThanOrEqual(boxTop + height);
+    }
   });
 
   test("design is centred on the origin and the block size matches the bounds", () => {
