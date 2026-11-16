@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [0.3.1](https://github.com/nkymut/p5.embroider/compare/v0.3.0...v0.3.1) (2026-11-16)
+
+
+### ### Added
+
+* add drawPreviewGrid, a zoom-adaptive mm grid for the preview viewport ([dd8f5e5](https://github.com/nkymut/p5.embroider/commit/dd8f5e585e512b65dcbacdc97c897b43afe84001))
+
+
+### ### Changed
+
+* add a miter option to the zigzagCornerSpacing sew-out test ([e21e1ca](https://github.com/nkymut/p5.embroider/commit/e21e1ca5657e8fbe950b94e45ae506c97163f4c7))
+* run tests and a lib/ build check on PRs and before each Pages deploy ([70670b9](https://github.com/nkymut/p5.embroider/commit/70670b956b5360237166b4833244f06944c01d13))
+* wrap the setStitchInterpolate deprecation warning ([3e5adc5](https://github.com/nkymut/p5.embroider/commit/3e5adc5ba2647228b40d6502b12a9773cd57c159))
+
+
+### ### Fixed
+
+* close the zigzag gap at corners and honour strokeJoin() ([9e5eb42](https://github.com/nkymut/p5.embroider/commit/9e5eb4219559f4b402b97a494e1c696ab5f45688)), closes [#28](https://github.com/nkymut/p5.embroider/issues/28)
+* drawGrid vertical lines were offset by half the grid spacing ([20055e4](https://github.com/nkymut/p5.embroider/commit/20055e44cba6db5d7e5d7e1c8029b647620f74f2))
+* endShape() recorded outline stitches even after noStroke() ([a6553d7](https://github.com/nkymut/p5.embroider/commit/a6553d73c1e93a7059cb999cc753939933badff6)), closes [#31](https://github.com/nkymut/p5.embroider/issues/31)
+* keep the two PEC header fields before the stitch stream ([5723335](https://github.com/nkymut/p5.embroider/commit/57233356203587e3d4dd2037bb2529d1f9a0dd0c)), closes [#25](https://github.com/nkymut/p5.embroider/issues/25)
+* PES jumps, trims, long moves and thumbnails ([8bd4e4e](https://github.com/nkymut/p5.embroider/commit/8bd4e4e56edd9b4624d09feb7841ec7a13783ec0)), closes [#25](https://github.com/nkymut/p5.embroider/issues/25) [#23](https://github.com/nkymut/p5.embroider/issues/23) [#24](https://github.com/nkymut/p5.embroider/issues/24) [#25](https://github.com/nkymut/p5.embroider/issues/25)
+* preview viewport zoom centre follows resizeCanvas() ([d467319](https://github.com/nkymut/p5.embroider/commit/d4673191450696c2c72b0c66607f3d8d090cd45f)), closes [#39](https://github.com/nkymut/p5.embroider/issues/39)
+* record primitive transforms in p5 mode, centre DST for negative coords, one fill angle unit ([85ea69f](https://github.com/nkymut/p5.embroider/commit/85ea69f88c3b174c9432a9dfaa9c60da7bf587c1)), closes [#33](https://github.com/nkymut/p5.embroider/issues/33) [#34](https://github.com/nkymut/p5.embroider/issues/34) [#35](https://github.com/nkymut/p5.embroider/issues/35) [#36](https://github.com/nkymut/p5.embroider/issues/36)
+* use Closure syntax for the optional width in JSDoc types and regenerate docs ([428bc14](https://github.com/nkymut/p5.embroider/commit/428bc14f3a6d78ddfc3c339b4c49ac1394be2800))
+* write the PEC design box offset so machines show the whole design ([32ba4af](https://github.com/nkymut/p5.embroider/commit/32ba4afe5b06e3d4c130e305363b7d376cfd165c)), closes [#25](https://github.com/nkymut/p5.embroider/issues/25)
+
 ## [0.3.0](https://github.com/nkymut/p5.embroider/compare/v0.2.1...v0.3.0) (2026-09-02)
 
 
